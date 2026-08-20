@@ -77,6 +77,12 @@ public sealed class Pet
     public Vector PupilOffset;
     /// <summary>Something specific to look at instead of the cursor.</summary>
     public Point? PupilTarget;
+    /// <summary>A passing thing that caught its eye, e.g. where you just clicked.</summary>
+    public Point? GlanceTarget;
+    public double GlanceFor;
+
+    /// <summary>Set the moment it takes fright, so the panic can spread to others.</summary>
+    public bool Alarmed;
 
     /// <summary>Grabs in the recent past; enough of them and patience runs out.</summary>
     public double Pestered;

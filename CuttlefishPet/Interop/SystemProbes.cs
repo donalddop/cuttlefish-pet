@@ -45,6 +45,50 @@ public static class SystemProbes
         return new Point(pt.X, pt.Y);
     }
 
+    /// <summary>Where the desktop icons live, and how far apart their slots are.</summary>
+    public readonly record struct IconGrid(Rect Area, double CellW, double CellH);
+
+    /// <summary>
+    /// Locate the desktop icon view and its grid spacing. Only window handles and
+    /// system metrics are read — working out which slots are actually occupied would
+    /// mean reading Explorer's memory, so the pet checks that by looking at the
+    /// screen instead.
+    /// </summary>
+    public static IconGrid? DesktopIcons()
+    {
+        IntPtr view = IntPtr.Zero;
+
+        // Normally the icon view hangs off Progman.
+        var progman = Win32.FindWindow("Progman", null);
+        if (progman != IntPtr.Zero)
+            view = Win32.FindWindowEx(progman, IntPtr.Zero, "SHELLDLL_DefView", null);
+
+        // With a wallpaper app running, Explorer moves it under a WorkerW instead.
+        if (view == IntPtr.Zero)
+        {
+            IntPtr worker = IntPtr.Zero;
+            while ((worker = Win32.FindWindowEx(IntPtr.Zero, worker, "WorkerW", null)) != IntPtr.Zero)
+            {
+                view = Win32.FindWindowEx(worker, IntPtr.Zero, "SHELLDLL_DefView", null);
+                if (view != IntPtr.Zero) break;
+            }
+        }
+        if (view == IntPtr.Zero) return null;
+
+        var list = Win32.FindWindowEx(view, IntPtr.Zero, "SysListView32", null);
+        if (list == IntPtr.Zero || !Win32.GetWindowRect(list, out var r)) return null;
+        if (r.Width < 100 || r.Height < 100) return null;
+
+        var metrics = new Win32.ICONMETRICS
+        { cbSize = System.Runtime.InteropServices.Marshal.SizeOf<Win32.ICONMETRICS>() };
+        if (!Win32.SystemParametersInfo(Win32.SPI_GETICONMETRICS, metrics.cbSize, ref metrics, 0))
+            return null;
+
+        return new IconGrid(new Rect(r.Left, r.Top, r.Width, r.Height),
+                            Math.Max(48, metrics.iHorzSpacing),
+                            Math.Max(48, metrics.iVertSpacing));
+    }
+
     /// <summary>Nudge a window sideways. Returns false if Windows refused.</summary>
     public static bool NudgeWindow(IntPtr hwnd, int dx)
     {

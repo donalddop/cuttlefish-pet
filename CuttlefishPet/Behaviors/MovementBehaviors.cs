@@ -158,6 +158,7 @@ public sealed class FleeBehavior : BehaviorBase
         pet.Surface = null;
         pet.Vel = away * 950;
         pet.FacingRight = away.X > 0;
+        pet.Alarmed = true;               // the others will see it and scatter too
         c.Renderer.SpawnInk(pet.Pos);
     }
 

@@ -20,6 +20,19 @@ public sealed class WorldState
     public double IdleSeconds { get; set; }
     /// <summary>Windows that appeared since the last full enumeration.</summary>
     public List<Rect> AppearedWindows { get; } = new();
+    /// <summary>
+    /// Every tracked window's rectangle, maximised ones included. Those produce no
+    /// ledges to sit on, but they still cover the desktop underneath.
+    /// </summary>
+    public List<Rect> WindowRects { get; } = new();
+
+    /// <summary>Is this point hidden behind some application window?</summary>
+    public bool IsCovered(Point p)
+    {
+        foreach (var r in WindowRects)
+            if (r.Contains(p)) return true;
+        return false;
+    }
     /// <summary>Everyone in the tank, so pets can notice each other.</summary>
     public List<Pet> Pets { get; } = new();
     public int PetCount => Pets.Count;

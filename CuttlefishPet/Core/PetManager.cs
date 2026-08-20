@@ -133,6 +133,7 @@ public sealed class PetManager
             pet.Anim.Tick(dt);
             AgeAndRetire(pet, dt);
             UpdateExploration(pet, dt);
+            ColourMimicry.Apply(pet, _world, _rng, dt);
             UpdateCamoSkin(pet, dt);
             UpdateColour(pet, dt);
             UpdateEyes(pet, dt);
@@ -142,6 +143,7 @@ public sealed class PetManager
                 wantClicks = true;
         }
 
+        SpreadAlarm();
         ApplyArrivalsAndDepartures();
         TickPrey(dt);
         TickTreats(dt);
@@ -168,7 +170,7 @@ public sealed class PetManager
                 {
                     if (_pets[i].Bounds.Contains(new Point(e.X, e.Y))) { hit = _pets[i]; break; }
                 }
-                if (hit == null) continue;
+                if (hit == null) { ReactToClick(new Point(e.X, e.Y)); continue; }
 
                 // Second click on the same pet in quick succession = a friendly pet,
                 // not another drag.
@@ -186,6 +188,48 @@ public sealed class PetManager
             else
             {
                 foreach (var p in _pets) p.Machine.HandleMouse(e);
+            }
+        }
+    }
+
+    /// <summary>
+    /// A click anywhere on screen turns heads: close by it is a fright, further off
+    /// it is just something worth looking at.
+    /// </summary>
+    private void ReactToClick(Point at)
+    {
+        foreach (var pet in _pets)
+        {
+            double d = (at - pet.Pos).Length;
+            if (d < 230 && pet.Machine.Current.Interruptible)
+            {
+                pet.Machine.Force(new StartleBehavior());
+            }
+            else if (d < 950)
+            {
+                pet.GlanceTarget = at;
+                pet.GlanceFor = 1.6;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Fear travels. One cuttlefish bolting sets off the ones near it, which is why
+    /// a whole group scatters at once.
+    /// </summary>
+    private void SpreadAlarm()
+    {
+        for (int i = 0; i < _pets.Count; i++)
+        {
+            if (!_pets[i].Alarmed) continue;
+            _pets[i].Alarmed = false;
+
+            foreach (var other in _pets)
+            {
+                if (ReferenceEquals(other, _pets[i]) || other.Alarmed) continue;
+                if (!other.Machine.Current.Interruptible) continue;
+                if ((other.Pos - _pets[i].Pos).Length > 320) continue;
+                other.Machine.Force(new StartleBehavior());
             }
         }
     }
@@ -322,6 +366,7 @@ public sealed class PetManager
                 b.X + (pet.FacingRight ? ec.X : anim.FrameW - ec.X) * Pet.RenderScale,
                 b.Y + ec.Y * Pet.RenderScale);
             var to = pet.PupilTarget
+                     ?? (pet.GlanceFor > 0 ? pet.GlanceTarget : null)
                      ?? (pet.Machine.Current is HuntTreatBehavior or EatTreatBehavior &&
                          _world.NearestTreat(pet) is { } t ? t.Pos : _world.Cursor);
             var d = to - eye;
@@ -331,6 +376,7 @@ public sealed class PetManager
             pet.PupilOffset = aim;
         }
 
+        pet.GlanceFor = Math.Max(0, pet.GlanceFor - dt);
         pet.BlinkLeft -= dt;
         pet.BlinkIn -= dt;
         if (pet.BlinkIn <= 0)
@@ -353,10 +399,16 @@ public sealed class PetManager
         if (_world.AppearedWindows.Count == 0 || !pet.Machine.Current.Interruptible) return;
         foreach (var r in _world.AppearedWindows)
         {
-            var near = Rect.Inflate(r, 70, 70);
-            if (near.Contains(pet.Pos))
+            // Right on top of you it is a fright; from a distance it is a curiosity.
+            if (Rect.Inflate(r, 70, 70).Contains(pet.Pos))
             {
                 pet.Machine.Force(new StartleBehavior());
+                return;
+            }
+            double d = (new Point(r.X, r.Y) - pet.Pos).Length;
+            if (d < 800 && _rng.NextDouble() < 0.5)
+            {
+                pet.Machine.Force(new InspectBehavior(r));
                 return;
             }
         }
@@ -612,6 +664,10 @@ public sealed class PetManager
 
         _world.AppearedWindows.Clear();
         _world.AppearedWindows.AddRange(_tracker.TakeAppeared());
+
+        _world.WindowRects.Clear();
+        foreach (var w in _tracker.Windows)
+            _world.WindowRects.Add(new Rect(w.Rect.Left, w.Rect.Top, w.Rect.Width, w.Rect.Height));
         foreach (var r in _world.AppearedWindows)
             Log($"window appeared {r}");
     }

@@ -23,7 +23,7 @@ public sealed class BehaviorMachine
         ["push"] = 6, ["tease"] = 5, ["clock"] = 4, ["caret"] = 12,
         ["ride"] = 6, ["jet"] = 7,
         // social and flourishes
-        ["pile"] = 10, ["colourShow"] = 6,
+        ["pile"] = 10, ["colourShow"] = 6, ["icon"] = 12, ["play"] = 9,
     };
 
     /// <summary>
@@ -198,7 +198,9 @@ public sealed class BehaviorMachine
             if (WaterJetBehavior.Possible(_ctx)) Add("jet", () => new WaterJetBehavior());
 
             Add("colourShow", () => new ColourShowBehavior());
+            Add("play", () => new BubblePlayBehavior());
             if (SleepPileBehavior.Find(_ctx) is { } pile) Add("pile", () => pile);
+            if (IconMimicBehavior.Find(_ctx) is { } icon) Add("icon", () => icon);
         }
         else if (pet.Surface.Kind == SurfaceKind.Ceiling)
         {

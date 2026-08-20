@@ -40,6 +40,25 @@ public static class Win32
         public readonly int Height => Bottom - Top;
     }
 
+    public const uint SPI_GETICONMETRICS = 0x002D;
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    public struct LOGFONT
+    {
+        public int lfHeight, lfWidth, lfEscapement, lfOrientation, lfWeight;
+        public byte lfItalic, lfUnderline, lfStrikeOut, lfCharSet, lfOutPrecision,
+                    lfClipPrecision, lfQuality, lfPitchAndFamily;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string lfFaceName;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct ICONMETRICS
+    {
+        public int cbSize;
+        public int iHorzSpacing, iVertSpacing, iTitleWrap;
+        public LOGFONT lfFont;
+    }
+
     [StructLayout(LayoutKind.Sequential)]
     public struct LASTINPUTINFO
     {
@@ -89,6 +108,8 @@ public static class Win32
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
     [DllImport("user32.dll")] public static extern bool GetCursorPos(out POINT pt);
     [DllImport("user32.dll")] public static extern bool GetLastInputInfo(ref LASTINPUTINFO info);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    public static extern bool SystemParametersInfo(uint action, int param, ref ICONMETRICS info, uint winIni);
     [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
     public static extern IntPtr GetWindowLongPtr(IntPtr hWnd, int nIndex);

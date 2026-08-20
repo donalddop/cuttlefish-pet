@@ -242,6 +242,7 @@ public sealed class StartleBehavior : BehaviorBase
         pet.Anim.Play("startle", restart: true);
         pet.Surface = null;
         pet.Vel = new Vector(pet.FacingRight ? -430 : 430, -380);
+        pet.Alarmed = true;               // sets off anyone nearby
         c.Sound.Play("blip", 0.4);
         c.Pet.ShiftTo(Rendering.Palettes.IndexOf("pearl"), 6);  // blanch with fright
     }
