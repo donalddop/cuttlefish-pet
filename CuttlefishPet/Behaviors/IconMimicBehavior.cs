@@ -134,7 +134,7 @@ public sealed class IconMimicBehavior : BehaviorBase
 
                 // Cursor closing in, a window sliding over the slot, or simply bored.
                 if ((c.World.Cursor - pet.Pos).Length < 90 || c.World.IsCovered(_slot) ||
-                    _t > 25 + c.Rng.NextDouble() * 25)
+                    _t > 45 + c.Rng.NextDouble() * 45)
                 {
                     _phase = Phase.Bolting;
                     _t = 0;

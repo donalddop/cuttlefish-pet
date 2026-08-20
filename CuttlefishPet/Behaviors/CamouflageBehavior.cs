@@ -16,6 +16,7 @@ public sealed class CamouflageBehavior : BehaviorBase
     private Phase _phase = Phase.Morphing;
     private double _t, _holdRemaining, _recaptureIn;
     private bool _captureBusy;
+    private bool _startled;
     private string _maskAnim = "flatten";
 
     public override void Enter(BehaviorContext c)
@@ -26,7 +27,7 @@ public sealed class CamouflageBehavior : BehaviorBase
             ? "mimic_icon"   // hide among the taskbar icons
             : "flatten";     // press flat against whatever is behind
         pet.Anim.Play(_maskAnim, restart: true);
-        _holdRemaining = 10 + c.Rng.NextDouble() * 20;
+        _holdRemaining = 35 + c.Rng.NextDouble() * 55;   // hiding is the whole point
         StartCapture(c);
     }
 
@@ -49,7 +50,7 @@ public sealed class CamouflageBehavior : BehaviorBase
         {
             case Phase.Morphing:
                 if (pet.CamoSource != null)
-                    pet.CamoOpacity = Math.Min(1, pet.CamoOpacity + dt / 1.2);
+                    pet.CamoOpacity = Math.Min(1, pet.CamoOpacity + dt / 1.9);
                 if (pet.CamoOpacity >= 1) _phase = Phase.Holding;
                 break;
 
@@ -59,19 +60,25 @@ public sealed class CamouflageBehavior : BehaviorBase
                 pet.CamoRipple = Math.Sin(_t * Math.PI) * 1.5; // living-skin shimmer
                 if (_recaptureIn <= 0 && !_captureBusy) StartCapture(c);
 
-                bool cursorClose = (c.World.Cursor - pet.Pos).Length < 100;
+                // Only a cursor practically on top of it is worth breaking cover for.
+                bool cursorClose = (c.World.Cursor - pet.Pos).Length < 70;
                 if (cursorClose || _holdRemaining <= 0)
                 {
                     _phase = Phase.Revealing;
+                    _startled = cursorClose;
                     _t = 0;
-                    pet.Anim.Play("startle", restart: true);
-                    c.Sound.Play("bubble", 0.35);
+                    if (cursorClose)
+                    {
+                        pet.Anim.Play("startle", restart: true);
+                        c.Sound.Play("bubble", 0.35);
+                    }
                 }
                 break;
 
             case Phase.Revealing:
-                pet.CamoOpacity = Math.Max(0, pet.CamoOpacity - dt / 0.35);
-                pet.CamoRipple = 0;
+                // Caught out, it snaps back into view; otherwise it just seeps back.
+                pet.CamoOpacity = Math.Max(0, pet.CamoOpacity - dt / (_startled ? 0.4 : 2.6));
+                pet.CamoRipple *= Math.Max(0, 1 - dt);
                 if (pet.CamoOpacity <= 0 && _t > 0.6)
                 {
                     pet.CamoSource = null;

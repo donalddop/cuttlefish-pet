@@ -291,11 +291,24 @@ public sealed class PetManager
     /// </summary>
     private void UpdateCamoSkin(Pet pet, double dt)
     {
+        // Whatever it last read bleeds into place over a few seconds.
+        pet.CamoBlend = Math.Min(1, pet.CamoBlend + dt / 4.0);
+
         pet.CamoResampleIn -= dt;
         var moved = (pet.Pos - pet.LastSampleAt).Length;
-        if (pet.Sampling || (pet.CamoResampleIn > 0 && moved < 220)) return;
 
-        pet.CamoResampleIn = 3.5 + _rng.NextDouble() * 2.5;
+        // Swimming somewhere quite different is normally reason enough to look again,
+        // but not while it is deliberately hanging on to a reading.
+        bool wandered = !pet.CamoHolding && moved > 620;
+        if (pet.Sampling || (pet.CamoResampleIn > 0 && !wandered)) return;
+
+        // Usually a fresh reading every so often, but now and then it keeps one it
+        // has taken a liking to — which is how a pet ends up carrying a whole icon
+        // around on its back for a minute.
+        pet.CamoHolding = _rng.NextDouble() < 0.3;
+        pet.CamoResampleIn = pet.CamoHolding
+            ? 45 + _rng.NextDouble() * 45
+            : 14 + _rng.NextDouble() * 12;
         pet.LastSampleAt = pet.Pos;
 
         var b = pet.Bounds;
@@ -315,7 +328,12 @@ public sealed class PetManager
             double ms = sw.Elapsed.TotalMilliseconds;
             _overlay.Dispatcher.BeginInvoke(() =>
             {
-                if (skin != null) pet.Camo = skin;
+                if (skin != null)
+                {
+                    pet.CamoPrev = pet.Camo;
+                    pet.Camo = skin;
+                    pet.CamoBlend = pet.CamoPrev == null ? 1 : 0;
+                }
                 pet.Sampling = false;
                 _sampleMs += ms;
                 _sampleCount++;
@@ -385,8 +403,10 @@ public sealed class PetManager
         if (youth > 0.25 && display == "glass") display = null;
         vivid = Math.Max(vivid, youth * 0.7);
 
-        // Ease toward the target look rather than snapping between states.
-        pet.Vividness += (vivid - pet.Vividness) * Math.Min(1, dt * 2.2);
+        // Flaring up is sudden — that is the point of a display. Settling back into
+        // hiding is not: the colour drains away over a few seconds.
+        double ease = vivid > pet.Vividness ? 2.4 : 0.45;
+        pet.Vividness += (vivid - pet.Vividness) * Math.Min(1, dt * ease);
         pet.BodyOpacity = 0.52 + 0.48 * pet.Vividness;
         pet.SheenStrength = 0.10 + 0.14 * (1 - pet.Vividness);   // glassier = more shimmer
 
@@ -400,9 +420,15 @@ public sealed class PetManager
         }
 
         if (pet.PaletteBlend < 1)
-            pet.PaletteBlend = Math.Min(1, pet.PaletteBlend + dt / 1.4);
+        {
+            // Slower on the way back to glass than on the way into a colour.
+            double seconds = pet.Palette == Palettes.Glass ? 3.5 : 1.2;
+            pet.PaletteBlend = Math.Min(1, pet.PaletteBlend + dt / seconds);
+        }
         else
+        {
             pet.FromPalette = pet.Palette;
+        }
     }
 
     private void UpdateEyes(Pet pet, double dt)

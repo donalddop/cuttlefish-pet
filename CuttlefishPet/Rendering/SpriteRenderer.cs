@@ -15,6 +15,10 @@ public sealed class PetVisual
     public required System.Windows.Shapes.Rectangle Skin { get; init; }
     public required ImageBrush SkinFill { get; init; }
     public required ImageBrush SkinMask { get; init; }
+    /// <summary>The skin being grown out of, underneath the new one.</summary>
+    public required System.Windows.Shapes.Rectangle SkinPrev { get; init; }
+    public required ImageBrush SkinPrevFill { get; init; }
+    public required ImageBrush SkinPrevMask { get; init; }
     /// <summary>Flat wash in the dominant colour of the surroundings.</summary>
     public required System.Windows.Shapes.Rectangle Tint { get; init; }
     public required SolidColorBrush TintFill { get; init; }
@@ -84,6 +88,11 @@ public sealed class SpriteRenderer
         var skin = new System.Windows.Shapes.Rectangle
         { Fill = skinFill, OpacityMask = skinMask, IsHitTestVisible = false };
 
+        var skinPrevFill = new ImageBrush { Stretch = Stretch.Fill };
+        var skinPrevMask = new ImageBrush { Stretch = Stretch.Fill };
+        var skinPrev = new System.Windows.Shapes.Rectangle
+        { Fill = skinPrevFill, OpacityMask = skinPrevMask, IsHitTestVisible = false };
+
         var tintFill = new SolidColorBrush(Colors.Transparent);
         var tintMask = new ImageBrush { Stretch = Stretch.Fill };
         var tint = new System.Windows.Shapes.Rectangle
@@ -114,6 +123,7 @@ public sealed class SpriteRenderer
         root.Children.Add(sprite);
         root.Children.Add(shift);
         root.Children.Add(tint);
+        root.Children.Add(skinPrev);
         root.Children.Add(skin);
         root.Children.Add(sheen);
         root.Children.Add(camo);
@@ -124,6 +134,7 @@ public sealed class SpriteRenderer
         {
             Root = root, Sprite = sprite, Shift = shift,
             Skin = skin, SkinFill = skinFill, SkinMask = skinMask,
+            SkinPrev = skinPrev, SkinPrevFill = skinPrevFill, SkinPrevMask = skinPrevMask,
             Tint = tint, TintFill = tintFill, TintMask = tintMask,
             Sheen = sheen, SheenFill = sheenFill, SheenMask = sheenMask,
             Camo = camo, CamoMask = camoMask, Eye = eye, Flip = flip, Swing = swing,
@@ -182,10 +193,24 @@ public sealed class SpriteRenderer
         bool wearingSurroundings = pet.Camo != null && pet.Vividness < 0.6;
         if (wearingSurroundings)
         {
-            v.SkinFill.ImageSource = pet.Camo!.Texture;
+            double strength = (0.66 + 0.28 * pet.Camo!.Busyness) * (1 - pet.Vividness) * skinVisible;
+
+            // The skin it is growing out of shows through until the new one takes.
+            if (pet.CamoPrev != null && pet.CamoBlend < 1)
+            {
+                v.SkinPrevFill.ImageSource = pet.CamoPrev.Texture;
+                v.SkinPrevMask.ImageSource = frame;
+                v.SkinPrev.Opacity = strength;
+            }
+            else
+            {
+                v.SkinPrev.Opacity = 0;
+            }
+
+            v.SkinFill.ImageSource = pet.Camo.Texture;
             v.SkinFill.TileMode = TileMode.None;
             v.SkinFill.Viewport = new Rect(0, 0, 1, 1);
-            v.Skin.Opacity = (0.66 + 0.28 * pet.Camo.Busyness) * (1 - pet.Vividness) * skinVisible;
+            v.Skin.Opacity = strength * Math.Clamp(pet.CamoBlend, 0, 1);
 
             // A flat wash of the dominant colour underneath keeps the body reading as
             // one creature, but too much of it smears out the detail above.
@@ -202,6 +227,7 @@ public sealed class SpriteRenderer
             v.SkinFill.Viewport = new Rect(-pet.SkinPhase, -pet.SkinPhase * 0.55, 1, 1);
             v.Skin.Opacity = pet.SkinStrength * skinVisible;
             v.Tint.Opacity = 0;
+            v.SkinPrev.Opacity = 0;
         }
         v.SkinMask.ImageSource = frame;
         v.SheenMask.ImageSource = frame;
@@ -211,6 +237,7 @@ public sealed class SpriteRenderer
         // Opacity-masked layers are costly even at zero opacity, so anything that
         // is not contributing gets collapsed outright.
         Show(v.Skin);
+        Show(v.SkinPrev);
         Show(v.Tint);
         Show(v.Sheen);
 

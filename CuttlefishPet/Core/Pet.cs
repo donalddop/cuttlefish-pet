@@ -55,13 +55,19 @@ public sealed class Pet
     /// <summary>Drives the speckle pattern crawling across the skin.</summary>
     public double SkinPhase;
 
-    // Camouflage worked out from the desktop behind this pet.
+    // Camouflage worked out from the desktop behind this pet. A new reading does not
+    // replace the old one outright — it bleeds over it, so the skin drifts rather
+    // than flicking, and a striking patch can stay on a pet for a good while.
     public CamoSkin? Camo;
+    public CamoSkin? CamoPrev;
+    public double CamoBlend = 1;
     public double CamoResampleIn;
     /// <summary>Where the last sample was taken, so a move triggers a fresh look.</summary>
     public Point LastSampleAt;
     /// <summary>A sample is in flight on a background thread.</summary>
     public bool Sampling;
+    /// <summary>Hanging on to this reading regardless of where it swims.</summary>
+    public bool CamoHolding;
 
     /// <summary>Start shifting to another colour; ignored if already going there.</summary>
     public void ShiftTo(int palette, double holdSeconds = 25)
