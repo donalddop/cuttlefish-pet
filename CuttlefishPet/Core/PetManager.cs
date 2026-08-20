@@ -121,7 +121,7 @@ public sealed class PetManager
         ApplyArrivalsAndDepartures();
         TickTreats(dt);
         TickProps(dt);
-        CheckRivalry(dt);
+        CheckSocial(dt);
         _renderer.TickEffects(dt);
 
         _overlay.SetClickThrough(!wantClicks);
@@ -168,6 +168,9 @@ public sealed class PetManager
     /// <summary>Chromatophores never sit still: colours drift, and moods override.</summary>
     private void UpdateColour(Pet pet, double dt)
     {
+        // Irritation cools off if you leave them alone for a minute or so.
+        pet.Pestered = Math.Max(0, pet.Pestered - dt / 45);
+
         // The sheen never stops crawling over the skin.
         pet.SheenPhase = (pet.SheenPhase + dt * 0.075) % 1.0;
 
@@ -206,8 +209,9 @@ public sealed class PetManager
             var eye = new Point(
                 b.X + (pet.FacingRight ? ec.X : anim.FrameW - ec.X) * Pet.RenderScale,
                 b.Y + ec.Y * Pet.RenderScale);
-            var to = pet.Machine.Current is HuntTreatBehavior or EatTreatBehavior &&
-                     _world.NearestTreat(pet) is { } t ? t.Pos : _world.Cursor;
+            var to = pet.PupilTarget
+                     ?? (pet.Machine.Current is HuntTreatBehavior or EatTreatBehavior &&
+                         _world.NearestTreat(pet) is { } t ? t.Pos : _world.Cursor);
             var d = to - eye;
             double len = d.Length;
             var aim = len < 1 ? new Vector(0, 0) : d / len * Math.Min(1, len / 180);
@@ -246,7 +250,11 @@ public sealed class PetManager
         }
     }
 
-    private void CheckRivalry(double dt)
+    /// <summary>
+    /// Things that need two cuttlefish: squaring up to a rival, pairing off to swim
+    /// in formation, or racing across the tank.
+    /// </summary>
+    private void CheckSocial(double dt)
     {
         _rivalCooldown -= dt;
         if (_pets.Count < 2 || _rivalCooldown > 0) return;
@@ -257,15 +265,38 @@ public sealed class PetManager
             {
                 var a = _pets[i];
                 var b = _pets[j];
-                if (a.Surface == null || b.Surface == null) continue;
                 if (!a.Machine.Current.Interruptible || !b.Machine.Current.Interruptible) continue;
-                if (Math.Abs(a.Pos.Y - b.Pos.Y) > 40) continue;
-                if (Math.Abs(a.Pos.X - b.Pos.X) > RivalDistance) continue;
+                if ((a.Pos - b.Pos).Length > RivalDistance) continue;
 
-                bool aRetreats = _rng.NextDouble() < 0.5;
-                a.Machine.Force(new RivalDisplayBehavior(b, aRetreats));
-                b.Machine.Force(new RivalDisplayBehavior(a, !aRetreats));
-                _rivalCooldown = 20;
+                bool perched = a.Surface != null && b.Surface != null;
+                double roll = _rng.NextDouble();
+
+                if (perched && Math.Abs(a.Pos.Y - b.Pos.Y) < 40)
+                {
+                    bool aRetreats = _rng.NextDouble() < 0.5;
+                    a.Machine.Force(new RivalDisplayBehavior(b, aRetreats));
+                    b.Machine.Force(new RivalDisplayBehavior(a, !aRetreats));
+                }
+                else if (a.Surface == null && b.Surface == null && roll < 0.5)
+                {
+                    // Fall in beside each other and cruise as a pair.
+                    b.Machine.Force(new FollowBehavior(a, new Vector(62, 34)));
+                }
+                else if (a.Surface == null && b.Surface == null)
+                {
+                    var t = _world.VirtualScreen;
+                    int dir = a.Pos.X < t.Left + t.Width / 2 ? 1 : -1;
+                    double finish = dir > 0 ? t.Right - 140 : t.Left + 140;
+                    double lane = (a.Pos.Y + b.Pos.Y) / 2;
+                    a.Machine.Force(new RaceBehavior(finish, dir, lane - 34));
+                    b.Machine.Force(new RaceBehavior(finish, dir, lane + 34));
+                }
+                else
+                {
+                    continue;
+                }
+
+                _rivalCooldown = 18;
                 return;
             }
         }
@@ -387,9 +418,11 @@ public sealed class PetManager
         _world.Cursor = _input.Cursor;
         _world.CursorVelocity = _input.CursorVelocity;
         _world.CursorStill = _input.CursorStill;
+        _world.ScrollCurrent = _input.ScrollCurrent;
         _world.TypingRate = _input.TypingRate;
         _world.IdleSeconds = GlobalInput.IdleSeconds();
-        _world.PetCount = _pets.Count;
+        _world.Pets.Clear();
+        _world.Pets.AddRange(_pets);
 
         _world.Surfaces.Clear();
         foreach (var screen in System.Windows.Forms.Screen.AllScreens)

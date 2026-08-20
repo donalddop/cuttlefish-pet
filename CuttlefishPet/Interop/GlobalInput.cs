@@ -18,6 +18,7 @@ public sealed class GlobalInput : IDisposable
     private Win32.HookProc? _mouseProc, _keyProc; // keep delegates alive for GC
     private readonly ConcurrentQueue<MouseEvent> _mouseEvents = new();
     private long _keyPresses;
+    private long _wheel;
     private volatile int _cx, _cy;
     private Point _lastCursor;
 
@@ -27,6 +28,8 @@ public sealed class GlobalInput : IDisposable
     public double TypingRate { get; private set; }
     /// <summary>Seconds the cursor has held (nearly) still.</summary>
     public double CursorStill { get; private set; }
+    /// <summary>Recent scroll wheel motion, positive when scrolling up.</summary>
+    public double ScrollCurrent { get; private set; }
 
     /// <summary>Seconds since the user last touched mouse or keyboard, system-wide.</summary>
     public static double IdleSeconds()
@@ -64,6 +67,10 @@ public sealed class GlobalInput : IDisposable
                 case Win32.WM_LBUTTONUP:
                     _mouseEvents.Enqueue(new MouseEvent(MouseEventKind.Up, data.pt.X, data.pt.Y));
                     break;
+                case Win32.WM_MOUSEWHEEL:
+                    // High word of mouseData is the signed wheel delta.
+                    Interlocked.Add(ref _wheel, (short)((data.mouseData >> 16) & 0xFFFF));
+                    break;
             }
         }
         return Win32.CallNextHookEx(_mouseHook, code, wParam, lParam);
@@ -87,6 +94,10 @@ public sealed class GlobalInput : IDisposable
 
         var pressed = Interlocked.Exchange(ref _keyPresses, 0);
         TypingRate = TypingRate * Math.Exp(-dt * 1.2) + pressed;
+
+        // Scrolling stirs the water: decays away over about a second.
+        var wheel = Interlocked.Exchange(ref _wheel, 0);
+        ScrollCurrent = ScrollCurrent * Math.Exp(-dt * 2.2) + wheel / 120.0;
     }
 
     public void Dispose()

@@ -55,6 +55,11 @@ public sealed class Pet
 
     // Eye: pupil aim in -1..1 body-local units, plus an independent blink timer.
     public Vector PupilOffset;
+    /// <summary>Something specific to look at instead of the cursor.</summary>
+    public Point? PupilTarget;
+
+    /// <summary>Grabs in the recent past; enough of them and patience runs out.</summary>
+    public double Pestered;
     public double BlinkIn = 2;
     public double BlinkLeft;
     public bool Blinking => BlinkLeft > 0;

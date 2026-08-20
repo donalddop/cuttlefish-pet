@@ -18,8 +18,11 @@ public sealed class WorldState
     public double IdleSeconds { get; set; }
     /// <summary>Windows that appeared since the last full enumeration.</summary>
     public List<Rect> AppearedWindows { get; } = new();
-    /// <summary>How many cuttlefish are in the tank right now.</summary>
-    public int PetCount { get; set; }
+    /// <summary>Everyone in the tank, so pets can notice each other.</summary>
+    public List<Pet> Pets { get; } = new();
+    public int PetCount => Pets.Count;
+    /// <summary>Recent scroll wheel motion — a current that pushes swimmers about.</summary>
+    public double ScrollCurrent { get; set; }
 
     /// <summary>
     /// Re-resolve a surface reference to this tick's version (windows move). A window

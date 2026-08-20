@@ -19,6 +19,7 @@ public sealed class DragBehavior : BehaviorBase
         c.Pet.Anim.Play("drag");
         c.Pet.Surface = null;
         c.Pet.Vel = new Vector(0, 0);
+        c.Pet.Pestered += 1;
         _grabOffset = c.Pet.Pos - c.World.Cursor;
         // Keep the grip near the mantle regardless of where the click landed.
         if (_grabOffset.Length > 40) _grabOffset = new Vector(0, 20);
@@ -54,7 +55,11 @@ public sealed class DragBehavior : BehaviorBase
             c.Renderer.SpawnInk(pet.Pos + new Vector(pet.FacingRight ? -30 : 30, 0));
             c.Sound.Play("squirt", 0.4);
         }
-        Next = new DriftBehavior();
+
+        // Handled once too often, or flung hard enough to see stars.
+        if (pet.Pestered >= 4) Next = new AngryBehavior();
+        else if (pet.Vel.Length > 1500) Next = new DizzyBehavior();
+        else Next = new DriftBehavior();
         Done = true;
     }
 }

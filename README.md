@@ -1,9 +1,9 @@
 # Cuttlefish Pet 🦑
 
-Een eSheep/Shimeji-achtige desktop pet voor Windows — maar dan een **zeekat**.
-Zwemt over je scherm, zit op de taskbar, klimt tegen vensters op, rijdt mee als je ze
-versleept, reageert op je muis en toetsenbord, en camoufleert zich door letterlijk de
-pixels achter zich als huid aan te trekken.
+Desktop pets voor Windows, maar dan **zeekatten**. Je scherm is hun aquarium: ze
+zweven er vrij doorheen, strijken neer op je taskbar en vensterranden, klimmen langs
+de schermrand omhoog, hangen ondersteboven aan het plafond, en veranderen voortdurend
+van kleur en patroon zoals echte zeekatten dat doen.
 
 ## Bouwen & draaien
 
@@ -11,11 +11,11 @@ pixels achter zich als huid aan te trekken.
 dotnet run --project CuttlefishPet
 ```
 
-Vereist .NET 8 SDK (Windows). De app verschijnt als tray-icoon (het zeekatje):
-links- of rechtsklik voor **Add cuttlefish / Remove one / Toss a shrimp / Mute sounds / Exit**.
+Vereist .NET 8 SDK (Windows 10/11). De app verschijnt als tray-icoon (het zeekatje):
+links- of rechtsklik voor het menu.
 
-Alles is ook vanaf de commandline te doen — de tweede start stuurt het commando naar de
-draaiende instantie (handig vanaf je telefoon via dispatch):
+Ook aanstuurbaar vanaf de commandline — een tweede start stuurt het commando door
+naar de draaiende instantie:
 
 ```bash
 CuttlefishPet.exe shrimp
@@ -23,49 +23,83 @@ CuttlefishPet.exe shrimp
 
 Commando's: `add`, `remove`, `shrimp`, `mute`, `exit`.
 
-## Gedrag
+## Wat ze doen
+
+**Zwemmen en rusten**
+
+Vrij rondzwemmen door het hele beeld, zweven, sprintjes trekken met straalaandrijving,
+en bewust ergens neerstrijken: op de taskbar, op een titelbalk, tegen een schermrand of
+ondersteboven aan het plafond. Vanaf een richel kunnen ze omhoog klimmen, omlaag
+roetsjen, over de rand gluren, eraan bungelen en zich wegkatapulteren.
 
 **Met jou**
 
 | Interactie | Wat er gebeurt |
 |---|---|
-| Cursor bewegen | de pupillen volgen je cursor; hij knippert af en toe |
-| Cursor stil laten staan | hij besluipt hem met de *passing cloud*-display en slaat toe met zijn vangtentakels |
-| Snel op hem afvliegen | schrikt en schiet weg met jet-aandrijving |
-| Oppakken & gooien | hangt aan je cursor; bij een harde worp een inktwolk |
-| Dubbelklikken | aaien → roze blos, luchtbelletjes en een blij dansje |
-| Typen | tentakel-gewiebel op het ritme |
-| Garnaal gooien (tray/CLI) | alle zeekatten duiken erop af, de winnaar eet hem op |
-| Een tijdje wegblijven | ze gaan slapen; bij terugkomst rekken ze zich uit |
+| Cursor bewegen | de pupillen volgen je cursor; ze knipperen uit zichzelf |
+| Cursor stil laten staan | besluipen met de *passing cloud*-display, dan toeslaan met de vangtentakels |
+| Snel op ze afvliegen | schrikken, inkt spuiten en wegschieten |
+| Oppakken & gooien | hangen aan je cursor; hard gooien geeft een inktwolk, heel hard gooien sterretjes |
+| Te vaak oppakken | ze worden pikzwart, flitsen zebrastrepen en stampvoeten |
+| Dubbelklikken | aaien → roze blos, luchtbelletjes, blij dansje |
+| Typen | ze komen bij je tekstcursor kijken en wiebelen mee op je toetsaanslagen |
+| Scrollen | de "onderstroom" sleurt de zwemmers mee |
+| Garnaal gooien | ze duiken er allemaal op af; de winnaar eet hem op |
+| Wegblijven | na een paar minuten gaan ze slapen, en rekken zich uit als je terugkomt |
 
 **Met je systeem**
 
-| Interactie | Wat er gebeurt |
-|---|---|
-| Vensterranden | klimt tegen de zijkant op en gaat op de titelbalk zitten |
-| Venster verslepen | rijdt mee; sluit je het, dan valt hij |
-| Nieuw venster opent naast hem | schrikt zich een hoedje |
-| Vensterrand / taskbar | gluurt over de rand naar beneden |
-| Taskbar | wandelt erop rond en camoufleert zich soms als nep-icoontje |
+Meeliften op je muiscursor, een waterstraaltje richting je cursor spuiten, tegen een
+venster duwen zodat het écht verschuift, doen alsof ze de sluitknop indrukken, naar de
+klok in je systeemvak zwemmen om geeuwend te kijken hoe laat het is, en schrikken als
+er een venster naast ze opengaat. Zit een zeekat op een venster dat je versleept, dan
+rijdt hij mee.
+
+**Camouflage en kleur**
+
+Elke zeekat heeft een eigen kleurenpalet (paars, blauw, groen, parelmoer, inktzwart —
+dertien in totaal), een huidpatroon (vlekjes, blotches, dwarsbanden, netpatroon,
+iriserende spikkels) en een parelmoerglans die over de huid schuift. Ze wisselen
+continu van kleur, en hun stemming bepaalt mee welke: bleek van schrik, rood tijdens
+de jacht, pikzwart bij ruzie. Soms geven ze een pure kleurenshow weg.
+
+De echte camouflage gaat verder: dan maken ze een schermgreep van de achtergrond
+achter zich en dragen die als huid, plat tegen de ondergrond gedrukt — op de taskbar
+soms vermomd als icoontje.
+
+**Klassieke eSheep-trucs**
+
+Zich ingraven in de taskbar en elders weer opduiken, een eitros leggen waar een nieuwe
+zeekat uit komt, zichzelf in een inktwolk laten verdwijnen en ergens anders
+materialiseren, meeliften aan een grote luchtbel, als doorzichtig spook wegdrijven, een
+inktvlekje achterlaten, knabbelen aan een vensterrand, en zomaar een statische schok
+krijgen.
 
 **Onderling**
 
-Twee zeekatten die elkaar tegenkomen doen een zebra-strepen imponeerdisplay tot er
-één met een inktwolk afdruipt.
+Twee zeekatten die elkaar tegenkomen imponeren elkaar met zebrastrepen tot er één met
+een inktwolk afdruipt. Anders zwemmen ze in formatie naast elkaar, houden ze een
+sprintwedstrijd over het scherm, of kruipen ze tegen elkaar aan om samen te slapen.
 
 ## Structuur
 
-- `CuttlefishPet/Core` — Pet, physics, PetManager, WorldState, garnalen, commandoserver
-- `CuttlefishPet/Behaviors` — statemachine + alle gedragingen
-- `CuttlefishPet/Interop` — Win32 P/Invoke: venster-enumeratie, taskbar, globale muis/toetsenbord-hooks
-- `CuttlefishPet/Rendering` — transparant klikdoorlatend overlay-venster, sprite-renderer met oog-overlay, screen sampler (camouflage)
-- `Tools/generate_sprites.py` — alle sprites, het tray-icoon en een contactsheet (`uv run`)
-- `Tools/generate_sounds.py` — procedurele geluidjes (standaard gedempt)
-- `Tools/check_eye_alignment.py` — controleert of de pupil-overlay in elk gedrag netjes in het oog valt
+- `CuttlefishPet/Core` — Pet, aquarium-physics, PetManager, WorldState, garnalen, props, commandoserver
+- `CuttlefishPet/Behaviors` — statemachine plus alle gedragingen, gegroepeerd per thema
+- `CuttlefishPet/Interop` — Win32 P/Invoke: vensters, taskbar, klok, tekstcursor, globale muis/toetsenbord-hooks
+- `CuttlefishPet/Rendering` — klikdoorlatend overlay-venster, sprite-renderer met oog-, huid- en glanslagen, kleurpaletten, screen sampler
+- `Tools/` — generatoren voor sprites, huidtexturen, geluid en het tray-icoon, plus previewscripts (`uv run`)
 
-## Eigen art
+## Zelf aanpassen
 
-Sprites zijn 64×64 frame-strips (`Assets/sprites/*.png`) met metadata in `animations.json`:
-`fps`, `loop`, `anchor` (voetpunt) en optioneel `eye` (\[x, y, straal\]) voor de losse
-pupil-overlay. Vervang de PNG's en pas de metadata aan — geen code-wijziging nodig.
-Gedrag-gewichten staan in `Assets/behaviors.json`. Debuglog: `%TEMP%\cuttlefishpet-debug.log`.
+- **Gedrag**: `Assets/behaviors.json` bevat de kans per gedrag. Waardes worden over de
+  ingebouwde standaarden heen gelegd, dus je hoeft alleen te noemen wat je wilt wijzigen;
+  op `0` zetten schakelt iets uit.
+- **Kleuren**: `Rendering/Palette.cs` — een palet is een hue-draaiing plus verzadiging en
+  helderheid. `uv run Tools/palette_sheet.py` toont ze allemaal naast elkaar.
+- **Art**: sprites zijn 64×64 frame-strips in `Assets/sprites/` met metadata in
+  `animations.json` (fps, loop, `anchor` = contactpunt, optioneel `eye` voor de losse
+  pupil-overlay). Vervangen kan zonder code te wijzigen.
+- **Previews**: `uv run Tools/preview_skin.py` rendert exact wat de app componeert,
+  `Tools/zoom_actions.py <actie>` vergroot losse animaties met hun ankerpunt.
+
+Debuglog met posities en gedragswissels: `%TEMP%\cuttlefishpet-debug.log`.
