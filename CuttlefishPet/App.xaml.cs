@@ -92,6 +92,11 @@ public partial class App : Application
         mute.CheckedChanged += (_, _) => _sound.Muted = mute.Checked;
         _muteItem = mute;
         menu.Items.Add(mute);
+
+        var startup = new System.Windows.Forms.ToolStripMenuItem("Start with Windows")
+        { CheckOnClick = true, Checked = Autostart.Enabled };
+        startup.CheckedChanged += (_, _) => Autostart.Set(startup.Checked);
+        menu.Items.Add(startup);
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
         menu.Items.Add("Exit", null, (_, _) => Shutdown());
 

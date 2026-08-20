@@ -4,3 +4,5 @@ publish/
 *.user
 Tools/preview.png
 Tools/eye_check.png
+
+Installer/Output/

@@ -5,14 +5,31 @@ zweven er vrij doorheen, strijken neer op je taskbar en vensterranden, klimmen l
 de schermrand omhoog, hangen ondersteboven aan het plafond, en veranderen voortdurend
 van kleur en patroon zoals echte zeekatten dat doen.
 
-## Bouwen & draaien
+## Installeren
+
+Download `CuttlefishPet-setup.exe` bij de [laatste release](https://github.com/donalddop/cuttlefish-pet/releases/latest)
+en dubbelklik hem. Geen .NET nodig, geen beheerdersrechten, geen UAC-prompt — hij
+installeert per gebruiker in `%LOCALAPPDATA%`. Windows toont eenmalig een
+SmartScreen-waarschuwing omdat het programma niet ondertekend is: *Meer informatie*
+→ *Toch uitvoeren*.
+
+Liever draagbaar? Pak `CuttlefishPet-standalone.zip` uit en start `CuttlefishPet.exe`.
+
+De app verschijnt als tray-icoon (het zeekatje): links- of rechtsklik voor het menu.
+
+## Zelf bouwen
 
 ```bash
 dotnet run --project CuttlefishPet
 ```
 
-Vereist .NET 8 SDK (Windows 10/11). De app verschijnt als tray-icoon (het zeekatje):
-links- of rechtsklik voor het menu.
+Vereist .NET 8 SDK (Windows 10/11). De installer bouw je met
+[Inno Setup 6](https://jrsoftware.org/isinfo.php):
+
+```bash
+dotnet publish CuttlefishPet -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish\CuttlefishPet
+ISCC.exe Installer\CuttlefishPet.iss
+```
 
 Ook aanstuurbaar vanaf de commandline — een tweede start stuurt het commando door
 naar de draaiende instantie:
