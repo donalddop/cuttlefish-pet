@@ -79,7 +79,7 @@ public sealed class HuntTreatBehavior : BehaviorBase
     public override string Name => "huntTreat";
     public override bool OverridesPhysics => true;
     private readonly Treat _treat;
-    private double _elapsed;
+    private double _elapsed, _circling;
 
     public HuntTreatBehavior(Treat treat) => _treat = treat;
 
@@ -97,10 +97,23 @@ public sealed class HuntTreatBehavior : BehaviorBase
         if (_treat.Expired || _elapsed > 16) { Next = new SwimFreeBehavior(); Done = true; return; }
 
         var to = _treat.Pos - pet.Pos;
-        if (to.Length < 30)
+
+        // Circle it once before committing — they size up a meal before striking.
+        if (to.Length < 95)
         {
-            Next = new EatTreatBehavior(_treat);
-            Done = true;
+            _circling += dt;
+            double angle = _circling * 3.4;
+            var ring = _treat.Pos + new Vector(Math.Cos(angle) * 78, Math.Sin(angle) * 46);
+            pet.Pos += (ring - pet.Pos) * Math.Min(1, 5 * dt);
+            pet.FacingRight = Math.Cos(angle + Math.PI / 2) > 0;
+            pet.VisualBob = Math.Sin(_elapsed * 9) * 2;
+            pet.Vel = new Vector(0, 0);
+
+            if (_circling > 1.6)
+            {
+                Next = new EatTreatBehavior(_treat);
+                Done = true;
+            }
             return;
         }
 

@@ -29,8 +29,9 @@ public sealed class PetManager
     private readonly List<(Point Pos, bool Hatchling)> _hatching = new();
     private double _clock, _lastDownAt = double.NegativeInfinity, _rivalCooldown;
     private double _preySpawnIn = 12, _courtCooldown = 30;
-    private double _sampleMs;
+    private double _sampleMs, _binCheckIn;
     private int _sampleCount;
+    private int _lastHourChimed = -1;
     private Pet? _lastDownPet;
     private int _tick;
 
@@ -130,6 +131,7 @@ public sealed class PetManager
             PhysicsEngine.Tick(pet, _world, dt);
             // Environmental, so it applies even while a behaviour is steering.
             if (pet.Surface == null) PhysicsEngine.ApplyScrollCurrent(pet, _world, dt);
+            AvoidRecycleBin(pet, dt);
             pet.Anim.Tick(dt);
             AgeAndRetire(pet, dt);
             UpdateExploration(pet, dt);
@@ -144,6 +146,8 @@ public sealed class PetManager
         }
 
         SpreadAlarm();
+        RideMinimisedWindows();
+        ChimeOnTheHour();
         ApplyArrivalsAndDepartures();
         TickPrey(dt);
         TickTreats(dt);
@@ -190,6 +194,52 @@ public sealed class PetManager
                 foreach (var p in _pets) p.Machine.HandleMouse(e);
             }
         }
+    }
+
+    /// <summary>On the hour, everyone goes to look at the clock.</summary>
+    private void ChimeOnTheHour()
+    {
+        var now = DateTime.Now;
+        if (now.Minute != 0 || now.Hour == _lastHourChimed) return;
+        _lastHourChimed = now.Hour;
+
+        foreach (var pet in _pets)
+            if (pet.Machine.Current.Interruptible &&
+                CheckClockBehavior.Find(NewContext(pet)) is { } look)
+                pet.Machine.Force(look);
+    }
+
+    /// <summary>A pet perched on a window that just got minimised rides it down.</summary>
+    private void RideMinimisedWindows()
+    {
+        if (_world.MinimisedWindows.Count == 0) return;
+        var taskbar = TaskbarLocator.GetSurface();
+
+        foreach (var pet in _pets)
+        {
+            if (pet.Surface == null || pet.Surface.Hwnd == IntPtr.Zero) continue;
+            if (!_world.MinimisedWindows.Contains(pet.Surface.Hwnd)) continue;
+
+            var spot = taskbar != null
+                ? new Point(Math.Clamp(pet.Pos.X, taskbar.X1, taskbar.X2), taskbar.Y + 16)
+                : new Point(pet.Pos.X, _world.VirtualScreen.Bottom - 20);
+            pet.Machine.Force(new RideMinimiseBehavior(spot));
+        }
+    }
+
+    /// <summary>An open Recycle Bin is something to stay well clear of.</summary>
+    private void AvoidRecycleBin(Pet pet, double dt)
+    {
+        if (_world.RecycleBin is not { } bin || pet.Surface != null) return;
+
+        var centre = new Point(bin.X + bin.Width / 2, bin.Y + bin.Height / 2);
+        var away = pet.Pos - centre;
+        double reach = Math.Max(bin.Width, bin.Height) / 2 + 120;
+        if (away.Length > reach || away.Length < 1) return;
+
+        double push = (1 - away.Length / reach) * 260;
+        pet.Pos += away / away.Length * push * dt;
+        PhysicsEngine.ClampToTank(pet, _world);
     }
 
     /// <summary>
@@ -418,11 +468,40 @@ public sealed class PetManager
     /// Things that need two cuttlefish: squaring up to a rival, pairing off to swim
     /// in formation, or racing across the tank.
     /// </summary>
+    /// <summary>
+    /// A shrimp with one cuttlefish already on it is an invitation to a second.
+    /// </summary>
+    private bool StartTugOfWar()
+    {
+        foreach (var treat in _world.Treats)
+        {
+            if (treat.Expired || treat.ClaimedBy == null) continue;
+            var holder = treat.ClaimedBy;
+            if (!holder.Machine.Current.Interruptible) continue;
+
+            foreach (var other in _pets)
+            {
+                if (ReferenceEquals(other, holder)) continue;
+                if (!other.Machine.Current.Interruptible) continue;
+                if ((other.Pos - treat.Pos).Length > 260) continue;
+
+                bool holderWins = _rng.NextDouble() < 0.5;
+                holder.Machine.Force(new TugOfWarBehavior(treat, -1, holderWins));
+                other.Machine.Force(new TugOfWarBehavior(treat, 1, !holderWins));
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void CheckSocial(double dt)
     {
         _rivalCooldown -= dt;
         _courtCooldown -= dt;
         if (_pets.Count < 2 || _rivalCooldown > 0) return;
+
+        // A contested shrimp beats anything else two cuttlefish might do together.
+        if (StartTugOfWar()) { _rivalCooldown = 14; return; }
 
         for (int i = 0; i < _pets.Count; i++)
         {
@@ -451,7 +530,17 @@ public sealed class PetManager
                     b.Machine.Force(new CourtshipBehavior(a, suitor: false, welcome));
                     _courtCooldown = 90;
                 }
-                else if (a.Surface == null && b.Surface == null && roll < 0.6)
+                else if (a.Surface == null && b.Surface == null && roll < 0.42)
+                {
+                    // Copy each other move for move.
+                    a.Machine.Force(new MirrorBehavior(b, leads: true));
+                    b.Machine.Force(new MirrorBehavior(a, leads: false));
+                }
+                else if (a.Surface == null && b.Surface == null && roll < 0.52)
+                {
+                    a.Machine.Force(new InkTagBehavior(b));   // you're it
+                }
+                else if (a.Surface == null && b.Surface == null && roll < 0.72)
                 {
                     // Fall in beside each other and cruise as a pair.
                     b.Machine.Force(new FollowBehavior(a, new Vector(62, 34)));
@@ -668,6 +757,17 @@ public sealed class PetManager
         _world.WindowRects.Clear();
         foreach (var w in _tracker.Windows)
             _world.WindowRects.Add(new Rect(w.Rect.Left, w.Rect.Top, w.Rect.Width, w.Rect.Height));
+
+        _world.MinimisedWindows.Clear();
+        _world.MinimisedWindows.AddRange(_tracker.TakeMinimised());
+
+        // Scanning every window for the bin is not something to do 30 times a second.
+        _binCheckIn -= dt;
+        if (_binCheckIn <= 0)
+        {
+            _binCheckIn = 2.0;
+            _world.RecycleBin = SystemProbes.RecycleBinWindow();
+        }
         foreach (var r in _world.AppearedWindows)
             Log($"window appeared {r}");
     }

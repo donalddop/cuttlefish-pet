@@ -515,5 +515,18 @@
       14
     ],
     "scale": 1.6
+  },
+  "label": {
+    "file": "label.png",
+    "frameW": 32,
+    "frameH": 32,
+    "frames": 1,
+    "fps": 1,
+    "loop": true,
+    "anchor": [
+      16.0,
+      16.0
+    ],
+    "scale": 1.9
   }
 }

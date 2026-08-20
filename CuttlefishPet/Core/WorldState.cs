@@ -26,6 +26,11 @@ public sealed class WorldState
     /// </summary>
     public List<Rect> WindowRects { get; } = new();
 
+    /// <summary>Windows minimised since the last tick, by handle.</summary>
+    public List<IntPtr> MinimisedWindows { get; } = new();
+    /// <summary>An open Recycle Bin window, which they give a wide berth.</summary>
+    public Rect? RecycleBin { get; set; }
+
     /// <summary>Is this point hidden behind some application window?</summary>
     public bool IsCovered(Point p)
     {

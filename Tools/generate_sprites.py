@@ -20,7 +20,7 @@ plus Tools/preview.png as a contact sheet for review.
 import json
 import math
 import os
-from PIL import Image, ImageChops, ImageDraw
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 OUT = os.path.join(os.path.dirname(__file__), "..", "CuttlefishPet", "Assets", "sprites")
 PREVIEW = os.path.join(os.path.dirname(__file__), "preview.png")
@@ -655,6 +655,16 @@ def prop_fish(n=4):
     return out, small
 
 
+def prop_label(n=1):
+    """A blurred two-line filename to sit under a cuttlefish posing as a shortcut."""
+    big, small = 128, 32
+    img = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    for y, (x0, x1) in ((34, (26, 102)), (58, (40, 88))):
+        d.rounded_rectangle([x0, y, x1, y + 13], radius=6, fill=(238, 240, 245, 190))
+    return [img.filter(ImageFilter.GaussianBlur(1.1)).resize((small, small), Image.LANCZOS)], small
+
+
 def prop_bubble(n=4):
     big, small = 64, 16
     out = []
@@ -733,6 +743,7 @@ def make_icon():
 # A clutch of eggs has to be spotted from across the screen; a prey fish should
 # look like a mouthful, not a rival.
 PROP_SCALE = {
+    "label": 1.9,
     "egg": 1.9,
     "blot": 1.6,
     "shrimp": 1.4,
@@ -771,6 +782,7 @@ def main():
         ("bubble", prop_bubble(), 6, False),
         ("egg", prop_egg(), 3, True),
         ("blot", prop_blot(), 2, True),
+        ("label", prop_label(), 1, True),
     ):
         sheets.append((name, save_strip(name, frames, size)))
         # Things that rest on a ledge hang from their base; free swimmers and

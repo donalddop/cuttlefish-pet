@@ -28,6 +28,7 @@ public sealed class IconMimicBehavior : BehaviorBase
     // so the write is atomic; a frame's delay either way does not matter.
     private bool _checked;
     private bool _slotIsFree;
+    private Prop? _label;
 
     private IconMimicBehavior(Point slot, Rect cell)
     {
@@ -108,6 +109,14 @@ public sealed class IconMimicBehavior : BehaviorBase
                     pet.Vel = new Vector(0, 0);
                     pet.FacingRight = true;
                     pet.Anim.Play("mimic_icon", restart: true);
+                    // A shortcut without a name under it fools nobody.
+                    _label = new Prop
+                    {
+                        Anim = "label",
+                        Pos = new Point(_slot.X, _slot.Y + 46),
+                        Life = 60,
+                    };
+                    c.AddProp(_label);
                     break;
                 }
                 var desired = to / to.Length * Math.Min(150, to.Length * 2.4);
@@ -150,5 +159,11 @@ public sealed class IconMimicBehavior : BehaviorBase
                 }
                 break;
         }
+    }
+
+    /// <summary>The name tag goes with the disguise, however it ends.</summary>
+    public override void Exit(BehaviorContext c)
+    {
+        if (_label != null) _label.Age = _label.Life;
     }
 }

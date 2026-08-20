@@ -89,6 +89,38 @@ public static class SystemProbes
                             Math.Max(48, metrics.iVertSpacing));
     }
 
+    private static readonly string[] BinTitles =
+        { "recycle bin", "prullenbak", "papierkorb", "corbeille" };
+
+    /// <summary>
+    /// An open Recycle Bin window, if there is one. Where its desktop icon sits
+    /// cannot be asked without reading Explorer's memory, but an open bin is just
+    /// another window, and that is plenty to be wary of.
+    /// </summary>
+    public static Rect? RecycleBinWindow()
+    {
+        Rect? found = null;
+        Win32.EnumWindows((hwnd, _) =>
+        {
+            if (!Win32.IsWindowVisible(hwnd) || Win32.IsIconic(hwnd)) return true;
+            int len = Win32.GetWindowTextLength(hwnd);
+            if (len == 0 || len > 120) return true;
+
+            var sb = new System.Text.StringBuilder(len + 1);
+            Win32.GetWindowText(hwnd, sb, sb.Capacity);
+            string title = sb.ToString().ToLowerInvariant();
+            foreach (var name in BinTitles)
+            {
+                if (!title.Contains(name)) continue;
+                if (!Win32.GetWindowRect(hwnd, out var r)) return true;
+                found = new Rect(r.Left, r.Top, r.Width, r.Height);
+                return false;
+            }
+            return true;
+        }, IntPtr.Zero);
+        return found;
+    }
+
     /// <summary>Nudge a window sideways. Returns false if Windows refused.</summary>
     public static bool NudgeWindow(IntPtr hwnd, int dx)
     {

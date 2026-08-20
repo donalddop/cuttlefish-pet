@@ -24,6 +24,7 @@ public sealed class BehaviorMachine
         ["ride"] = 6, ["jet"] = 7,
         // social and flourishes
         ["pile"] = 10, ["colourShow"] = 6, ["icon"] = 12, ["play"] = 9,
+        ["cross"] = 7, ["read"] = 16,
     };
 
     /// <summary>
@@ -199,6 +200,8 @@ public sealed class BehaviorMachine
 
             Add("colourShow", () => new ColourShowBehavior());
             Add("play", () => new BubblePlayBehavior());
+            Add("cross", () => new EdgeCrossBehavior(_ctx.Rng.NextDouble() < 0.5 ? -1 : 1));
+            if (ReadAlongBehavior.Possible(_ctx)) Add("read", () => new ReadAlongBehavior());
             if (SleepPileBehavior.Find(_ctx) is { } pile) Add("pile", () => pile);
             if (IconMimicBehavior.Find(_ctx) is { } icon) Add("icon", () => icon);
         }
