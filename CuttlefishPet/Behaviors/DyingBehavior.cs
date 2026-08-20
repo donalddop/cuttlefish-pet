@@ -17,6 +17,7 @@ public sealed class DyingBehavior : BehaviorBase
 
     private const double Duration = 7.0;
     private double _t;
+    private bool _boneLeft;
 
     public override void Enter(BehaviorContext c)
     {
@@ -45,6 +46,15 @@ public sealed class DyingBehavior : BehaviorBase
         // A last few bubbles on the way out.
         if (_t < Duration * 0.6 && c.Rng.NextDouble() < dt * 1.4)
             c.Renderer.SpawnBubble(pet.Pos + new Vector(c.Rng.Next(-10, 11), -40));
+
+        // Two thirds of the way down, the shell works its way loose and starts to
+        // rise while what is left of the body keeps sinking.
+        if (!_boneLeft && k > 0.62)
+        {
+            _boneLeft = true;
+            c.AddBone(pet.Pos + new Vector(0, -12));
+            c.Sound.Play("bubble", 0.18);
+        }
 
         if (_t >= Duration)
         {

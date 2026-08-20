@@ -24,7 +24,7 @@ public sealed class BehaviorMachine
         ["ride"] = 6, ["jet"] = 7,
         // social and flourishes
         ["pile"] = 10, ["colourShow"] = 6, ["icon"] = 12, ["play"] = 9,
-        ["cross"] = 7, ["read"] = 16, ["bigBubble"] = 9,
+        ["cross"] = 7, ["read"] = 16, ["bone"] = 30, ["bigBubble"] = 9,
     };
 
     /// <summary>
@@ -109,7 +109,8 @@ public sealed class BehaviorMachine
         var world = _ctx.World;
 
         // Let go of a perch while doing something that assumed one → start swimming.
-        if (pet.Surface == null && !Current.OverridesPhysics && Current is not DriftBehavior)
+        if (pet.Surface == null && Current.NeedsPerch && !Current.OverridesPhysics &&
+            Current is not DriftBehavior)
         {
             Force(new SwimFreeBehavior());
             return;
@@ -179,6 +180,8 @@ public sealed class BehaviorMachine
             // Open water.
             if (treat != null) Add("huntTreat", () => new HuntTreatBehavior(treat));
             if (prey != null) Add("stalk", () => new StalkPreyBehavior(prey));
+            if (_ctx.World.NearestBone(pet) is { } bone)
+                Add("bone", () => new InvestigateBoneBehavior(bone));
             Add("swimFree", () => new SwimFreeBehavior());
             Add("hover", () => new HoverBehavior());
             Add("dart", () => new DartBehavior());

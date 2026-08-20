@@ -109,6 +109,14 @@ public sealed class Pet
     public double BirthScale = 1;
     /// <summary>How long it takes to reach full size.</summary>
     public double GrowUpSeconds = 1;
+    /// <summary>Size the body is swelling toward; Scale eases up to meet it.</summary>
+    public double ScaleTarget = 1;
+    /// <summary>Extra size earned by eating. A well-fed cuttlefish is a big one.</summary>
+    public double Nourishment;
+
+    /// <summary>A good meal puts on visible size, up to a point.</summary>
+    public void Feed(double amount = 0.085) =>
+        Nourishment = Math.Min(0.4, Nourishment + amount);
 
     /// <summary>
     /// Seconds since this pet last visited each cell of a 3x3 grid over the screen.

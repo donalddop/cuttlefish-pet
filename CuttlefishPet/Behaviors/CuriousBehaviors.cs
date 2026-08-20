@@ -143,6 +143,78 @@ public sealed class BubblePlayBehavior : BehaviorBase
 }
 
 /// <summary>
+/// Swim up to a drifting cuttlebone, hang there looking at it, then push it on its
+/// way. Cuttlefish do investigate the remains of their own kind; going pale over it
+/// is the sort of thing that makes a tank feel inhabited.
+/// </summary>
+public sealed class InvestigateBoneBehavior : BehaviorBase
+{
+    public override string Name => "bone";
+    public override bool OverridesPhysics => true;
+
+    private readonly Bone _bone;
+    private double _t;
+    private bool _arrived;
+
+    public InvestigateBoneBehavior(Bone bone) => _bone = bone;
+
+    public override void Enter(BehaviorContext c)
+    {
+        c.Pet.Anim.Play("swim");
+        c.Pet.Surface = null;
+    }
+
+    public override void Tick(BehaviorContext c, double dt)
+    {
+        var pet = c.Pet;
+        _t += dt;
+        pet.PupilTarget = _bone.Pos;
+
+        if (_bone.Expired) { Next = new SwimFreeBehavior(); Done = true; return; }
+
+        var to = _bone.Pos - pet.Pos;
+
+        if (!_arrived)
+        {
+            if (to.Length < 62 || _t > 11)
+            {
+                _arrived = true;
+                _t = 0;
+                pet.Anim.Play("idle");
+                pet.ShiftTo(Palettes.IndexOf("pearl"), 12);   // blanched over it
+            }
+            else
+            {
+                var desired = to / to.Length * Math.Min(150, to.Length * 2.2);
+                pet.Vel += (desired - pet.Vel) * Math.Min(1, 3 * dt);
+                pet.Pos += pet.Vel * dt;
+                PhysicsEngine.ClampToTank(pet, c.World);
+                if (Math.Abs(pet.Vel.X) > 10) pet.FacingRight = pet.Vel.X > 0;
+            }
+            return;
+        }
+
+        pet.Vel *= Math.Exp(-3 * dt);
+        pet.Pos += pet.Vel * dt;
+        pet.FacingRight = to.X > 0;
+        pet.VisualBob = Math.Sin(_t * 1.8) * 3;
+
+        // A parting shove, and it drifts on.
+        if (_t > 3.5)
+        {
+            pet.Anim.Play("strike", restart: true);
+            var push = to.Length < 1 ? new Vector(0, -40) : to / to.Length * 130;
+            _bone.Nudge(push);
+            c.Sound.Play("blip", 0.18);
+            Next = new SwimFreeBehavior();
+            Done = true;
+        }
+    }
+
+    public override void Exit(BehaviorContext c) => c.Pet.PupilTarget = null;
+}
+
+/// <summary>
 /// Work up one enormous bubble and let it burst. Everyone else in earshot jumps out
 /// of their skin; the one that blew it looks rather pleased.
 /// </summary>

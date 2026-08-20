@@ -26,6 +26,23 @@ public sealed class WorldState
     /// </summary>
     public List<Rect> WindowRects { get; } = new();
 
+    /// <summary>Cuttlebones drifting up through the tank.</summary>
+    public List<Bone> Bones { get; } = new();
+
+    /// <summary>Nearest bone worth going to look at, or null.</summary>
+    public Bone? NearestBone(Pet pet)
+    {
+        Bone? best = null;
+        double bestDist = 700;
+        foreach (var b in Bones)
+        {
+            if (b.Expired || b.Disturbed > 0) continue;
+            double d = (b.Pos - pet.Pos).Length;
+            if (d < bestDist) { best = b; bestDist = d; }
+        }
+        return best;
+    }
+
     /// <summary>Windows minimised since the last tick, by handle.</summary>
     public List<IntPtr> MinimisedWindows { get; } = new();
     /// <summary>An open Recycle Bin window, which they give a wide berth.</summary>

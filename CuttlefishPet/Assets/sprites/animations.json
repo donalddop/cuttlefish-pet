@@ -541,5 +541,18 @@
       32.0
     ],
     "scale": 2.2
+  },
+  "bone": {
+    "file": "bone.png",
+    "frameW": 48,
+    "frameH": 48,
+    "frames": 4,
+    "fps": 2,
+    "loop": true,
+    "anchor": [
+      24.0,
+      24.0
+    ],
+    "scale": 1.5
   }
 }

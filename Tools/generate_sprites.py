@@ -655,6 +655,36 @@ def prop_fish(n=4):
     return out, small
 
 
+def prop_bone(n=4):
+    """
+    A cuttlebone: the chalky internal shell that outlives the animal, and the reason
+    the colour is called sepia. Buoyant, so it drifts up rather than sinking.
+    """
+    big, small = 128, 48
+    shell = (238, 228, 206, 255)
+    shade = (206, 188, 158, 255)
+    edge = (150, 126, 96, 255)
+    out = []
+    for i in range(n):
+        img = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+        d = ImageDraw.Draw(img)
+        cx, cy = 64, 64
+        w, h = 26, 50
+        d.ellipse([cx - w, cy - h, cx + w, cy + h], fill=shell, outline=edge, width=4)
+        # The blunt end is thicker, the other tapers to a point.
+        d.ellipse([cx - w + 5, cy - h + 6, cx + w - 5, cy + 6], fill=shade)
+        d.polygon([(cx - w + 7, cy + h - 22), (cx + w - 7, cy + h - 22), (cx, cy + h - 2)],
+                  fill=shell, outline=edge)
+        # Growth ridges across the face.
+        for k in range(7):
+            y = cy - h + 16 + k * 11
+            inset = 8 + abs(k - 3) * 2
+            d.line([(cx - w + inset, y), (cx + w - inset, y)], fill=shade, width=2)
+        img = img.rotate(-12 + i * 8, center=(cx, cy), resample=Image.BICUBIC)
+        out.append(img.resize((small, small), Image.LANCZOS))
+    return out, small
+
+
 def prop_bigbubble(n=8):
     """One big bubble swelling until it bursts — the last frames are the pop."""
     big, small = 128, 64
@@ -780,6 +810,7 @@ def make_icon():
 # A clutch of eggs has to be spotted from across the screen; a prey fish should
 # look like a mouthful, not a rival.
 PROP_SCALE = {
+    "bone": 1.5,
     "bigbubble": 2.2,
     "label": 1.9,
     "egg": 1.9,
@@ -822,6 +853,7 @@ def main():
         ("blot", prop_blot(), 2, True),
         ("label", prop_label(), 1, True),
         ("bigbubble", prop_bigbubble(), 3, False),
+        ("bone", prop_bone(), 2, True),
     ):
         sheets.append((name, save_strip(name, frames, size)))
         # Things that rest on a ledge hang from their base; free swimmers and

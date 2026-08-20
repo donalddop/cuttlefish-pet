@@ -113,6 +113,7 @@ public sealed class PetManager
         // Queued, never applied mid-tick: the pet list is being iterated.
         SpawnPet = (p, hatchling) => _hatching.Add((p, hatchling)),
         AddProp = prop => { prop.Visual = _renderer.CreateProp(prop.Anim); _props.Add(prop); },
+        AddBone = at => _world.Bones.Add(new Bone { Pos = at, Visual = _renderer.CreateProp("bone") }),
         RemovePet = p => _leaving.Add(p),
     };
 
@@ -151,6 +152,7 @@ public sealed class PetManager
         ChimeOnTheHour();
         ApplyArrivalsAndDepartures();
         TickPrey(dt);
+        TickBones(dt);
         TickTreats(dt);
         TickProps(dt);
         CheckSocial(dt);
@@ -249,6 +251,17 @@ public sealed class PetManager
     /// </summary>
     private void ReactToClick(Point at)
     {
+        // Flick a drifting cuttlebone about.
+        foreach (var b in _world.Bones)
+        {
+            var away = b.Pos - at;
+            if (away.Length > 55) continue;
+            if (away.Length < 1) away = new Vector(0, -1);
+            away.Normalize();
+            b.Nudge(away * 320);
+            return;
+        }
+
         foreach (var pet in _pets)
         {
             double d = (at - pet.Pos).Length;
@@ -354,8 +367,11 @@ public sealed class PetManager
         double pressure = 1 + crowd * 0.55;
         pet.Age += dt * pressure;
 
-        pet.Scale = pet.BirthScale + (1 - pet.BirthScale) *
-                    Math.Clamp(pet.Age / Math.Max(1, pet.GrowUpSeconds), 0, 1);
+        pet.ScaleTarget = pet.BirthScale + (1 - pet.BirthScale) *
+                          Math.Clamp(pet.Age / Math.Max(1, pet.GrowUpSeconds), 0, 1)
+                          + pet.Nourishment;
+        // Eased rather than snapped, so a meal shows as a visible swell.
+        pet.Scale += (pet.ScaleTarget - pet.Scale) * Math.Min(1, dt * 1.6);
 
         if (pet.Age >= pet.Lifespan && pet.Machine.Current.Interruptible)
             pet.Machine.Force(new DyingBehavior());
@@ -642,6 +658,22 @@ public sealed class PetManager
             }
             f.Tick(dt, _world, _rng);
             _renderer.UpdateProp(f.Visual, "fish", f.Pos, f.Age, f.FacingRight);
+        }
+    }
+
+    private void TickBones(double dt)
+    {
+        for (int i = _world.Bones.Count - 1; i >= 0; i--)
+        {
+            var b = _world.Bones[i];
+            b.Tick(dt, _world);
+            if (b.Expired)
+            {
+                _renderer.RemoveProp(b.Visual);
+                _world.Bones.RemoveAt(i);
+                continue;
+            }
+            _renderer.UpdateProp(b.Visual, "bone", b.Pos, b.Age);
         }
     }
 

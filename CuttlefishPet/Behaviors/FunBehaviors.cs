@@ -135,6 +135,7 @@ public sealed class HuntTreatBehavior : BehaviorBase
 public sealed class EatTreatBehavior : BehaviorBase
 {
     public override string Name => "eat";
+    public override bool NeedsPerch => false;   // plays out mid-water just fine
     public override bool Interruptible => false;
     private readonly Treat _treat;
     private double _t;
@@ -155,6 +156,7 @@ public sealed class EatTreatBehavior : BehaviorBase
         {
             _grabbed = true;
             _treat.Eaten = true;                 // snatched by the feeding tentacles
+            c.Pet.Feed();                        // a meal puts on visible size
             c.Pet.Anim.Play("eat", restart: true);
             c.Sound.Play("blip", 0.35);
         }
@@ -170,6 +172,7 @@ public sealed class EatTreatBehavior : BehaviorBase
 public sealed class HappyBehavior : BehaviorBase
 {
     public override string Name => "happy";
+    public override bool NeedsPerch => false;   // plays out mid-water just fine
     private double _remaining, _bubbleIn = 0.15, _t;
 
     public HappyBehavior(double seconds = 1.5) => _remaining = seconds;
@@ -202,6 +205,7 @@ public sealed class HappyBehavior : BehaviorBase
 public sealed class RivalDisplayBehavior : BehaviorBase
 {
     public override string Name => "rival";
+    public override bool NeedsPerch => false;   // plays out mid-water just fine
     public override bool Interruptible => false;
     private readonly Pet _other;
     private readonly bool _retreats;
@@ -279,6 +283,7 @@ public sealed class StartleBehavior : BehaviorBase
 public sealed class WakeStretchBehavior : BehaviorBase
 {
     public override string Name => "stretch";
+    public override bool NeedsPerch => false;   // plays out mid-water just fine
 
     public override void Enter(BehaviorContext c) => c.Pet.Anim.Play("stretch", restart: true);
 

@@ -24,6 +24,8 @@ public sealed class BehaviorContext
     public required SpawnPet SpawnPet { get; init; }
     /// <summary>Leave something behind: ink blots, egg clutches.</summary>
     public required Action<Prop> AddProp { get; init; }
+    /// <summary>Leave a cuttlebone where a life ended.</summary>
+    public required Action<System.Windows.Point> AddBone { get; init; }
     /// <summary>Take this pet out of the tank (the ghost swims off for good).</summary>
     public required Action<Pet> RemovePet { get; init; }
 }
@@ -35,6 +37,12 @@ public abstract class BehaviorBase
     public virtual bool OverridesPhysics => false;
     /// <summary>Can ambient events (flee, typing react) preempt this behavior?</summary>
     public virtual bool Interruptible => true;
+    /// <summary>
+    /// Does this behaviour only make sense while attached to something? A pet whose
+    /// perch is pulled out from under it drops back to swimming — but a flourish that
+    /// plays out mid-water must say so, or it is cancelled the frame it begins.
+    /// </summary>
+    public virtual bool NeedsPerch => true;
     public bool Done { get; protected set; }
     /// <summary>Explicit successor; when null the machine picks a weighted-random next.</summary>
     public BehaviorBase? Next { get; protected set; }

@@ -80,6 +80,7 @@ public sealed class StalkPreyBehavior : BehaviorBase
                     if ((_prey.Pos - pet.Pos).Length < 95)
                     {
                         _prey.Eaten = true;
+                        pet.Feed(0.11);          // a whole fish is a proper meal
                         _phase = Phase.Feed;
                         _phaseT = 0;
                         pet.Anim.Play("eat", restart: true);

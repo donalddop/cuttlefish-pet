@@ -301,6 +301,7 @@ public sealed class NibbleBehavior : BehaviorBase
 public sealed class ShockBehavior : BehaviorBase
 {
     public override string Name => "shock";
+    public override bool NeedsPerch => false;   // plays out mid-water just fine
     public override bool Interruptible => false;
     private double _t;
 
