@@ -358,23 +358,6 @@
       7.5
     ]
   },
-  "parachute": {
-    "file": "parachute.png",
-    "frameW": 64,
-    "frameH": 64,
-    "frames": 4,
-    "fps": 3,
-    "loop": true,
-    "anchor": [
-      30,
-      55
-    ],
-    "eye": [
-      39.36,
-      40.96,
-      6.5
-    ]
-  },
   "burrow": {
     "file": "burrow.png",
     "frameW": 64,

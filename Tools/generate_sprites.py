@@ -698,7 +698,6 @@ ACTIONS = {
     "ceiling":    (a_ceiling,     4,   True),
     "hang":       (a_hang,        2.5, True),
     "slide":      (a_slide,       5,   True),
-    "parachute":  (a_parachute,   3,   True),
     "burrow":     (a_burrow,      4,   False),
     "ghost":      (a_ghost,       3,   True),
     "balloon":    (a_balloon,     2.5, True),
