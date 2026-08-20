@@ -5,6 +5,9 @@ using CuttlefishPet.Rendering;
 
 namespace CuttlefishPet.Behaviors;
 
+/// <summary>Named so call sites read as intent, not as a bare boolean.</summary>
+public delegate void SpawnPet(System.Windows.Point at, bool hatchling);
+
 public sealed class BehaviorContext
 {
     public required Pet Pet { get; init; }
@@ -14,8 +17,11 @@ public sealed class BehaviorContext
     public required SpriteRenderer Renderer { get; init; }
     public required Random Rng { get; init; }
 
-    /// <summary>Put another cuttlefish in the tank (hatching eggs, splitting).</summary>
-    public required Action<System.Windows.Point> SpawnPet { get; init; }
+    /// <summary>
+    /// Put another cuttlefish in the tank. Hatchlings arrive tiny and grow;
+    /// anything else turns up as a young adult.
+    /// </summary>
+    public required SpawnPet SpawnPet { get; init; }
     /// <summary>Leave something behind: ink blots, egg clutches.</summary>
     public required Action<Prop> AddProp { get; init; }
     /// <summary>Take this pet out of the tank (the ghost swims off for good).</summary>

@@ -79,6 +79,7 @@ public partial class App : Application
         {
             case "add": _manager.Spawn(); break;
             case "remove": _manager.RemoveOne(); break;
+            case "cull": _manager.CullTo(1); break;
             case "shrimp": _manager.TossTreat(); break;
             case "mute": if (_muteItem != null) _muteItem.Checked = !_muteItem.Checked; break;
             case "exit": Shutdown(); break;
@@ -90,6 +91,7 @@ public partial class App : Application
         var menu = new System.Windows.Forms.ContextMenuStrip();
         menu.Items.Add("Add cuttlefish", null, (_, _) => RunCommand("add"));
         menu.Items.Add("Remove one", null, (_, _) => RunCommand("remove"));
+        menu.Items.Add("Thin them out", null, (_, _) => RunCommand("cull"));
         menu.Items.Add("Toss a shrimp", null, (_, _) => RunCommand("shrimp"));
         var mute = new System.Windows.Forms.ToolStripMenuItem("Mute sounds") { CheckOnClick = true, Checked = true };
         mute.CheckedChanged += (_, _) => _sound.Muted = mute.Checked;

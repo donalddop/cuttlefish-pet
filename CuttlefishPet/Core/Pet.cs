@@ -84,6 +84,20 @@ public sealed class Pet
     /// <summary>Set after a successful courtship: eggs are coming.</summary>
     public bool WantsToNest;
 
+    // Cuttlefish are short-lived and breed once, which is what keeps a tank from
+    // filling up. Age counts real seconds; Lifespan is what this one gets.
+    public double Age;
+    public double Lifespan = 20 * 60;
+    public bool Dying;
+
+    // Size tells you how old one is: hatchlings are tiny and grow into it.
+    /// <summary>Current size relative to a full-grown adult.</summary>
+    public double Scale = 1;
+    /// <summary>Size at birth — small for a hatchling, nearly grown for a newcomer.</summary>
+    public double BirthScale = 1;
+    /// <summary>How long it takes to reach full size.</summary>
+    public double GrowUpSeconds = 1;
+
     /// <summary>
     /// Seconds since this pet last visited each cell of a 3x3 grid over the screen.
     /// Swim targets favour the stalest cell, so they tour the corners instead of
@@ -108,12 +122,13 @@ public sealed class Pet
         get
         {
             var a = Anim.Current;
+            double s = RenderScale * Scale;
             double ax = FacingRight ? a.Anchor.X : a.FrameW - a.Anchor.X;
             return new Rect(
-                Pos.X - ax * RenderScale,
-                Pos.Y - a.Anchor.Y * RenderScale,
-                a.FrameW * RenderScale,
-                a.FrameH * RenderScale);
+                Pos.X - ax * s,
+                Pos.Y - a.Anchor.Y * s,
+                a.FrameW * s,
+                a.FrameH * s);
         }
     }
 }

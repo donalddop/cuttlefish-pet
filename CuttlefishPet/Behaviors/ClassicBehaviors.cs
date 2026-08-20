@@ -108,10 +108,15 @@ public sealed class LayEggsBehavior : BehaviorBase
             {
                 Anim = "egg",
                 Pos = spot,
-                Life = 22,
-                OnExpire = p => c.SpawnPet(new Point(p.X, p.Y - 40)),
+                Life = 40,
+                OnExpire = p => c.SpawnPet(new Point(p.X, p.Y - 40), hatchling: true),
             });
             c.Sound.Play("bubble", 0.3);
+
+            // Spawning is the last thing a cuttlefish does. Whatever life it had
+            // left, it has about two minutes now — which is what stops a tank
+            // breeding itself into a swarm.
+            pet.Lifespan = Math.Min(pet.Lifespan, pet.Age + 120);
         }
         if (_t > 3) Done = true;
     }
@@ -234,7 +239,7 @@ public sealed class GhostBehavior : BehaviorBase
             pet.Fade = 1;
             var t = c.World.VirtualScreen;
             c.SpawnPet(new Point(t.Left + 140 + c.Rng.NextDouble() * (t.Width - 280),
-                                 t.Bottom - 200));
+                                 t.Bottom - 200), hatchling: false);
             c.RemovePet(pet);
             Done = true;
         }

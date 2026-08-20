@@ -26,7 +26,7 @@ public sealed class PetManager
     private readonly List<Pet> _pets = new();
     private readonly List<Prop> _props = new();
     private readonly List<Pet> _leaving = new();
-    private readonly List<Point> _hatching = new();
+    private readonly List<(Point Pos, bool Hatchling)> _hatching = new();
     private double _clock, _lastDownAt = double.NegativeInfinity, _rivalCooldown;
     private double _preySpawnIn = 12, _courtCooldown = 30;
     private double _sampleMs;
@@ -48,7 +48,12 @@ public sealed class PetManager
 
     public void Spawn() => Spawn(null);
 
-    public void Spawn(Point? at)
+    /// <param name="hatchling">
+    /// Just out of the egg: starts tiny and grows. Anyone you add by hand turns up
+    /// as a young adult instead, because waiting ten minutes for a pet to become
+    /// visible is nobody's idea of fun.
+    /// </param>
+    public void Spawn(Point? at, bool hatchling = false)
     {
         var wa = System.Windows.Forms.Screen.PrimaryScreen!.WorkingArea; // physical px
         var pet = new Pet
@@ -58,6 +63,10 @@ public sealed class PetManager
             Pos = at ?? new Point(wa.Left + 120 + _rng.NextDouble() * (wa.Width - 240),
                                   wa.Top + 120 + _rng.NextDouble() * (wa.Height - 300)),
         };
+        pet.Lifespan = (14 + _rng.NextDouble() * 16) * 60;   // 14–30 minutes undisturbed
+        pet.BirthScale = hatchling ? 0.30 : 0.80;
+        pet.GrowUpSeconds = pet.Lifespan * (hatchling ? 0.40 : 0.12);
+        pet.Scale = pet.BirthScale;
         pet.HomePalette = Palettes.PickRandom(_rng);
         pet.Palette = pet.FromPalette = Palettes.Glass;   // arrives near-invisible
         pet.PaletteChangeIn = 20 + _rng.NextDouble() * 40;
@@ -67,6 +76,12 @@ public sealed class PetManager
         pet.Visual = _renderer.CreateVisual();
         pet.Machine = new BehaviorMachine(NewContext(pet));
         _pets.Add(pet);
+    }
+
+    /// <summary>Send everyone but a handful drifting off — the panic button.</summary>
+    public void CullTo(int keep)
+    {
+        while (_pets.Count > Math.Max(0, keep)) RemoveOne();
     }
 
     public void RemoveOne()
@@ -94,7 +109,7 @@ public sealed class PetManager
         Pet = pet, World = _world, Input = _input,
         Sound = _sound, Renderer = _renderer, Rng = _rng,
         // Queued, never applied mid-tick: the pet list is being iterated.
-        SpawnPet = p => _hatching.Add(p),
+        SpawnPet = (p, hatchling) => _hatching.Add((p, hatchling)),
         AddProp = prop => { prop.Visual = _renderer.CreateProp(prop.Anim); _props.Add(prop); },
         RemovePet = p => _leaving.Add(p),
     };
@@ -116,6 +131,7 @@ public sealed class PetManager
             // Environmental, so it applies even while a behaviour is steering.
             if (pet.Surface == null) PhysicsEngine.ApplyScrollCurrent(pet, _world, dt);
             pet.Anim.Tick(dt);
+            AgeAndRetire(pet, dt);
             UpdateExploration(pet, dt);
             UpdateCamoSkin(pet, dt);
             UpdateColour(pet, dt);
@@ -175,12 +191,6 @@ public sealed class PetManager
     }
 
     /// <summary>
-    /// Colour is a signal, not a coat of paint. At rest a cuttlefish is nearly
-    /// transparent with speckles drifting over it; a display floods it with its own
-    /// colour and makes it solid. This runs off the current behaviour every tick, so
-    /// the skin can never get stuck in the wrong state.
-    /// </summary>
-    /// <summary>
     /// Every few seconds a pet reads the desktop around it and rebuilds its skin from
     /// what it finds. Sampling a patch wider than the body means the pet's own
     /// (translucent) pixels barely register in the result.
@@ -219,12 +229,37 @@ public sealed class PetManager
         });
     }
 
+    /// <summary>
+    /// Age a pet and let it go when its time is up. Crowding shortens lives sharply,
+    /// so a tank that fills up thins itself back out instead of growing without end.
+    /// </summary>
+    private void AgeAndRetire(Pet pet, double dt)
+    {
+        if (pet.Dying) return;
+
+        int crowd = Math.Max(0, _pets.Count - 3);
+        double pressure = 1 + crowd * 0.55;
+        pet.Age += dt * pressure;
+
+        pet.Scale = pet.BirthScale + (1 - pet.BirthScale) *
+                    Math.Clamp(pet.Age / Math.Max(1, pet.GrowUpSeconds), 0, 1);
+
+        if (pet.Age >= pet.Lifespan && pet.Machine.Current.Interruptible)
+            pet.Machine.Force(new DyingBehavior());
+    }
+
     private void UpdateExploration(Pet pet, double dt)
     {
         for (int i = 0; i < pet.RegionAge.Length; i++) pet.RegionAge[i] += dt;
         pet.RegionAge[Pet.RegionOf(pet.Pos, _world.VirtualScreen)] = 0;
     }
 
+    /// <summary>
+    /// Colour is a signal, not a coat of paint. At rest a cuttlefish is nearly
+    /// transparent with speckles drifting over it; a display floods it with its own
+    /// colour and makes it solid. This runs off the current behaviour every tick, so
+    /// the skin can never get stuck in the wrong state.
+    /// </summary>
     private void UpdateColour(Pet pet, double dt)
     {
         // Irritation cools off if you leave them alone for a minute or so.
@@ -393,8 +428,10 @@ public sealed class PetManager
         }
         _leaving.Clear();
 
-        foreach (var p in _hatching)
-            if (_pets.Count < 24) Spawn(p);   // sanity cap: eggs must not run away with it
+        // Eggs only come to anything when there is room. Above the cap the clutch
+        // simply does not make it, which is how a real tank behaves too.
+        foreach (var (pos, hatchling) in _hatching)
+            if (_pets.Count < 7) Spawn(pos, hatchling);
         _hatching.Clear();
     }
 
@@ -522,7 +559,8 @@ public sealed class PetManager
             var lines = _pets.Select((p, i) =>
                 $"{DateTime.Now:HH:mm:ss} pet{i} pos=({p.Pos.X:F0},{p.Pos.Y:F0}) vel=({p.Vel.X:F0},{p.Vel.Y:F0}) " +
                 $"behavior={p.Machine.Current.Name} anim={p.Anim.Current.Name} surface={p.Surface?.Kind.ToString() ?? "none"} " +
-                $"colour={Palettes.All[p.Palette].Name} vivid={p.Vividness:F2}");
+                $"colour={Palettes.All[p.Palette].Name} vivid={p.Vividness:F2} " +
+                $"age={p.Age:F0}/{p.Lifespan:F0}s scale={p.Scale:F2}");
             System.IO.File.AppendAllLines(
                 System.IO.Path.Combine(System.IO.Path.GetTempPath(), "cuttlefishpet-debug.log"), lines);
             if (_sampleCount > 0)
