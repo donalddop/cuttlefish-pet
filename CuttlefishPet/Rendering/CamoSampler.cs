@@ -24,9 +24,11 @@ public sealed class CamoSkin
 /// </summary>
 public static class CamoSampler
 {
-    private const int GridW = 11;   // the grain of the pattern: coarse on purpose
-    private const int GridH = 8;
-    private const int Colours = 3;
+    // The grain of the pattern. Coarse enough that it reads as skin rather than a
+    // hole cut in the pet, fine enough to follow what is actually behind it.
+    private const int GridW = 40;
+    private const int GridH = 30;
+    private const int Colours = 5;
 
     public static CamoSkin? Sample(Rect physRect)
     {
@@ -97,7 +99,7 @@ public static class CamoSampler
                 Dominant = Color.FromRgb((byte)Math.Clamp(dom.R, 0, 255),
                                          (byte)Math.Clamp(dom.G, 0, 255),
                                          (byte)Math.Clamp(dom.B, 0, 255)),
-                Busyness = Spread(centroids, counts),
+                Busyness = Variation(px),
             };
         }
         catch
@@ -111,12 +113,11 @@ public static class CamoSampler
         Cluster((double R, double G, double B)[] px)
     {
         var centroids = new (double R, double G, double B)[Colours];
-        // Seed from the darkest, middling and lightest cells so the clusters spread
-        // over the range instead of all landing on the same average.
+        // Seed evenly across the brightness range so the clusters spread over it
+        // instead of all landing on the same average.
         var byLuma = px.OrderBy(p => p.R * 0.3 + p.G * 0.6 + p.B * 0.1).ToArray();
-        centroids[0] = byLuma[0];
-        centroids[1] = byLuma[byLuma.Length / 2];
-        centroids[2] = byLuma[^1];
+        for (int k = 0; k < Colours; k++)
+            centroids[k] = byLuma[(int)((k + 0.5) / Colours * (byLuma.Length - 1))];
 
         var assignment = new int[px.Length];
         var counts = new int[Colours];
@@ -148,18 +149,21 @@ public static class CamoSampler
         return (centroids, counts, assignment);
     }
 
-    /// <summary>How far apart the sampled colours are, normalised to roughly 0..1.</summary>
-    private static double Spread((double R, double G, double B)[] c, int[] counts)
+    /// <summary>
+    /// How varied the patch is, from the pixels themselves rather than the clusters —
+    /// so changing how many colours are kept does not move the scale. Bare wallpaper
+    /// scores low; anything with an icon or text on it scores high.
+    /// </summary>
+    private static double Variation((double R, double G, double B)[] px)
     {
-        double max = 0;
-        for (int i = 0; i < c.Length; i++)
-            for (int j = i + 1; j < c.Length; j++)
-            {
-                if (counts[i] == 0 || counts[j] == 0) continue;
-                double d = Math.Sqrt(Sq(c[i].R - c[j].R) + Sq(c[i].G - c[j].G) + Sq(c[i].B - c[j].B));
-                max = Math.Max(max, d);
-            }
-        return Math.Clamp(max / 190.0, 0, 1);
+        double mr = 0, mg = 0, mb = 0;
+        foreach (var p in px) { mr += p.R; mg += p.G; mb += p.B; }
+        mr /= px.Length; mg /= px.Length; mb /= px.Length;
+
+        double spread = 0;
+        foreach (var p in px)
+            spread += Math.Sqrt(Sq(p.R - mr) + Sq(p.G - mg) + Sq(p.B - mb));
+        return Math.Clamp(spread / px.Length / 62.0, 0, 1);
     }
 
     private static double Sq(double v) => v * v;

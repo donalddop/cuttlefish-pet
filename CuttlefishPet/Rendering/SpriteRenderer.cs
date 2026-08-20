@@ -185,12 +185,14 @@ public sealed class SpriteRenderer
             v.SkinFill.ImageSource = pet.Camo!.Texture;
             v.SkinFill.TileMode = TileMode.None;
             v.SkinFill.Viewport = new Rect(0, 0, 1, 1);
-            v.Skin.Opacity = (0.55 + 0.35 * pet.Camo.Busyness) * (1 - pet.Vividness) * skinVisible;
+            v.Skin.Opacity = (0.66 + 0.28 * pet.Camo.Busyness) * (1 - pet.Vividness) * skinVisible;
 
+            // A flat wash of the dominant colour underneath keeps the body reading as
+            // one creature, but too much of it smears out the detail above.
             var d = pet.Camo.Dominant;
             v.TintFill.Color = d;
             v.TintMask.ImageSource = frame;
-            v.Tint.Opacity = 0.45 * (1 - pet.Vividness) * skinVisible;
+            v.Tint.Opacity = 0.22 * (1 - pet.Vividness) * skinVisible;
         }
         else
         {
