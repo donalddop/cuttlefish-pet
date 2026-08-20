@@ -227,11 +227,11 @@ public sealed class GhostBehavior : BehaviorBase
         var pet = c.Pet;
         _t += dt;
         pet.Pos = new Point(pet.Pos.X + Math.Sin(_t * 1.6) * 20 * dt, pet.Pos.Y - 85 * dt);
-        pet.Visual.Root.Opacity = Math.Max(0, 1 - _t / 4.5);
+        pet.Fade = Math.Max(0, 1 - _t / 4.5);
 
         if (_t > 4.5)
         {
-            pet.Visual.Root.Opacity = 1;
+            pet.Fade = 1;
             var t = c.World.VirtualScreen;
             c.SpawnPet(new Point(t.Left + 140 + c.Rng.NextDouble() * (t.Width - 280),
                                  t.Bottom - 200));
@@ -240,7 +240,7 @@ public sealed class GhostBehavior : BehaviorBase
         }
     }
 
-    public override void Exit(BehaviorContext c) => c.Pet.Visual.Root.Opacity = 1;
+    public override void Exit(BehaviorContext c) => c.Pet.Fade = 1;
 }
 
 /// <summary>Leave a small ink blot behind, the way eSheep left droppings.</summary>

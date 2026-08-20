@@ -7,7 +7,7 @@ namespace CuttlefishPet.Behaviors;
 public sealed class CeilingWalkBehavior : BehaviorBase
 {
     public override string Name => "ceiling";
-    private const double Speed = 60;
+    private const double Speed = 42;
     private double _targetX, _t;
 
     public override void Enter(BehaviorContext c)

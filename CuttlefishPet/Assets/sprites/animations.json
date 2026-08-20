@@ -4,7 +4,7 @@
     "frameW": 64,
     "frameH": 64,
     "frames": 6,
-    "fps": 6,
+    "fps": 3.5,
     "loop": true,
     "anchor": [
       30,
@@ -21,7 +21,7 @@
     "frameW": 64,
     "frameH": 64,
     "frames": 8,
-    "fps": 10,
+    "fps": 6,
     "loop": true,
     "anchor": [
       30,
@@ -38,7 +38,7 @@
     "frameW": 64,
     "frameH": 64,
     "frames": 4,
-    "fps": 10,
+    "fps": 5,
     "loop": true,
     "anchor": [
       30,
@@ -55,7 +55,7 @@
     "frameW": 64,
     "frameH": 64,
     "frames": 4,
-    "fps": 8,
+    "fps": 4,
     "loop": true,
     "anchor": [
       30,
@@ -72,7 +72,7 @@
     "frameW": 64,
     "frameH": 64,
     "frames": 6,
-    "fps": 8,
+    "fps": 4.5,
     "loop": true,
     "anchor": [
       32,
@@ -89,7 +89,7 @@
     "frameW": 64,
     "frameH": 64,
     "frames": 4,
-    "fps": 3,
+    "fps": 2,
     "loop": true,
     "anchor": [
       30,
@@ -101,24 +101,12 @@
       6.5
     ]
   },
-  "sleep": {
-    "file": "sleep.png",
-    "frameW": 64,
-    "frameH": 64,
-    "frames": 4,
-    "fps": 2,
-    "loop": true,
-    "anchor": [
-      30,
-      55
-    ]
-  },
   "flatten": {
     "file": "flatten.png",
     "frameW": 64,
     "frameH": 64,
     "frames": 6,
-    "fps": 7,
+    "fps": 4,
     "loop": false,
     "anchor": [
       30,
@@ -142,7 +130,7 @@
     "frameW": 64,
     "frameH": 64,
     "frames": 6,
-    "fps": 12,
+    "fps": 8,
     "loop": false,
     "anchor": [
       30,
@@ -154,7 +142,7 @@
     "frameW": 64,
     "frameH": 64,
     "frames": 4,
-    "fps": 10,
+    "fps": 6,
     "loop": true,
     "anchor": [
       30,
@@ -171,7 +159,7 @@
     "frameW": 64,
     "frameH": 64,
     "frames": 6,
-    "fps": 10,
+    "fps": 7,
     "loop": true,
     "anchor": [
       30,
@@ -188,7 +176,7 @@
     "frameW": 64,
     "frameH": 64,
     "frames": 2,
-    "fps": 8,
+    "fps": 5,
     "loop": true,
     "anchor": [
       30,
@@ -205,7 +193,7 @@
     "frameW": 64,
     "frameH": 64,
     "frames": 6,
-    "fps": 7,
+    "fps": 4,
     "loop": true,
     "anchor": [
       30,
@@ -222,7 +210,7 @@
     "frameW": 64,
     "frameH": 64,
     "frames": 4,
-    "fps": 11,
+    "fps": 7,
     "loop": false,
     "anchor": [
       30,
@@ -239,7 +227,7 @@
     "frameW": 64,
     "frameH": 64,
     "frames": 4,
-    "fps": 10,
+    "fps": 6,
     "loop": true,
     "anchor": [
       30,
@@ -256,7 +244,7 @@
     "frameW": 64,
     "frameH": 64,
     "frames": 6,
-    "fps": 11,
+    "fps": 7,
     "loop": true,
     "anchor": [
       30,
@@ -273,7 +261,7 @@
     "frameW": 64,
     "frameH": 64,
     "frames": 4,
-    "fps": 8,
+    "fps": 5,
     "loop": true,
     "anchor": [
       30,
@@ -290,7 +278,7 @@
     "frameW": 64,
     "frameH": 64,
     "frames": 4,
-    "fps": 5,
+    "fps": 3,
     "loop": false,
     "anchor": [
       30,
@@ -307,7 +295,7 @@
     "frameW": 64,
     "frameH": 64,
     "frames": 4,
-    "fps": 4,
+    "fps": 2.5,
     "loop": true,
     "anchor": [
       30,
@@ -324,7 +312,7 @@
     "frameW": 64,
     "frameH": 64,
     "frames": 6,
-    "fps": 7,
+    "fps": 4,
     "loop": true,
     "anchor": [
       30,
@@ -341,7 +329,7 @@
     "frameW": 64,
     "frameH": 64,
     "frames": 4,
-    "fps": 4,
+    "fps": 2.5,
     "loop": true,
     "anchor": [
       30,
@@ -358,7 +346,7 @@
     "frameW": 64,
     "frameH": 64,
     "frames": 4,
-    "fps": 8,
+    "fps": 5,
     "loop": true,
     "anchor": [
       32,
@@ -375,7 +363,7 @@
     "frameW": 64,
     "frameH": 64,
     "frames": 4,
-    "fps": 5,
+    "fps": 3,
     "loop": true,
     "anchor": [
       30,
@@ -392,7 +380,7 @@
     "frameW": 64,
     "frameH": 64,
     "frames": 5,
-    "fps": 6,
+    "fps": 4,
     "loop": false,
     "anchor": [
       30,
@@ -409,7 +397,7 @@
     "frameW": 64,
     "frameH": 64,
     "frames": 4,
-    "fps": 5,
+    "fps": 3,
     "loop": true,
     "anchor": [
       30,
@@ -421,7 +409,7 @@
     "frameW": 64,
     "frameH": 64,
     "frames": 4,
-    "fps": 4,
+    "fps": 2.5,
     "loop": true,
     "anchor": [
       30,
@@ -438,7 +426,7 @@
     "frameW": 64,
     "frameH": 64,
     "frames": 2,
-    "fps": 14,
+    "fps": 10,
     "loop": true,
     "anchor": [
       30,
@@ -447,6 +435,23 @@
     "eye": [
       38.64,
       38.68,
+      7.5
+    ]
+  },
+  "court": {
+    "file": "court.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 6,
+    "fps": 4,
+    "loop": true,
+    "anchor": [
+      30,
+      55
+    ],
+    "eye": [
+      39.35,
+      39.74,
       7.5
     ]
   },
@@ -459,7 +464,7 @@
     "loop": false,
     "anchor": [
       8.0,
-      14
+      8.0
     ]
   },
   "shrimp": {
@@ -467,11 +472,23 @@
     "frameW": 32,
     "frameH": 32,
     "frames": 4,
-    "fps": 6,
+    "fps": 4,
     "loop": true,
     "anchor": [
       16.0,
       30
+    ]
+  },
+  "fish": {
+    "file": "fish.png",
+    "frameW": 32,
+    "frameH": 32,
+    "frames": 4,
+    "fps": 6,
+    "loop": true,
+    "anchor": [
+      16.0,
+      16.0
     ]
   },
   "bubble": {
@@ -479,11 +496,11 @@
     "frameW": 16,
     "frameH": 16,
     "frames": 4,
-    "fps": 8,
+    "fps": 6,
     "loop": false,
     "anchor": [
       8.0,
-      14
+      8.0
     ]
   },
   "egg": {

@@ -69,7 +69,13 @@ public sealed class SpriteRenderer
         camo.Opacity = 0;
 
         // Pattern and sheen are painted as brushes and clipped to the body's alpha.
-        var skinFill = new ImageBrush { Stretch = Stretch.UniformToFill };
+        var skinFill = new ImageBrush
+        {
+            Stretch = Stretch.Fill,
+            TileMode = TileMode.Tile,
+            ViewportUnits = BrushMappingMode.RelativeToBoundingBox,
+            Viewport = new Rect(0, 0, 1, 1),
+        };
         var skinMask = new ImageBrush { Stretch = Stretch.Fill };
         var skin = new System.Windows.Shapes.Rectangle
         { Fill = skinFill, OpacityMask = skinMask, IsHitTestVisible = false };
@@ -143,6 +149,8 @@ public sealed class SpriteRenderer
 
         v.Root.Width = w;
         v.Root.Height = h;
+        // Glassy when idle, solid when displaying; Fade dissolves it away entirely.
+        v.Root.Opacity = Math.Clamp(pet.BodyOpacity * pet.Fade, 0, 1);
         Canvas.SetLeft(v.Root, tl.X);
         Canvas.SetTop(v.Root, tl.Y + pet.VisualBob * k);
 
@@ -158,6 +166,8 @@ public sealed class SpriteRenderer
         // fade out under camouflage so the disguise stays clean.
         double skinVisible = 1 - pet.CamoOpacity;
         v.SkinFill.ImageSource = _skins.Patterns[pet.SkinPattern % _skins.Patterns.Length];
+        // The speckles crawl slowly over the body — chromatophores never hold still.
+        v.SkinFill.Viewport = new Rect(-pet.SkinPhase, -pet.SkinPhase * 0.55, 1, 1);
         v.SkinMask.ImageSource = frame;
         v.Skin.Opacity = pet.SkinStrength * skinVisible;
         v.SheenMask.ImageSource = frame;
@@ -209,7 +219,8 @@ public sealed class SpriteRenderer
 
     public void RemoveProp(Image img) => _overlay.PetCanvas.Children.Remove(img);
 
-    public void UpdateProp(Image img, string animName, Point physPos, double t)
+    public void UpdateProp(Image img, string animName, Point physPos, double t,
+        bool facingRight = true)
     {
         var anim = _library[animName];
         double k = _overlay.DeviceToDiu;
@@ -219,6 +230,9 @@ public sealed class SpriteRenderer
         img.Source = anim.Frames[i];
         img.Width = anim.FrameW * k;
         img.Height = anim.FrameH * k;
+        img.RenderTransform = facingRight
+            ? null
+            : new ScaleTransform(-1, 1, anim.FrameW * k / 2, 0);
         var tl = _overlay.PhysToDiu(new Point(physPos.X - anim.Anchor.X, physPos.Y - anim.Anchor.Y));
         Canvas.SetLeft(img, tl.X);
         Canvas.SetTop(img, tl.Y);

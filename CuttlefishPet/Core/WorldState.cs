@@ -7,6 +7,8 @@ public sealed class WorldState
 {
     public List<Surface> Surfaces { get; } = new();
     public List<Treat> Treats { get; } = new();
+    /// <summary>Live fish drifting through the tank, there to be hunted.</summary>
+    public List<Prey> Prey { get; } = new();
     public Rect VirtualScreen { get; set; }
     public Point Cursor { get; set; }
     public Vector CursorVelocity { get; set; }
@@ -53,6 +55,20 @@ public sealed class WorldState
         foreach (var s in Surfaces)
             if (s.IsVertical)
                 yield return s;
+    }
+
+    /// <summary>Nearest fish nobody else is already stalking, or null.</summary>
+    public Prey? NearestPrey(Pet pet)
+    {
+        Prey? best = null;
+        double bestDist = double.MaxValue;
+        foreach (var f in Prey)
+        {
+            if (f.Expired || (f.StalkedBy != null && f.StalkedBy != pet)) continue;
+            double d = (f.Pos - pet.Pos).Length;
+            if (d < bestDist) { best = f; bestDist = d; }
+        }
+        return best;
     }
 
     /// <summary>Nearest unclaimed shrimp, or null.</summary>

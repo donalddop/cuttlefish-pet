@@ -27,7 +27,7 @@ public sealed class IdleBehavior : BehaviorBase
 public sealed class SwimBehavior : BehaviorBase
 {
     public override string Name => "swim";
-    private const double Speed = 75;
+    private const double Speed = 52;
     private double _targetX;
     private bool _mayWalkOff;
 
@@ -82,46 +82,32 @@ public sealed class SitBehavior : BehaviorBase
     }
 }
 
-public sealed class SleepBehavior : BehaviorBase
+/// <summary>
+/// Hold station quietly, barely moving. What they do when you have walked away —
+/// they simply blend out rather than nodding off.
+/// </summary>
+public sealed class LurkBehavior : BehaviorBase
 {
-    public override string Name => "sleep";
-    private readonly bool _away;
-    private double _remaining, _snoreIn;
+    public override string Name => "lurk";
+    public override bool OverridesPhysics => true;
+    private double _t;
 
-    /// <param name="away">Sleep until the user comes back, then wake with a stretch.</param>
-    public SleepBehavior(bool away = false) => _away = away;
-
-    public override void Enter(BehaviorContext c)
-    {
-        c.Pet.Anim.Play("sleep");
-        _remaining = 15 + c.Rng.NextDouble() * 25;
-        _snoreIn = 4;
-    }
+    public override void Enter(BehaviorContext c) => c.Pet.Anim.Play("idle");
 
     public override void Tick(BehaviorContext c, double dt)
     {
-        _snoreIn -= dt;
-        if (_snoreIn <= 0)
-        {
-            c.Sound.Play("snore", 0.18);
-            _snoreIn = 7 + c.Rng.NextDouble() * 4;
-        }
+        var pet = c.Pet;
+        _t += dt;
+        pet.Vel *= Math.Exp(-2.5 * dt);
+        pet.Pos += pet.Vel * dt;
+        pet.VisualBob = Math.Sin(_t * 1.3) * 2.5;
 
-        if (_away)
+        // Back the moment you touch anything.
+        if (c.World.IdleSeconds < 1.5)
         {
-            if (c.World.IdleSeconds < 1.5)
-            {
-                Next = new WakeStretchBehavior();
-                Done = true;
-            }
-            return;
+            Next = new WakeStretchBehavior();
+            Done = true;
         }
-
-        _remaining -= dt;
-        // Wake if the cursor actively pokes around nearby (a parked cursor doesn't count).
-        if ((c.World.Cursor - c.Pet.Pos).Length < 110 && c.World.CursorVelocity.Length > 60)
-            _remaining = Math.Min(_remaining, 0.3);
-        if (_remaining <= 0) Done = true;
     }
 }
 

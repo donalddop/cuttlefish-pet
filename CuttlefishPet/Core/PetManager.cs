@@ -28,6 +28,7 @@ public sealed class PetManager
     private readonly List<Pet> _leaving = new();
     private readonly List<Point> _hatching = new();
     private double _clock, _lastDownAt = double.NegativeInfinity, _rivalCooldown;
+    private double _preySpawnIn = 12, _courtCooldown = 30;
     private Pet? _lastDownPet;
     private int _tick;
 
@@ -55,8 +56,9 @@ public sealed class PetManager
             Pos = at ?? new Point(wa.Left + 120 + _rng.NextDouble() * (wa.Width - 240),
                                   wa.Top + 120 + _rng.NextDouble() * (wa.Height - 300)),
         };
-        pet.Palette = pet.FromPalette = Palettes.PickRandom(_rng);
-        pet.PaletteChangeIn = 4 + _rng.NextDouble() * 20;
+        pet.HomePalette = Palettes.PickRandom(_rng);
+        pet.Palette = pet.FromPalette = Palettes.Glass;   // arrives near-invisible
+        pet.PaletteChangeIn = 20 + _rng.NextDouble() * 40;
         pet.SkinPattern = _rng.Next(5);
         pet.SkinStrength = 0.45 + _rng.NextDouble() * 0.30;
         pet.SheenStrength = 0.10 + _rng.NextDouble() * 0.14;
@@ -109,7 +111,10 @@ public sealed class PetManager
             ReactToNewWindows(pet);
             pet.Machine.Tick(dt);
             PhysicsEngine.Tick(pet, _world, dt);
+            // Environmental, so it applies even while a behaviour is steering.
+            if (pet.Surface == null) PhysicsEngine.ApplyScrollCurrent(pet, _world, dt);
             pet.Anim.Tick(dt);
+            UpdateExploration(pet, dt);
             UpdateColour(pet, dt);
             UpdateEyes(pet, dt);
             MaybeBubble(pet, dt);
@@ -119,6 +124,7 @@ public sealed class PetManager
         }
 
         ApplyArrivalsAndDepartures();
+        TickPrey(dt);
         TickTreats(dt);
         TickProps(dt);
         CheckSocial(dt);
@@ -165,38 +171,61 @@ public sealed class PetManager
         }
     }
 
-    /// <summary>Chromatophores never sit still: colours drift, and moods override.</summary>
+    /// <summary>
+    /// Colour is a signal, not a coat of paint. At rest a cuttlefish is nearly
+    /// transparent with speckles drifting over it; a display floods it with its own
+    /// colour and makes it solid. This runs off the current behaviour every tick, so
+    /// the skin can never get stuck in the wrong state.
+    /// </summary>
+    private void UpdateExploration(Pet pet, double dt)
+    {
+        for (int i = 0; i < pet.RegionAge.Length; i++) pet.RegionAge[i] += dt;
+        pet.RegionAge[Pet.RegionOf(pet.Pos, _world.VirtualScreen)] = 0;
+    }
+
     private void UpdateColour(Pet pet, double dt)
     {
         // Irritation cools off if you leave them alone for a minute or so.
         pet.Pestered = Math.Max(0, pet.Pestered - dt / 45);
 
-        // The sheen never stops crawling over the skin.
+        // The sheen and the speckles never stop moving.
         pet.SheenPhase = (pet.SheenPhase + dt * 0.075) % 1.0;
+        pet.SkinPhase = (pet.SkinPhase + dt * 0.035) % 1.0;
+
+        (string? display, double vivid) = pet.Machine.Current.Name switch
+        {
+            "startle" or "flee" or "dizzy" => ("pearl", 1.0),   // blanching with fright
+            "rival" or "angry" => ("ink", 1.0),
+            "happy" or "eat" => ("magenta", 1.0),
+            "hunt" or "stalk" => ("crimson", 0.95),
+            "court" => (null, 1.0),                             // its own colour, full blast
+            "race" or "school" or "jet" => (null, 0.8),
+            "colourShow" => (null, 1.0),                        // drives itself
+            "camouflage" => ("glass", 0.0),
+            _ => ("glass", 0.0),                                // resting: barely there
+        };
+
+        int want = display == null ? pet.HomePalette : Palettes.IndexOf(display);
+        if (pet.Machine.Current.Name != "colourShow") pet.ShiftTo(want, 3);
+
+        // Ease toward the target look rather than snapping between states.
+        pet.Vividness += (vivid - pet.Vividness) * Math.Min(1, dt * 2.2);
+        pet.BodyOpacity = 0.52 + 0.48 * pet.Vividness;
+        pet.SheenStrength = 0.10 + 0.14 * (1 - pet.Vividness);   // glassier = more shimmer
+
+        // Every so often it settles on a different personal colour and pattern.
+        pet.HomeChangeIn -= dt;
+        if (pet.HomeChangeIn <= 0)
+        {
+            pet.HomeChangeIn = 25 + _rng.NextDouble() * 50;
+            pet.HomePalette = Palettes.PickRandom(_rng);
+            if (_rng.NextDouble() < 0.5) pet.SkinPattern = _rng.Next(5);
+        }
 
         if (pet.PaletteBlend < 1)
-            pet.PaletteBlend = Math.Min(1, pet.PaletteBlend + dt / 1.8);
+            pet.PaletteBlend = Math.Min(1, pet.PaletteBlend + dt / 1.4);
         else
             pet.FromPalette = pet.Palette;
-
-        pet.PaletteChangeIn -= dt;
-        if (pet.PaletteChangeIn > 0) return;
-
-        // A colour change usually comes with a change of pattern too.
-        if (_rng.NextDouble() < 0.5) pet.SkinPattern = _rng.Next(5);
-
-        // Mood first, otherwise wander to a neighbouring colour.
-        string? mood = pet.Machine.Current.Name switch
-        {
-            "startle" or "flee" => "pearl",       // cuttlefish blanch when spooked
-            "rival" or "angry" => "ink",
-            "happy" or "eat" => "magenta",
-            "hunt" => "crimson",
-            "sleep" => "sand",
-            _ => null,
-        };
-        pet.ShiftTo(mood != null ? Palettes.IndexOf(mood) : Palettes.PickRandom(_rng),
-                    12 + _rng.NextDouble() * 30);
     }
 
     private void UpdateEyes(Pet pet, double dt)
@@ -230,7 +259,7 @@ public sealed class PetManager
 
     private void MaybeBubble(Pet pet, double dt)
     {
-        if (pet.Machine.Current.Name is not ("idle" or "sit" or "sleep")) return;
+        if (pet.Machine.Current.Name is not ("idle" or "sit" or "lurk" or "hover")) return;
         if (_rng.NextDouble() > dt * 0.22) return;
         _renderer.SpawnBubble(pet.Pos + new Vector(
             (pet.FacingRight ? 12 : -12) + _rng.Next(-6, 7), -44));
@@ -257,6 +286,7 @@ public sealed class PetManager
     private void CheckSocial(double dt)
     {
         _rivalCooldown -= dt;
+        _courtCooldown -= dt;
         if (_pets.Count < 2 || _rivalCooldown > 0) return;
 
         for (int i = 0; i < _pets.Count; i++)
@@ -277,7 +307,16 @@ public sealed class PetManager
                     a.Machine.Force(new RivalDisplayBehavior(b, aRetreats));
                     b.Machine.Force(new RivalDisplayBehavior(a, !aRetreats));
                 }
-                else if (a.Surface == null && b.Surface == null && roll < 0.5)
+                else if (a.Surface == null && b.Surface == null && roll < 0.3 &&
+                         _courtCooldown <= 0)
+                {
+                    // One puts on a display; the other decides how it lands.
+                    bool welcome = _rng.NextDouble() < 0.55;
+                    a.Machine.Force(new CourtshipBehavior(b, suitor: true, welcome));
+                    b.Machine.Force(new CourtshipBehavior(a, suitor: false, welcome));
+                    _courtCooldown = 90;
+                }
+                else if (a.Surface == null && b.Surface == null && roll < 0.6)
                 {
                     // Fall in beside each other and cruise as a pair.
                     b.Machine.Force(new FollowBehavior(a, new Vector(62, 34)));
@@ -315,6 +354,42 @@ public sealed class PetManager
         foreach (var p in _hatching)
             if (_pets.Count < 24) Spawn(p);   // sanity cap: eggs must not run away with it
         _hatching.Clear();
+    }
+
+    /// <summary>
+    /// Keep a fish or two swimming through the tank. They come and go on their own,
+    /// which gives the pets something real to hunt.
+    /// </summary>
+    private void TickPrey(double dt)
+    {
+        _preySpawnIn -= dt;
+        if (_preySpawnIn <= 0 && _world.Prey.Count < 2 && _pets.Count > 0)
+        {
+            _preySpawnIn = 45 + _rng.NextDouble() * 90;
+            var t = _world.VirtualScreen;
+            bool fromLeft = _rng.NextDouble() < 0.5;
+            var fish = new Prey
+            {
+                Pos = new Point(fromLeft ? t.Left + 60 : t.Right - 60,
+                                t.Top + 150 + _rng.NextDouble() * (t.Height - 400)),
+                Vel = new Vector(fromLeft ? 90 : -90, 0),
+                Visual = _renderer.CreateProp("fish"),
+            };
+            _world.Prey.Add(fish);
+        }
+
+        for (int i = _world.Prey.Count - 1; i >= 0; i--)
+        {
+            var f = _world.Prey[i];
+            if (f.Expired)
+            {
+                _renderer.RemoveProp(f.Visual);
+                _world.Prey.RemoveAt(i);
+                continue;
+            }
+            f.Tick(dt, _world, _rng);
+            _renderer.UpdateProp(f.Visual, "fish", f.Pos, f.Age, f.FacingRight);
+        }
     }
 
     private void TickProps(double dt)
@@ -404,7 +479,8 @@ public sealed class PetManager
         {
             var lines = _pets.Select((p, i) =>
                 $"{DateTime.Now:HH:mm:ss} pet{i} pos=({p.Pos.X:F0},{p.Pos.Y:F0}) vel=({p.Vel.X:F0},{p.Vel.Y:F0}) " +
-                $"behavior={p.Machine.Current.Name} anim={p.Anim.Current.Name} surface={p.Surface?.Kind.ToString() ?? "none"}");
+                $"behavior={p.Machine.Current.Name} anim={p.Anim.Current.Name} surface={p.Surface?.Kind.ToString() ?? "none"} " +
+                $"colour={Palettes.All[p.Palette].Name} vivid={p.Vividness:F2}");
             System.IO.File.AppendAllLines(
                 System.IO.Path.Combine(System.IO.Path.GetTempPath(), "cuttlefishpet-debug.log"), lines);
         }

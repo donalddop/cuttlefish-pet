@@ -239,7 +239,7 @@ public sealed class CaretChaseBehavior : BehaviorBase
         var to = spot - pet.Pos;
         if (to.Length > 25)
         {
-            var desired = to / to.Length * Math.Min(240, to.Length * 3);
+            var desired = to / to.Length * Math.Min(175, to.Length * 2.4);
             pet.Vel += (desired - pet.Vel) * Math.Min(1, 5 * dt);
             pet.Pos += pet.Vel * dt;
             pet.FacingRight = pet.Vel.X > 0;

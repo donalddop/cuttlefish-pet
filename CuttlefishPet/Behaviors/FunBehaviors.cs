@@ -50,7 +50,7 @@ public sealed class HuntCursorBehavior : BehaviorBase
 
             if (to.Length > 65)
             {
-                var creep = to / to.Length * 52;          // slow, deliberate approach
+                var creep = to / to.Length * 38;          // slow, deliberate approach
                 pet.Vel += (creep - pet.Vel) * Math.Min(1, 2.5 * dt);
                 pet.Pos += pet.Vel * dt;
                 PhysicsEngine.ClampToTank(pet, c.World);
@@ -104,7 +104,7 @@ public sealed class HuntTreatBehavior : BehaviorBase
             return;
         }
 
-        var desired = to / to.Length * Math.Min(210, to.Length * 3);  // eager dash
+        var desired = to / to.Length * Math.Min(155, to.Length * 2.4);  // eager dash
         pet.Vel += (desired - pet.Vel) * Math.Min(1, 4 * dt);
         pet.Pos += pet.Vel * dt;
         PhysicsEngine.ClampToTank(pet, c.World);
@@ -314,7 +314,7 @@ public sealed class PeekBehavior : BehaviorBase
             else
             {
                 pet.FacingRight = dx > 0;
-                pet.Pos.X += Math.Sign(dx) * 80 * dt;
+                pet.Pos.X += Math.Sign(dx) * 58 * dt;
             }
             return;
         }

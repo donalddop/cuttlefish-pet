@@ -39,19 +39,22 @@ public static class PhysicsEngine
         pet.Vel = new Vector(pet.Vel.X * Math.Exp(-WaterDrag * dt),
                              pet.Vel.Y * Math.Exp(-WaterDrag * dt) + Sink * dt);
         pet.Pos += pet.Vel * dt;
-        ApplyScrollCurrent(pet, world, dt);
         ClampToTank(pet, world);
     }
 
     /// <summary>
-    /// Scrolling stirs the tank: unanchored pets get carried along with the wheel.
+    /// Scrolling stirs the tank and drags the swimmers along with it. Applied by the
+    /// manager after the behaviour has had its say, because nearly every swimming
+    /// behaviour steers the pet itself and would otherwise ignore the current.
     /// </summary>
     public static void ApplyScrollCurrent(Pet pet, WorldState world, double dt)
     {
         double c = world.ScrollCurrent;
-        if (Math.Abs(c) < 0.4) return;
-        pet.Pos = new Point(pet.Pos.X + Math.Sin(pet.Pos.Y * 0.01) * c * 26 * dt,
-                            pet.Pos.Y - c * 90 * dt);
+        if (Math.Abs(c) < 0.12) return;
+        pet.Pos = new Point(pet.Pos.X + Math.Sin(pet.Pos.Y * 0.008) * c * 70 * dt,
+                            pet.Pos.Y - c * 230 * dt);
+        pet.Rotation = Math.Clamp(pet.Rotation - c * 9 * dt * 60, -20, 20);
+        ClampToTank(pet, world);
     }
 
     /// <summary>

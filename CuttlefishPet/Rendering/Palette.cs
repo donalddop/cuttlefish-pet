@@ -24,7 +24,7 @@ public static class Palettes
     /// </summary>
     public static readonly Palette[] All =
     {
-        new("sand",     0,   1.00, 1.00, 0.6),   // resting camouflage tan
+        new("sand",     0,   1.00, 1.00, 0.6),   // index 0 must stay the untouched art
         new("pearl",    322, 0.42, 1.04, 1.6),   // iridescent white-pink
         new("opal",     250, 0.50, 1.00, 1.5),   // pale blue-violet
         new("violet",   236, 0.85, 0.98, 1.6),   // purple display
@@ -37,7 +37,14 @@ public static class Palettes
         new("ink",      212, 0.75, 0.42, 0.7),   // deep blue-black threat display
         new("coral",    -20, 1.30, 1.00, 0.4),   // hot orange-red alarm
         new("crimson",  -38, 1.15, 0.78, 0.4),   // deep blood red
+        // The everyday state: colour drained to near-glass so a resting cuttlefish
+        // barely registers. Weight 0 — never picked as a personal colour, it is the
+        // skin they fall back to whenever nothing interesting is happening.
+        new("glass",    200, 0.14, 1.08, 0),
     };
+
+    /// <summary>The translucent resting skin.</summary>
+    public static readonly int Glass = All.Length - 1;
 
     public static int IndexOf(string name)
     {

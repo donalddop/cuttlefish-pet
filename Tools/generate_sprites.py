@@ -97,7 +97,7 @@ def draw_cuttlefish(
     baked_eye=None, tilt=0.0, fin_amp=7.0, puff=False, wide_eye=False,
     cloud=None, zebra=False, flush=False, tentacles=0.0,
     grip=0, canopy=False, scuff=False,
-    sink=0.0, balloon=False, shock=False, ghost=False,
+    sink=0.0, balloon=False, shock=False, ghost=False, display_arms=0.0,
 ):
     """One 256x256 frame, facing right. Returns (image, eye).
 
@@ -216,9 +216,23 @@ def draw_cuttlefish(
             d.line([(x, cy + oy - 14), (x - 10, cy + oy + 14)],
                    fill=(255, 255, 255, 150), width=4)
 
+    # Courtship display: the arms held up and spread in a showy fan.
+    if display_arms > 0:
+        base_x = cx + w / 2 - 10
+        for i in range(8):
+            t = i / 7
+            angle = -1.45 + t * 1.15                       # sweeping up and forward
+            reach = (58 + t * 26) * display_arms
+            fy = cy - h * 0.2 + t * h * 0.35
+            tip = (base_x + math.cos(angle) * reach * 0.6 + 26,
+                   fy + math.sin(angle) * reach)
+            curl = math.sin(arm_sway + i * 0.7) * 9
+            tapered(d, (base_x, fy), (base_x + 30, fy + math.sin(angle) * reach * 0.45 + curl),
+                    tip, 8, 2.5, ARM if i % 2 else ARM_DARK)
+
     # arm crown
     base_x = cx + w / 2 - 8
-    if not arms_tucked and not grip:
+    if not arms_tucked and not grip and display_arms == 0:
         for i in range(6):
             fy = cy - h * 0.18 + i * (h * 0.42 / 5)
             sway = math.sin(arm_sway + i * 0.9) * 7
@@ -505,6 +519,16 @@ def a_shock(n=2):
             for i in range(n)]
 
 
+def a_court(n=6):
+    """Courtship: arms thrown up in a fan while colour ripples along the mantle."""
+    # No passing-cloud here: the app flashes the palette during courtship, and bands
+    # on top of that just read as a smudge.
+    return [draw_cuttlefish(fin_phase=i / n * 9.4, arm_sway=i / n * 4.7,
+                            display_arms=0.65 + 0.35 * math.sin(i / n * 3.14),
+                            squash=-0.06, stretch_x=1.04, fin_amp=14, wide_eye=True)
+            for i in range(n)]
+
+
 def a_parachute(n=4):
     """Fin spread into a canopy for a slow descent."""
     return [draw_cuttlefish(fin_phase=i / n * 6.28, arms_dangle=True,
@@ -603,6 +627,34 @@ def prop_blot(n=3):
     return out, small
 
 
+def prop_fish(n=4):
+    """A little silvery fish to hunt: swims facing right, tail flicking."""
+    big, small = 128, 32
+    body_c, fin_c = (188, 214, 232, 255), (150, 184, 210, 255)
+    out = []
+    for i in range(n):
+        img = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+        d = ImageDraw.Draw(img)
+        flick = math.sin(i / n * 6.28) * 12
+        cx, cy = 68, 64
+        # tail
+        d.polygon([(cx - 30, cy), (cx - 56, cy - 18 + flick), (cx - 56, cy + 18 + flick)],
+                  fill=fin_c, outline=(96, 128, 156, 255))
+        # body
+        d.ellipse([cx - 34, cy - 20, cx + 34, cy + 20], fill=body_c,
+                  outline=(96, 128, 156, 255), width=3)
+        d.ellipse([cx - 20, cy - 2, cx + 30, cy + 18], fill=(224, 238, 248, 255))
+        # dorsal fin
+        d.polygon([(cx - 8, cy - 19), (cx + 6, cy - 34 + flick * 0.3), (cx + 16, cy - 17)],
+                  fill=fin_c, outline=(96, 128, 156, 255))
+        # eye
+        d.ellipse([cx + 16, cy - 10, cx + 26, cy], fill=(255, 255, 255, 255),
+                  outline=(96, 128, 156, 255), width=2)
+        d.ellipse([cx + 20, cy - 7, cx + 25, cy - 2], fill=(30, 30, 36, 255))
+        out.append(img.resize((small, small), Image.LANCZOS))
+    return out, small
+
+
 def prop_bubble(n=4):
     big, small = 64, 16
     out = []
@@ -620,35 +672,38 @@ def prop_bubble(n=4):
 
 
 # name -> (builder, fps, loop)
+# Frame rates are deliberately unhurried: at a couple of frames a second you can
+# actually read each pose instead of watching a blur.
 ACTIONS = {
-    "idle":       (a_idle,        6, True),
-    "swim":       (a_swim,       10, True),
-    "fall":       (a_fall,       10, True),
-    "drag":       (a_drag,        8, True),
-    "climb":      (a_climb,       8, True),
-    "sit":        (a_sit,         3, True),
-    "sleep":      (a_sleep,       2, True),
-    "flatten":    (a_flatten,     7, False),
-    "mimic_icon": (a_mimic_icon,  1, True),
-    "ink":        (a_ink,        12, False),
-    "jump":       (a_jump,       10, True),
-    "wiggle":     (a_wiggle,     10, True),
-    "startle":    (a_startle,     8, True),
-    "hunt":       (a_hunt,        7, True),
-    "strike":     (a_strike,     11, False),
-    "zebra":      (a_zebra,      10, True),
-    "happy":      (a_happy,      11, True),
-    "eat":        (a_eat,         8, True),
-    "stretch":    (a_stretch,     5, False),
-    "peek":       (a_peek,        4, True),
-    "ceiling":    (a_ceiling,     7, True),
-    "hang":       (a_hang,        4, True),
-    "slide":      (a_slide,       8, True),
-    "parachute":  (a_parachute,   5, True),
-    "burrow":     (a_burrow,      6, False),
-    "ghost":      (a_ghost,       5, True),
-    "balloon":    (a_balloon,     4, True),
-    "shock":      (a_shock,      14, True),
+    "idle":       (a_idle,        3.5, True),
+    "swim":       (a_swim,        6,   True),
+    "fall":       (a_fall,        5,   True),
+    "drag":       (a_drag,        4,   True),
+    "climb":      (a_climb,       4.5, True),
+    "sit":        (a_sit,         2,   True),
+    "flatten":    (a_flatten,     4,   False),
+    # No sleep action: dozing off is dull to watch, so they never do it.
+    "mimic_icon": (a_mimic_icon,  1,   True),
+    "ink":        (a_ink,         8,   False),
+    "jump":       (a_jump,        6,   True),
+    "wiggle":     (a_wiggle,      7,   True),
+    "startle":    (a_startle,     5,   True),
+    "hunt":       (a_hunt,        4,   True),
+    "strike":     (a_strike,      7,   False),
+    "zebra":      (a_zebra,       6,   True),
+    "happy":      (a_happy,       7,   True),
+    "eat":        (a_eat,         5,   True),
+    "stretch":    (a_stretch,     3,   False),
+    "peek":       (a_peek,        2.5, True),
+    "ceiling":    (a_ceiling,     4,   True),
+    "hang":       (a_hang,        2.5, True),
+    "slide":      (a_slide,       5,   True),
+    "parachute":  (a_parachute,   3,   True),
+    "burrow":     (a_burrow,      4,   False),
+    "ghost":      (a_ghost,       3,   True),
+    "balloon":    (a_balloon,     2.5, True),
+    "shock":      (a_shock,      10,   True),
+    "court":      (a_court,       4,   True),
 }
 
 # Contact point per action; default is the foot. Ceiling/ledge poses hang from
@@ -700,15 +755,20 @@ def main():
 
     for name, (frames, size), fps, loop in (
         ("eye", prop_eye(), 1, False),
-        ("shrimp", prop_shrimp(), 6, True),
-        ("bubble", prop_bubble(), 8, False),
+        ("shrimp", prop_shrimp(), 4, True),
+        ("fish", prop_fish(), 6, True),
+        ("bubble", prop_bubble(), 6, False),
         ("egg", prop_egg(), 3, True),
         ("blot", prop_blot(), 2, True),
     ):
         sheets.append((name, save_strip(name, frames, size)))
+        # Things that rest on a ledge hang from their base; free swimmers and
+        # effects are positioned by their middle.
+        anchor = ([size / 2, size - 2] if name in ("shrimp", "egg", "blot")
+                  else [size / 2, size / 2])
         meta[name] = {
             "file": f"{name}.png", "frameW": size, "frameH": size, "frames": len(frames),
-            "fps": fps, "loop": loop, "anchor": [size / 2, size - 2],
+            "fps": fps, "loop": loop, "anchor": anchor,
         }
 
     with open(os.path.join(OUT, "animations.json"), "w") as f:

@@ -13,8 +13,8 @@ public sealed class BehaviorMachine
         ["swimFree"] = 40, ["hover"] = 14, ["dart"] = 9, ["chase"] = 8,
         ["hunt"] = 12, ["settle"] = 22,
         // perched on something
-        ["patrol"] = 20, ["idle"] = 14, ["sit"] = 12, ["sleep"] = 6,
-        ["camouflage"] = 11, ["peek"] = 8, ["hang"] = 8, ["swing"] = 6,
+        ["patrol"] = 20, ["idle"] = 14, ["sit"] = 12,
+        ["camouflage"] = 26, ["peek"] = 8, ["hang"] = 8, ["swing"] = 6,
         ["climb"] = 8, ["climbDown"] = 5, ["slide"] = 5, ["leave"] = 26,
         // rare set pieces — kept low so they stay surprises
         ["burrow"] = 5, ["eggs"] = 2, ["blot"] = 4, ["nibble"] = 6,
@@ -116,10 +116,12 @@ public sealed class BehaviorMachine
 
         if (!Current.Interruptible) return;
 
-        // User actually walked away (not just reading) → settle down until they're back.
-        if (world.IdleSeconds > 240 && Current is not SleepBehavior && !OnCeiling)
+        // Nobody watching → melt into the background rather than nod off.
+        if (world.IdleSeconds > 240 && Current is not (LurkBehavior or CamouflageBehavior))
         {
-            Force(new SleepBehavior(away: true));
+            Force(_ctx.Rng.NextDouble() < 0.6 && pet.Surface != null
+                ? new CamouflageBehavior()
+                : new LurkBehavior());
             return;
         }
 
@@ -154,6 +156,18 @@ public sealed class BehaviorMachine
         // A shrimp in the tank trumps everything else, wherever the pet is.
         if (_ctx.World.NearestTreat(pet) is { } treat)
             return new HuntTreatBehavior(treat);
+
+        // A live fish is worth stalking, though not every time — sometimes they
+        // just watch it go by.
+        if (_ctx.World.NearestPrey(pet) is { } prey && _ctx.Rng.NextDouble() < 0.7)
+            return new StalkPreyBehavior(prey);
+
+        // Nesting after a successful courtship.
+        if (pet.WantsToNest && pet.Surface is { IsLandable: true })
+        {
+            pet.WantsToNest = false;
+            return new LayEggsBehavior();
+        }
 
         if (pet.Surface == null)
         {
@@ -207,7 +221,6 @@ public sealed class BehaviorMachine
             Add("patrol", () => new SwimBehavior());
             Add("idle", () => new IdleBehavior());
             Add("sit", () => new SitBehavior());
-            Add("sleep", () => new SleepBehavior());
             Add("camouflage", () => new CamouflageBehavior());
             Add("leave", () => new LeavePerchBehavior());
             if (PeekBehavior.Possible(_ctx)) Add("peek", () => new PeekBehavior());

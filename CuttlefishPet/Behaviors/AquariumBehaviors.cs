@@ -12,8 +12,8 @@ public sealed class SwimFreeBehavior : BehaviorBase
     public override string Name => "swimFree";
     public override bool OverridesPhysics => true;
 
-    private const double Cruise = 115;
-    private const double Turn = 2.6;   // how briskly it steers onto a new heading
+    private const double Cruise = 78;
+    private const double Turn = 1.7;   // how lazily it swings onto a new heading
     private Point _target;
     private double _t, _weave;
 
@@ -25,19 +25,28 @@ public sealed class SwimFreeBehavior : BehaviorBase
         _weave = c.Rng.NextDouble() * 6.28;
     }
 
+    /// <summary>
+    /// Head for the corner of the tank this pet has neglected longest, with enough
+    /// randomness that two cuttlefish don't tour in lockstep.
+    /// </summary>
     private static Point PickTarget(BehaviorContext c)
     {
         var t = c.World.VirtualScreen;
         var pet = c.Pet;
-        // Somewhere else in the tank, but not so far it looks like a teleport run.
-        for (int tries = 0; tries < 6; tries++)
+
+        int best = -1;
+        double bestScore = double.MinValue;
+        for (int i = 0; i < 9; i++)
         {
-            var p = new Point(
-                t.Left + 70 + c.Rng.NextDouble() * (t.Width - 140),
-                t.Top + 70 + c.Rng.NextDouble() * (t.Height - 160));
-            if ((p - pet.Pos).Length > 180) return p;
+            double score = pet.RegionAge[i] * (0.6 + c.Rng.NextDouble() * 0.8);
+            if (score > bestScore) { bestScore = score; best = i; }
         }
-        return new Point(t.Left + t.Width / 2, t.Top + t.Height / 2);
+
+        double cellW = t.Width / 3, cellH = t.Height / 3;
+        double x0 = t.Left + best % 3 * cellW, y0 = t.Top + best / 3 * cellH;
+        // Inset so the target is reachable without fighting the tank walls.
+        return new Point(x0 + 70 + c.Rng.NextDouble() * Math.Max(1, cellW - 140),
+                         y0 + 80 + c.Rng.NextDouble() * Math.Max(1, cellH - 150));
     }
 
     public override void Tick(BehaviorContext c, double dt)
@@ -124,7 +133,7 @@ public sealed class DartBehavior : BehaviorBase
         pet.Surface = null;
         double dir = pet.FacingRight ? 1 : -1;
         if (c.Rng.NextDouble() < 0.3) dir = -dir;
-        pet.Vel = new Vector(dir * 900, (c.Rng.NextDouble() - 0.6) * 260);
+        pet.Vel = new Vector(dir * 680, (c.Rng.NextDouble() - 0.6) * 200);
         pet.FacingRight = dir > 0;
         c.Sound.Play("blip", 0.25);
     }
@@ -222,7 +231,7 @@ public sealed class SettleBehavior : BehaviorBase
             return;
         }
 
-        var desired = to / to.Length * Math.Min(150, to.Length * 2.5);
+        var desired = to / to.Length * Math.Min(112, to.Length * 2.0);
         pet.Vel += (desired - pet.Vel) * Math.Min(1, 3.5 * dt);
         pet.Pos += pet.Vel * dt;
         if (Math.Abs(pet.Vel.X) > 12) pet.FacingRight = pet.Vel.X > 0;

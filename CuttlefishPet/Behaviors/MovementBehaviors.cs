@@ -18,7 +18,7 @@ public sealed class ClimbBehavior : BehaviorBase
     private Phase _phase = Phase.Approach;
     private Surface _edge;
     private readonly bool _down, _slide;
-    private const double ApproachSpeed = 85;
+    private const double ApproachSpeed = 62;
     private double _speed;
 
     public ClimbBehavior(Surface edge, bool down = false, bool slide = false)
@@ -26,7 +26,7 @@ public sealed class ClimbBehavior : BehaviorBase
         _edge = edge;
         _down = down;
         _slide = slide;
-        _speed = slide ? 300 : 55;
+        _speed = slide ? 205 : 38;
     }
 
     /// <summary>Nearest wall worth climbing from where the pet is standing.</summary>
@@ -181,7 +181,7 @@ public sealed class ChaseCursorBehavior : BehaviorBase
 {
     public override string Name => "chase";
     public override bool OverridesPhysics => true;
-    private const double Speed = 150;
+    private const double Speed = 112;
     private double _watchTime, _elapsed;
 
     public override void Enter(BehaviorContext c)

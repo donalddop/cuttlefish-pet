@@ -23,7 +23,7 @@ public sealed class SleepPileBehavior : BehaviorBase
         {
             if (ReferenceEquals(other, c.Pet)) continue;
             if (other.Surface is not { IsLandable: true }) continue;
-            if (other.Machine.Current.Name is not ("sleep" or "sit" or "pile")) continue;
+            if (other.Machine.Current.Name is not ("sit" or "idle" or "pile" or "camouflage")) continue;
             if ((other.Pos - c.Pet.Pos).Length > 700) continue;
             return new SleepPileBehavior(other);
         }
@@ -60,7 +60,7 @@ public sealed class SleepPileBehavior : BehaviorBase
             pet.Pos = _spot;
             pet.Vel = new Vector(0, 0);
             pet.Surface = surface;
-            pet.Anim.Play("sleep");
+            pet.Anim.Play("sit");
             pet.FacingRight = _neighbour.Pos.X > pet.Pos.X;
             _settled = true;
             _t = 0;
@@ -145,7 +145,7 @@ public sealed class RaceBehavior : BehaviorBase
         _t += dt;
 
         // Slight speed jitter so the race is not a dead heat every time.
-        double speed = 430 + Math.Sin(_t * 3 + _lane) * 60;
+        double speed = 330 + Math.Sin(_t * 3 + _lane) * 50;
         pet.Vel = new Vector(_dir * speed, (_lane - pet.Pos.Y) * 1.6);
         pet.Pos += pet.Vel * dt;
         PhysicsEngine.ClampToTank(pet, c.World);
