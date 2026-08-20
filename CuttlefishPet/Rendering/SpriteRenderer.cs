@@ -15,6 +15,10 @@ public sealed class PetVisual
     public required System.Windows.Shapes.Rectangle Skin { get; init; }
     public required ImageBrush SkinFill { get; init; }
     public required ImageBrush SkinMask { get; init; }
+    /// <summary>Flat wash in the dominant colour of the surroundings.</summary>
+    public required System.Windows.Shapes.Rectangle Tint { get; init; }
+    public required SolidColorBrush TintFill { get; init; }
+    public required ImageBrush TintMask { get; init; }
     /// <summary>Iridescent sheen that drifts across the skin.</summary>
     public required System.Windows.Shapes.Rectangle Sheen { get; init; }
     public required ImageBrush SheenFill { get; init; }
@@ -80,6 +84,11 @@ public sealed class SpriteRenderer
         var skin = new System.Windows.Shapes.Rectangle
         { Fill = skinFill, OpacityMask = skinMask, IsHitTestVisible = false };
 
+        var tintFill = new SolidColorBrush(Colors.Transparent);
+        var tintMask = new ImageBrush { Stretch = Stretch.Fill };
+        var tint = new System.Windows.Shapes.Rectangle
+        { Fill = tintFill, OpacityMask = tintMask, IsHitTestVisible = false };
+
         var sheenFill = new ImageBrush
         {
             Stretch = Stretch.Fill,
@@ -104,6 +113,7 @@ public sealed class SpriteRenderer
         };
         root.Children.Add(sprite);
         root.Children.Add(shift);
+        root.Children.Add(tint);
         root.Children.Add(skin);
         root.Children.Add(sheen);
         root.Children.Add(camo);
@@ -114,6 +124,7 @@ public sealed class SpriteRenderer
         {
             Root = root, Sprite = sprite, Shift = shift,
             Skin = skin, SkinFill = skinFill, SkinMask = skinMask,
+            Tint = tint, TintFill = tintFill, TintMask = tintMask,
             Sheen = sheen, SheenFill = sheenFill, SheenMask = sheenMask,
             Camo = camo, CamoMask = camoMask, Eye = eye, Flip = flip, Swing = swing,
         };
@@ -165,14 +176,41 @@ public sealed class SpriteRenderer
         // Skin pattern and iridescence, both clipped to the body silhouette. They
         // fade out under camouflage so the disguise stays clean.
         double skinVisible = 1 - pet.CamoOpacity;
-        v.SkinFill.ImageSource = _skins.Patterns[pet.SkinPattern % _skins.Patterns.Length];
-        // The speckles crawl slowly over the body — chromatophores never hold still.
-        v.SkinFill.Viewport = new Rect(-pet.SkinPhase, -pet.SkinPhase * 0.55, 1, 1);
+        // At rest the skin is worked out from the desktop behind the pet: a few
+        // sampled colours in a coarse pattern that follows the background's grain.
+        // Once it is displaying, that gives way to its own markings.
+        bool wearingSurroundings = pet.Camo != null && pet.Vividness < 0.6;
+        if (wearingSurroundings)
+        {
+            v.SkinFill.ImageSource = pet.Camo!.Texture;
+            v.SkinFill.TileMode = TileMode.None;
+            v.SkinFill.Viewport = new Rect(0, 0, 1, 1);
+            v.Skin.Opacity = (0.55 + 0.35 * pet.Camo.Busyness) * (1 - pet.Vividness) * skinVisible;
+
+            var d = pet.Camo.Dominant;
+            v.TintFill.Color = d;
+            v.TintMask.ImageSource = frame;
+            v.Tint.Opacity = 0.45 * (1 - pet.Vividness) * skinVisible;
+        }
+        else
+        {
+            v.SkinFill.ImageSource = _skins.Patterns[pet.SkinPattern % _skins.Patterns.Length];
+            v.SkinFill.TileMode = TileMode.Tile;
+            // The speckles crawl slowly over the body — chromatophores never hold still.
+            v.SkinFill.Viewport = new Rect(-pet.SkinPhase, -pet.SkinPhase * 0.55, 1, 1);
+            v.Skin.Opacity = pet.SkinStrength * skinVisible;
+            v.Tint.Opacity = 0;
+        }
         v.SkinMask.ImageSource = frame;
-        v.Skin.Opacity = pet.SkinStrength * skinVisible;
         v.SheenMask.ImageSource = frame;
         v.Sheen.Opacity = pet.SheenStrength * skinVisible;
         v.SheenFill.Viewport = new Rect(-pet.SheenPhase, 0, 1, 1);
+
+        // Opacity-masked layers are costly even at zero opacity, so anything that
+        // is not contributing gets collapsed outright.
+        Show(v.Skin);
+        Show(v.Tint);
+        Show(v.Sheen);
 
         // Camouflage layer: background capture masked by the current frame's alpha.
         v.Camo.Opacity = pet.CamoOpacity;
@@ -182,6 +220,7 @@ public sealed class SpriteRenderer
             v.CamoMask.ImageSource = frame;
             v.Camo.Margin = new Thickness(0, pet.CamoRipple * k, 0, -pet.CamoRipple * k);
         }
+        Show(v.Camo);
 
         // Pupil overlay: tracks the cursor, blinks, hides while camouflaged.
         if (anim.EyeCenter is Point ec && pet.CamoOpacity < 0.95)
@@ -194,7 +233,11 @@ public sealed class SpriteRenderer
             v.Eye.Source = eyeAnim.Palettes[pet.Palette][pet.Blinking ? 1 : 0];
             v.Eye.Width = size;
             v.Eye.Height = size;
-            v.Eye.Opacity = 1 - pet.CamoOpacity;
+            // A cuttlefish can hide everything except its eye, so cancel out the
+            // body's translucency here — the eye stays the one thing that gives
+            // a hidden pet away.
+            v.Eye.Opacity = (1 - pet.CamoOpacity) *
+                            Math.Min(1, 1 / Math.Max(0.25, pet.BodyOpacity * pet.Fade));
             v.Eye.Visibility = Visibility.Visible;
             v.Eye.Margin = new Thickness(
                 ec.X * scale - size / 2 + pet.PupilOffset.X * travel,
@@ -206,6 +249,9 @@ public sealed class SpriteRenderer
             v.Eye.Visibility = Visibility.Collapsed;
         }
     }
+
+    private static void Show(UIElement e) =>
+        e.Visibility = e.Opacity > 0.02 ? Visibility.Visible : Visibility.Collapsed;
 
     // ---- props (shrimp treats) ----
 

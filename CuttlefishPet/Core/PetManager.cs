@@ -29,6 +29,8 @@ public sealed class PetManager
     private readonly List<Point> _hatching = new();
     private double _clock, _lastDownAt = double.NegativeInfinity, _rivalCooldown;
     private double _preySpawnIn = 12, _courtCooldown = 30;
+    private double _sampleMs;
+    private int _sampleCount;
     private Pet? _lastDownPet;
     private int _tick;
 
@@ -115,6 +117,7 @@ public sealed class PetManager
             if (pet.Surface == null) PhysicsEngine.ApplyScrollCurrent(pet, _world, dt);
             pet.Anim.Tick(dt);
             UpdateExploration(pet, dt);
+            UpdateCamoSkin(pet, dt);
             UpdateColour(pet, dt);
             UpdateEyes(pet, dt);
             MaybeBubble(pet, dt);
@@ -177,6 +180,45 @@ public sealed class PetManager
     /// colour and makes it solid. This runs off the current behaviour every tick, so
     /// the skin can never get stuck in the wrong state.
     /// </summary>
+    /// <summary>
+    /// Every few seconds a pet reads the desktop around it and rebuilds its skin from
+    /// what it finds. Sampling a patch wider than the body means the pet's own
+    /// (translucent) pixels barely register in the result.
+    /// </summary>
+    private void UpdateCamoSkin(Pet pet, double dt)
+    {
+        pet.CamoResampleIn -= dt;
+        var moved = (pet.Pos - pet.LastSampleAt).Length;
+        if (pet.Sampling || (pet.CamoResampleIn > 0 && moved < 220)) return;
+
+        pet.CamoResampleIn = 3.5 + _rng.NextDouble() * 2.5;
+        pet.LastSampleAt = pet.Pos;
+
+        var b = pet.Bounds;
+        var patch = new Rect(b.X - b.Width * 0.45, b.Y - b.Height * 0.35,
+                             b.Width * 1.9, b.Height * 1.7);
+        patch.Intersect(_world.VirtualScreen);
+        if (patch.Width < 20 || patch.Height < 20) return;
+
+        // Off the UI thread: a screen grab takes longer than a frame is allowed to.
+        // The result is an immutable, frozen skin, so handing it back is just a
+        // reference assignment.
+        pet.Sampling = true;
+        Task.Run(() =>
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var skin = CamoSampler.Sample(patch);
+            double ms = sw.Elapsed.TotalMilliseconds;
+            _overlay.Dispatcher.BeginInvoke(() =>
+            {
+                if (skin != null) pet.Camo = skin;
+                pet.Sampling = false;
+                _sampleMs += ms;
+                _sampleCount++;
+            });
+        });
+    }
+
     private void UpdateExploration(Pet pet, double dt)
     {
         for (int i = 0; i < pet.RegionAge.Length; i++) pet.RegionAge[i] += dt;
@@ -483,6 +525,13 @@ public sealed class PetManager
                 $"colour={Palettes.All[p.Palette].Name} vivid={p.Vividness:F2}");
             System.IO.File.AppendAllLines(
                 System.IO.Path.Combine(System.IO.Path.GetTempPath(), "cuttlefishpet-debug.log"), lines);
+            if (_sampleCount > 0)
+            {
+                Log($"camo-samples={_sampleCount} gemiddeld={_sampleMs / _sampleCount:F1}ms " +
+                    $"totaal={_sampleMs:F0}ms");
+                _sampleMs = 0;
+                _sampleCount = 0;
+            }
         }
         catch { }
     }

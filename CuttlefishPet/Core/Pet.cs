@@ -55,6 +55,14 @@ public sealed class Pet
     /// <summary>Drives the speckle pattern crawling across the skin.</summary>
     public double SkinPhase;
 
+    // Camouflage worked out from the desktop behind this pet.
+    public CamoSkin? Camo;
+    public double CamoResampleIn;
+    /// <summary>Where the last sample was taken, so a move triggers a fresh look.</summary>
+    public Point LastSampleAt;
+    /// <summary>A sample is in flight on a background thread.</summary>
+    public bool Sampling;
+
     /// <summary>Start shifting to another colour; ignored if already going there.</summary>
     public void ShiftTo(int palette, double holdSeconds = 25)
     {

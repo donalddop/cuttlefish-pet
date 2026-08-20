@@ -58,7 +58,10 @@ public partial class App : Application
         if (e.Args.Length > 0) RunCommand(string.Join(' ', e.Args).ToLowerInvariant());
 
         _clock.Start();
-        _loop = new DispatcherTimer(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(16) };
+        // 30fps, not 60. The whole transparent overlay is recomposited every tick,
+        // which costs far more than the simulation does, and at these deliberately
+        // slow animation speeds nobody can tell the difference.
+        _loop = new DispatcherTimer(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(33) };
         _loop.Tick += (_, _) =>
         {
             double t = _clock.Elapsed.TotalSeconds;
