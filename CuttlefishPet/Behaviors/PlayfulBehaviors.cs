@@ -33,6 +33,8 @@ public sealed class TugOfWarBehavior : BehaviorBase
         c.Pet.FacingRight = _side < 0;
         c.Pet.ShiftTo(Palettes.IndexOf("crimson"), 8);
         c.Sound.Play("blip", 0.25);
+        // Claim it while the fight is on, so a third one cannot help itself.
+        _treat.ClaimedBy = c.Pet;
     }
 
     public override void Tick(BehaviorContext c, double dt)

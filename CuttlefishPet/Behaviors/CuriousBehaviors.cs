@@ -89,8 +89,10 @@ public sealed class BubblePlayBehavior : BehaviorBase
     private void Blow(BehaviorContext c)
     {
         var pet = c.Pet;
-        _bubble = pet.Pos + new Vector(pet.FacingRight ? 20 : -20, -48);
+        _bubble = pet.Pos + new Vector(pet.FacingRight ? 26 : -26, -52);
+        // A little cluster reads far better than one lone bubble.
         c.Renderer.SpawnBubble(_bubble);
+        c.Renderer.SpawnBubble(_bubble + new Vector(c.Rng.Next(-14, 15), 16));
         c.Sound.Play("bubble", 0.22);
         _chasing = true;
         _t = 0;
@@ -134,6 +136,73 @@ public sealed class BubblePlayBehavior : BehaviorBase
                 Done = true;
             }
             else Blow(c);
+        }
+    }
+
+    public override void Exit(BehaviorContext c) => c.Pet.PupilTarget = null;
+}
+
+/// <summary>
+/// Work up one enormous bubble and let it burst. Everyone else in earshot jumps out
+/// of their skin; the one that blew it looks rather pleased.
+/// </summary>
+public sealed class BigBubbleBehavior : BehaviorBase
+{
+    public override string Name => "bigBubble";
+    public override bool Interruptible => false;
+    public override bool OverridesPhysics => true;
+
+    private const double PopAt = 1.7;      // matches the burst frames of the prop
+    private double _t;
+    private bool _popped;
+    private Point _where;
+
+    public override void Enter(BehaviorContext c)
+    {
+        var pet = c.Pet;
+        pet.Anim.Play("hunt", restart: true);
+        pet.Surface = null;
+        _where = pet.Pos + new Vector(pet.FacingRight ? 74 : -74, -18);
+        c.AddProp(new Prop { Anim = "bigbubble", Pos = _where, Life = 2.7 });
+        c.Sound.Play("bubble", 0.3);
+    }
+
+    public override void Tick(BehaviorContext c, double dt)
+    {
+        var pet = c.Pet;
+        _t += dt;
+        pet.Vel *= Math.Exp(-3 * dt);
+        pet.Pos += pet.Vel * dt;
+        pet.PupilTarget = _where;
+
+        if (!_popped)
+        {
+            // Straining harder the bigger it gets.
+            pet.VisualBob = Math.Sin(_t * 11) * (1 + _t * 1.6);
+            if (_t < PopAt) return;
+
+            _popped = true;
+            c.Sound.Play("squirt", 0.4);
+            for (int i = 0; i < 5; i++)
+                c.Renderer.SpawnBubble(_where + new Vector(c.Rng.Next(-40, 41), c.Rng.Next(-30, 31)));
+
+            // Everyone close enough to hear it bolts.
+            foreach (var other in c.World.Pets)
+            {
+                if (ReferenceEquals(other, pet)) continue;
+                if (!other.Machine.Current.Interruptible) continue;
+                if ((other.Pos - _where).Length > 520) continue;
+                other.Machine.Force(new StartleBehavior());
+            }
+            pet.Anim.Play("happy", restart: true);
+            return;
+        }
+
+        pet.VisualBob = Math.Sin(_t * 8) * 4;
+        if (_t > PopAt + 1.6)
+        {
+            Next = new SwimFreeBehavior();
+            Done = true;
         }
     }
 

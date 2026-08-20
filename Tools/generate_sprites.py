@@ -655,6 +655,43 @@ def prop_fish(n=4):
     return out, small
 
 
+def prop_bigbubble(n=8):
+    """One big bubble swelling until it bursts — the last frames are the pop."""
+    big, small = 128, 64
+    out = []
+    for i in range(n):
+        img = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+        d = ImageDraw.Draw(img)
+        c = big / 2
+        if i < n - 3:
+            # Inflating, with a wobble that grows as the skin stretches.
+            t = i / (n - 4)
+            r = 14 + t * 44
+            wob = math.sin(i * 2.1) * (2 + t * 5)
+            d.ellipse([c - r - wob, c - r + wob, c + r + wob, c + r - wob],
+                      outline=(232, 246, 252, 235), width=5,
+                      fill=(206, 232, 246, int(45 + t * 35)))
+            d.ellipse([c - r * 0.55, c - r * 0.62, c - r * 0.16, c - r * 0.22],
+                      fill=(255, 255, 255, 210))
+        else:
+            # Burst: a shock ring plus fragments flying out, kept inside the frame
+            # so the pop actually reads.
+            k = (i - (n - 3)) / 2
+            ring = 30 + k * 30
+            alpha = int(235 * (1 - k * 0.65))
+            d.ellipse([c - ring, c - ring, c + ring, c + ring],
+                      outline=(245, 252, 255, alpha), width=int(7 - k * 4))
+            for a in range(12):
+                ang = a / 12 * 2 * math.pi + k
+                fs = 34 + k * 24
+                fr = 9 - k * 4
+                fx, fy = c + math.cos(ang) * fs, c + math.sin(ang) * fs
+                d.ellipse([fx - fr, fy - fr, fx + fr, fy + fr],
+                          fill=(228, 245, 253, alpha))
+        out.append(img.resize((small, small), Image.LANCZOS))
+    return out, small
+
+
 def prop_label(n=1):
     """A blurred two-line filename to sit under a cuttlefish posing as a shortcut."""
     big, small = 128, 32
@@ -743,6 +780,7 @@ def make_icon():
 # A clutch of eggs has to be spotted from across the screen; a prey fish should
 # look like a mouthful, not a rival.
 PROP_SCALE = {
+    "bigbubble": 2.2,
     "label": 1.9,
     "egg": 1.9,
     "blot": 1.6,
@@ -783,11 +821,12 @@ def main():
         ("egg", prop_egg(), 3, True),
         ("blot", prop_blot(), 2, True),
         ("label", prop_label(), 1, True),
+        ("bigbubble", prop_bigbubble(), 3, False),
     ):
         sheets.append((name, save_strip(name, frames, size)))
         # Things that rest on a ledge hang from their base; free swimmers and
         # effects are positioned by their middle.
-        anchor = ([size / 2, size - 2] if name in ("shrimp", "egg", "blot")
+        anchor = ([size / 2, size - 2] if name in ("egg", "blot")
                   else [size / 2, size / 2])
         meta[name] = {
             "file": f"{name}.png", "frameW": size, "frameH": size, "frames": len(frames),

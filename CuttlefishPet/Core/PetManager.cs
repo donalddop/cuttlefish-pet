@@ -28,7 +28,7 @@ public sealed class PetManager
     private readonly List<Pet> _leaving = new();
     private readonly List<(Point Pos, bool Hatchling)> _hatching = new();
     private double _clock, _lastDownAt = double.NegativeInfinity, _rivalCooldown;
-    private double _preySpawnIn = 12, _courtCooldown = 30;
+    private double _preySpawnIn = 12, _courtCooldown = 30, _shrimpSpawnIn = 25;
     private double _sampleMs, _binCheckIn;
     private int _sampleCount;
     private int _lastHourChimed = -1;
@@ -94,15 +94,16 @@ public sealed class PetManager
     }
 
     /// <summary>Drop a shrimp at the cursor for the pets to chase down.</summary>
-    public void TossTreat()
+    public void TossTreat() => AddTreat(_input.Cursor);
+
+    private void AddTreat(Point at)
     {
-        var treat = new Treat
+        _world.Treats.Add(new Treat
         {
-            Pos = _input.Cursor,
-            Vel = new Vector(_rng.Next(-120, 121), -180),
+            Pos = at,
+            Vel = new Vector(_rng.Next(-90, 91), 40),
             Visual = _renderer.CreateProp("shrimp"),
-        };
-        _world.Treats.Add(treat);
+        });
     }
 
     private BehaviorContext NewContext(Pet pet) => new()
@@ -664,11 +665,20 @@ public sealed class PetManager
 
     private void TickTreats(double dt)
     {
+        // Shrimp turn up on their own, so there is usually something to hunt without
+        // you having to throw one in.
+        _shrimpSpawnIn -= dt;
+        if (_shrimpSpawnIn <= 0 && _world.Treats.Count < 2 && _pets.Count > 0)
+        {
+            _shrimpSpawnIn = 60 + _rng.NextDouble() * 90;
+            var tank = _world.VirtualScreen;
+            AddTreat(new Point(tank.Left + 100 + _rng.NextDouble() * (tank.Width - 200),
+                               tank.Top + tank.Height * 0.5 + _rng.NextDouble() * (tank.Height * 0.4)));
+        }
+
         for (int i = _world.Treats.Count - 1; i >= 0; i--)
         {
             var t = _world.Treats[i];
-            t.Age += dt;
-
             if (t.Expired)
             {
                 _renderer.RemoveProp(t.Visual);
@@ -676,41 +686,8 @@ public sealed class PetManager
                 continue;
             }
 
-            if (t.Surface == null)
-            {
-                // Food sinks slowly through water and wafts sideways on the way down.
-                t.Vel = new Vector(t.Vel.X * Math.Exp(-1.5 * dt) + Math.Sin(t.Age * 2.2) * 14 * dt,
-                                   Math.Min(t.Vel.Y * Math.Exp(-1.2 * dt) + 190 * dt, 130));
-                double nx = t.Pos.X + t.Vel.X * dt;
-                double ny = t.Pos.Y + t.Vel.Y * dt;
-                if (t.Vel.Y > 0)
-                {
-                    var landing = PhysicsEngine.FindLanding(nx, t.Pos.Y, ny, _world);
-                    if (landing != null)
-                    {
-                        t.Surface = landing;
-                        ny = landing.Y;
-                        t.Vel = new Vector(0, 0);
-                    }
-                    else if (ny > _world.VirtualScreen.Bottom - 4)
-                    {
-                        ny = _world.VirtualScreen.Bottom - 4;
-                        t.Surface = new Surface(SurfaceKind.Floor, IntPtr.Zero,
-                            _world.VirtualScreen.Left, _world.VirtualScreen.Right, ny);
-                        t.Vel = new Vector(0, 0);
-                    }
-                }
-                t.Pos = new Point(Math.Clamp(nx, _world.VirtualScreen.Left + 10,
-                                             _world.VirtualScreen.Right - 10), ny);
-            }
-            else
-            {
-                var s = _world.Find(t.Surface, t.Pos.X);
-                if (s == null) t.Surface = null;           // window moved out from under it
-                else { t.Pos = new Point(t.Pos.X + s.X1 - t.Surface.X1, s.Y); t.Surface = s; }
-            }
-
-            _renderer.UpdateProp(t.Visual, "shrimp", t.Pos, t.Age);
+            t.Tick(dt, _world, _rng);
+            _renderer.UpdateProp(t.Visual, "shrimp", t.Pos, t.Age, t.FacingRight);
         }
     }
 

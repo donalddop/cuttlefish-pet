@@ -318,7 +318,8 @@ public sealed class SpriteRenderer
 
     public void SpawnInk(Point physPos) => Spawn("ink", physPos, Pet.RenderScale, rise: 0);
 
-    public void SpawnBubble(Point physPos) => Spawn("bubble", physPos, 1.0, rise: 55, fade: true);
+    // The bubble frame is small; drawn at source size it is a speck beside a pet.
+    public void SpawnBubble(Point physPos) => Spawn("bubble", physPos, 2.6, rise: 55, fade: true);
 
     private void Spawn(string animName, Point physPos, double scale, double rise, bool fade = false)
     {

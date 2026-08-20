@@ -11,7 +11,7 @@ public sealed class BehaviorMachine
     {
         // open water
         ["swimFree"] = 40, ["hover"] = 14, ["dart"] = 9, ["chase"] = 8,
-        ["hunt"] = 12, ["settle"] = 34,
+        ["hunt"] = 12, ["settle"] = 34, ["huntTreat"] = 34, ["stalk"] = 26,
         // perched on something
         ["patrol"] = 20, ["idle"] = 14, ["sit"] = 12,
         ["camouflage"] = 26, ["peek"] = 8, ["hang"] = 8, ["swing"] = 6,
@@ -24,7 +24,7 @@ public sealed class BehaviorMachine
         ["ride"] = 6, ["jet"] = 7,
         // social and flourishes
         ["pile"] = 10, ["colourShow"] = 6, ["icon"] = 12, ["play"] = 9,
-        ["cross"] = 7, ["read"] = 16,
+        ["cross"] = 7, ["read"] = 16, ["bigBubble"] = 9,
     };
 
     /// <summary>
@@ -154,14 +154,13 @@ public sealed class BehaviorMachine
                 candidates.Add((make(), w));
         }
 
-        // A shrimp in the tank trumps everything else, wherever the pet is.
-        if (_ctx.World.NearestTreat(pet) is { } treat)
-            return new HuntTreatBehavior(treat);
-
-        // A live fish is worth stalking, though not every time — sometimes they
-        // just watch it go by.
-        if (_ctx.World.NearestPrey(pet) is { } prey && _ctx.Rng.NextDouble() < 0.7)
-            return new StalkPreyBehavior(prey);
+        // Food competes on the same footing as everything else rather than short-
+        // circuiting the choice. As early returns these crowded out the whole rest
+        // of the list whenever anything edible was in the tank — which, now that
+        // shrimp turn up by themselves, is most of the time.
+        var treat = _ctx.World.NearestTreat(pet);
+        if (treat != null && (treat.Pos - pet.Pos).Length > 1100) treat = null;
+        var prey = _ctx.World.NearestPrey(pet);
 
         // Nesting after a successful courtship. If she is not on a ledge yet, go and
         // find one — otherwise the clutch never happens and courtship leads nowhere.
@@ -178,6 +177,8 @@ public sealed class BehaviorMachine
         if (pet.Surface == null)
         {
             // Open water.
+            if (treat != null) Add("huntTreat", () => new HuntTreatBehavior(treat));
+            if (prey != null) Add("stalk", () => new StalkPreyBehavior(prey));
             Add("swimFree", () => new SwimFreeBehavior());
             Add("hover", () => new HoverBehavior());
             Add("dart", () => new DartBehavior());
@@ -200,6 +201,7 @@ public sealed class BehaviorMachine
 
             Add("colourShow", () => new ColourShowBehavior());
             Add("play", () => new BubblePlayBehavior());
+            Add("bigBubble", () => new BigBubbleBehavior());
             Add("cross", () => new EdgeCrossBehavior(_ctx.Rng.NextDouble() < 0.5 ? -1 : 1));
             if (ReadAlongBehavior.Possible(_ctx)) Add("read", () => new ReadAlongBehavior());
             if (SleepPileBehavior.Find(_ctx) is { } pile) Add("pile", () => pile);
@@ -228,6 +230,9 @@ public sealed class BehaviorMachine
         else
         {
             // Settled on a ledge: the taskbar, a title bar, the desktop floor.
+            // Worth leaving a perch for.
+            if (treat != null) Add("huntTreat", () => new HuntTreatBehavior(treat));
+            if (prey != null) Add("stalk", () => new StalkPreyBehavior(prey));
             Add("patrol", () => new SwimBehavior());
             Add("idle", () => new IdleBehavior());
             Add("sit", () => new SitBehavior());

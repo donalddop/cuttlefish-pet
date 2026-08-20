@@ -460,7 +460,7 @@
     "loop": true,
     "anchor": [
       16.0,
-      30
+      16.0
     ],
     "scale": 1.4
   },
@@ -528,5 +528,18 @@
       16.0
     ],
     "scale": 1.9
+  },
+  "bigbubble": {
+    "file": "bigbubble.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 8,
+    "fps": 3,
+    "loop": false,
+    "anchor": [
+      32.0,
+      32.0
+    ],
+    "scale": 2.2
   }
 }
