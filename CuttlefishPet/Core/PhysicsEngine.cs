@@ -2,15 +2,18 @@ using System.Windows;
 
 namespace CuttlefishPet.Core;
 
+/// <summary>
+/// The screen is a tank, not a platformer. Nothing falls: momentum bleeds off into
+/// the water and pets hover wherever they stop. Surfaces still matter, but as places
+/// to perch on deliberately rather than as the floor everything lands on.
+/// </summary>
 public static class PhysicsEngine
 {
-    public const double Gravity = 2500;       // px/s^2
-    public const double TerminalVelocity = 1600;
+    /// <summary>Velocity decay per second in open water (a throw dies out in ~1s).</summary>
+    public const double WaterDrag = 1.9;
+    /// <summary>Slow sinking while completely idle, so a resting pet drifts down a little.</summary>
+    public const double Sink = 14;
 
-    /// <summary>
-    /// Glue pets to their surface (riding window moves for free) or apply gravity,
-    /// landing on the first horizontal surface crossed while falling.
-    /// </summary>
     public static void Tick(Pet pet, WorldState world, double dt)
     {
         if (pet.Machine.Current.OverridesPhysics) return;
@@ -20,7 +23,7 @@ public static class PhysicsEngine
             var s = world.Find(pet.Surface, pet.Pos.X);
             if (s == null)
             {
-                pet.Surface = null; // window closed/minimized under our feet
+                pet.Surface = null; // window closed under it — just start swimming
             }
             else
             {
@@ -28,54 +31,40 @@ public static class PhysicsEngine
                 pet.Pos.Y = s.Y;
                 pet.Surface = s;
                 if (pet.Pos.X < s.X1 || pet.Pos.X > s.X2)
-                    pet.Surface = null; // walked (or was slid) off the edge
+                    pet.Surface = null; // drifted off the end of the perch
             }
+            return;
         }
 
-        if (pet.Surface == null)
-        {
-            pet.Vel.Y = Math.Min(pet.Vel.Y + Gravity * dt, TerminalVelocity);
-            double newX = pet.Pos.X + pet.Vel.X * dt;
-            double newY = pet.Pos.Y + pet.Vel.Y * dt;
-
-            // Clamp inside the virtual screen horizontally; bounce softly off walls.
-            var vs = world.VirtualScreen;
-            if (newX < vs.Left + 10) { newX = vs.Left + 10; pet.Vel.X = Math.Abs(pet.Vel.X) * 0.4; }
-            if (newX > vs.Right - 10) { newX = vs.Right - 10; pet.Vel.X = -Math.Abs(pet.Vel.X) * 0.4; }
-
-            if (pet.Vel.Y > 0)
-            {
-                var landing = FindLanding(newX, pet.Pos.Y, newY, world);
-                if (landing != null)
-                {
-                    pet.Surface = landing;
-                    newY = landing.Y;
-                    pet.Vel = new Vector(0, 0);
-                }
-                else if (newY > vs.Bottom - 4)
-                {
-                    // Absolute bottom of the virtual screen: always solid.
-                    newY = vs.Bottom - 4;
-                    pet.Surface = new Surface(SurfaceKind.Floor, IntPtr.Zero, vs.Left, vs.Right, newY);
-                    pet.Vel = new Vector(0, 0);
-                }
-            }
-
-            pet.Pos.X = newX;
-            pet.Pos.Y = newY;
-        }
+        pet.Vel = new Vector(pet.Vel.X * Math.Exp(-WaterDrag * dt),
+                             pet.Vel.Y * Math.Exp(-WaterDrag * dt) + Sink * dt);
+        pet.Pos += pet.Vel * dt;
+        ClampToTank(pet, world);
     }
 
-    /// <summary>Highest horizontal surface crossed while moving down from fromY to toY at x.</summary>
+    /// <summary>
+    /// Keep pets inside the glass with a soft bounce. Margins allow for the body
+    /// hanging off the contact point, so nothing ends up half outside the screen.
+    /// </summary>
+    public static void ClampToTank(Pet pet, WorldState world)
+    {
+        var t = world.VirtualScreen;
+        const double side = 62, top = 100, bottom = 20;
+        if (pet.Pos.X < t.Left + side) { pet.Pos.X = t.Left + side; pet.Vel.X = Math.Abs(pet.Vel.X) * 0.35; }
+        if (pet.Pos.X > t.Right - side) { pet.Pos.X = t.Right - side; pet.Vel.X = -Math.Abs(pet.Vel.X) * 0.35; }
+        if (pet.Pos.Y < t.Top + top) { pet.Pos.Y = t.Top + top; pet.Vel.Y = Math.Abs(pet.Vel.Y) * 0.35; }
+        if (pet.Pos.Y > t.Bottom - bottom) { pet.Pos.Y = t.Bottom - bottom; pet.Vel.Y = -Math.Abs(pet.Vel.Y) * 0.35; }
+    }
+
+    /// <summary>Highest surface crossed while moving down from fromY to toY at x.</summary>
     public static Surface? FindLanding(double x, double fromY, double toY, WorldState world)
     {
         Surface? landing = null;
         foreach (var s in world.Horizontal())
         {
+            if (!s.IsLandable) continue;                 // can't land on a ceiling
             if (s.Y < fromY - 1 || s.Y > toY) continue;  // not crossed this tick
             if (x < s.X1 || x > s.X2) continue;          // not above it
-            // Highest wins; on a tie prefer a real ledge over the screen-bottom floor,
-            // since the taskbar top sits exactly on the working-area bottom.
             if (landing == null || s.Y < landing.Y ||
                 (s.Y == landing.Y && landing.Kind == SurfaceKind.Floor && s.Kind != SurfaceKind.Floor))
                 landing = s;

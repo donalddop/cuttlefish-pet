@@ -9,10 +9,21 @@ public sealed class PetVisual
 {
     public required Grid Root { get; init; }
     public required Image Sprite { get; init; }
+    /// <summary>The colour being shifted into, faded over the body.</summary>
+    public required Image Shift { get; init; }
+    /// <summary>Spot/band pattern, clipped to the body silhouette.</summary>
+    public required System.Windows.Shapes.Rectangle Skin { get; init; }
+    public required ImageBrush SkinFill { get; init; }
+    public required ImageBrush SkinMask { get; init; }
+    /// <summary>Iridescent sheen that drifts across the skin.</summary>
+    public required System.Windows.Shapes.Rectangle Sheen { get; init; }
+    public required ImageBrush SheenFill { get; init; }
+    public required ImageBrush SheenMask { get; init; }
     public required Image Camo { get; init; }
     public required ImageBrush CamoMask { get; init; }
     public required Image Eye { get; init; }
     public required ScaleTransform Flip { get; init; }
+    public required RotateTransform Swing { get; init; }
 }
 
 /// <summary>Draws pets (body + tracking pupil), props and one-shot effects.</summary>
@@ -30,12 +41,15 @@ public sealed class SpriteRenderer
 
     private readonly OverlayWindow _overlay;
     private readonly Dictionary<string, SpriteAnim> _library;
+    private readonly SkinLibrary _skins;
     private readonly List<Effect> _effects = new();
 
-    public SpriteRenderer(OverlayWindow overlay, Dictionary<string, SpriteAnim> library)
+    public SpriteRenderer(OverlayWindow overlay, Dictionary<string, SpriteAnim> library,
+        SkinLibrary skins)
     {
         _overlay = overlay;
         _library = library;
+        _skins = skins;
     }
 
     private static Image NewImage()
@@ -48,26 +62,54 @@ public sealed class SpriteRenderer
     public PetVisual CreateVisual()
     {
         var sprite = NewImage();
+        var shift = NewImage();
         var camoMask = new ImageBrush { Stretch = Stretch.Fill };
         var camo = NewImage();
         camo.OpacityMask = camoMask;
         camo.Opacity = 0;
+
+        // Pattern and sheen are painted as brushes and clipped to the body's alpha.
+        var skinFill = new ImageBrush { Stretch = Stretch.UniformToFill };
+        var skinMask = new ImageBrush { Stretch = Stretch.Fill };
+        var skin = new System.Windows.Shapes.Rectangle
+        { Fill = skinFill, OpacityMask = skinMask, IsHitTestVisible = false };
+
+        var sheenFill = new ImageBrush
+        {
+            Stretch = Stretch.Fill,
+            TileMode = TileMode.Tile,
+            ViewportUnits = BrushMappingMode.RelativeToBoundingBox,
+            Viewport = new Rect(0, 0, 1, 1),
+            ImageSource = _skins.Sheen,
+        };
+        var sheenMask = new ImageBrush { Stretch = Stretch.Fill };
+        var sheen = new System.Windows.Shapes.Rectangle
+        { Fill = sheenFill, OpacityMask = sheenMask, IsHitTestVisible = false };
 
         var eye = NewImage();
         eye.HorizontalAlignment = HorizontalAlignment.Left;
         eye.VerticalAlignment = VerticalAlignment.Top;
 
         var flip = new ScaleTransform(1, 1);
-        var root = new Grid { RenderTransform = flip };
+        var swing = new RotateTransform(0);
+        var root = new Grid
+        {
+            RenderTransform = new TransformGroup { Children = { flip, swing } },
+        };
         root.Children.Add(sprite);
+        root.Children.Add(shift);
+        root.Children.Add(skin);
+        root.Children.Add(sheen);
         root.Children.Add(camo);
         root.Children.Add(eye);
 
         _overlay.PetCanvas.Children.Add(root);
         return new PetVisual
         {
-            Root = root, Sprite = sprite, Camo = camo,
-            CamoMask = camoMask, Eye = eye, Flip = flip,
+            Root = root, Sprite = sprite, Shift = shift,
+            Skin = skin, SkinFill = skinFill, SkinMask = skinMask,
+            Sheen = sheen, SheenFill = sheenFill, SheenMask = sheenMask,
+            Camo = camo, CamoMask = camoMask, Eye = eye, Flip = flip, Swing = swing,
         };
     }
 
@@ -77,14 +119,28 @@ public sealed class SpriteRenderer
     {
         var v = pet.Visual;
         var anim = pet.Anim.Current;
-        var frame = pet.Anim.Frame;
+        int idx = pet.Anim.FrameIndex;
+        var frame = anim.Frames[idx];
         var bounds = pet.Bounds; // physical px
 
         double k = _overlay.DeviceToDiu;
         double w = bounds.Width * k, h = bounds.Height * k;
         var tl = _overlay.PhysToDiu(bounds.TopLeft);
 
-        v.Sprite.Source = frame;
+        // Body in the colour it is leaving, with the new colour bleeding over it.
+        v.Sprite.Source = anim.Palettes[pet.FromPalette][idx];
+        if (pet.PaletteBlend < 1)
+        {
+            v.Shift.Source = anim.Palettes[pet.Palette][idx];
+            v.Shift.Opacity = pet.PaletteBlend;
+            v.Shift.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            v.Sprite.Source = anim.Palettes[pet.Palette][idx];
+            v.Shift.Visibility = Visibility.Collapsed;
+        }
+
         v.Root.Width = w;
         v.Root.Height = h;
         Canvas.SetLeft(v.Root, tl.X);
@@ -92,6 +148,21 @@ public sealed class SpriteRenderer
 
         v.Flip.ScaleX = pet.FacingRight ? 1 : -1;
         v.Flip.CenterX = w / 2;
+
+        // Swing/tilt pivots on the contact point, and follows the mirrored body.
+        v.Swing.Angle = pet.FacingRight ? pet.Rotation : -pet.Rotation;
+        v.Swing.CenterX = anim.Anchor.X / anim.FrameW * w;
+        v.Swing.CenterY = anim.Anchor.Y / anim.FrameH * h;
+
+        // Skin pattern and iridescence, both clipped to the body silhouette. They
+        // fade out under camouflage so the disguise stays clean.
+        double skinVisible = 1 - pet.CamoOpacity;
+        v.SkinFill.ImageSource = _skins.Patterns[pet.SkinPattern % _skins.Patterns.Length];
+        v.SkinMask.ImageSource = frame;
+        v.Skin.Opacity = pet.SkinStrength * skinVisible;
+        v.SheenMask.ImageSource = frame;
+        v.Sheen.Opacity = pet.SheenStrength * skinVisible;
+        v.SheenFill.Viewport = new Rect(-pet.SheenPhase, 0, 1, 1);
 
         // Camouflage layer: background capture masked by the current frame's alpha.
         v.Camo.Opacity = pet.CamoOpacity;
@@ -110,7 +181,7 @@ public sealed class SpriteRenderer
             double size = anim.EyeRadius * 2 * scale;
             double travel = anim.EyeRadius * 0.34 * scale;
 
-            v.Eye.Source = eyeAnim.Frames[pet.Blinking ? 1 : 0];
+            v.Eye.Source = eyeAnim.Palettes[pet.Palette][pet.Blinking ? 1 : 0];
             v.Eye.Width = size;
             v.Eye.Height = size;
             v.Eye.Opacity = 1 - pet.CamoOpacity;

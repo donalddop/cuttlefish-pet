@@ -54,7 +54,7 @@ public sealed class DragBehavior : BehaviorBase
             c.Renderer.SpawnInk(pet.Pos + new Vector(pet.FacingRight ? -30 : 30, 0));
             c.Sound.Play("squirt", 0.4);
         }
-        Next = new FallBehavior();
+        Next = new DriftBehavior();
         Done = true;
     }
 }

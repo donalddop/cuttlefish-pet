@@ -19,6 +19,8 @@ OUT = os.path.join(os.path.dirname(__file__), "eye_check.png")
 ZOOM = 7
 ONLY = os.environ.get("ONLY_ACTIONS", "").split(",") if os.environ.get("ONLY_ACTIONS") else None
 
+ONLY = [s for s in os.environ.get("ONLY_ACTIONS", "").split(",") if s]
+
 meta = json.load(open(os.path.join(SPR, "animations.json")))
 eye_meta = meta["eye"]
 eye_sheet = Image.open(os.path.join(SPR, "eye.png")).convert("RGBA")

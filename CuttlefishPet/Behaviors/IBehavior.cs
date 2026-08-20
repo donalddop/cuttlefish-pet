@@ -13,6 +13,13 @@ public sealed class BehaviorContext
     public required SoundService Sound { get; init; }
     public required SpriteRenderer Renderer { get; init; }
     public required Random Rng { get; init; }
+
+    /// <summary>Put another cuttlefish in the tank (hatching eggs, splitting).</summary>
+    public required Action<System.Windows.Point> SpawnPet { get; init; }
+    /// <summary>Leave something behind: ink blots, egg clutches.</summary>
+    public required Action<Prop> AddProp { get; init; }
+    /// <summary>Take this pet out of the tank (the ghost swims off for good).</summary>
+    public required Action<Pet> RemovePet { get; init; }
 }
 
 public abstract class BehaviorBase

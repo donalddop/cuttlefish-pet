@@ -45,7 +45,8 @@ public partial class App : Application
         _overlay = new OverlayWindow();
         _overlay.Show();
 
-        var renderer = new SpriteRenderer(_overlay, library);
+        var skins = SkinLibrary.Load(Path.Combine(assets, "sprites"));
+        var renderer = new SpriteRenderer(_overlay, library, skins);
         _input = new GlobalInput();
         _input.Install();
 

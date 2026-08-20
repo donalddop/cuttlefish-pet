@@ -18,6 +18,8 @@ public sealed class WorldState
     public double IdleSeconds { get; set; }
     /// <summary>Windows that appeared since the last full enumeration.</summary>
     public List<Rect> AppearedWindows { get; } = new();
+    /// <summary>How many cuttlefish are in the tank right now.</summary>
+    public int PetCount { get; set; }
 
     /// <summary>
     /// Re-resolve a surface reference to this tick's version (windows move). A window

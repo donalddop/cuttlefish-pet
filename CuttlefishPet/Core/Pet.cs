@@ -28,6 +28,30 @@ public sealed class Pet
 
     /// <summary>Purely visual hover-bob offset (physical px), set by behaviors.</summary>
     public double VisualBob;
+    /// <summary>Visual tilt in degrees around the contact point (swinging, drifting).</summary>
+    public double Rotation;
+
+    // Chromatophores: the body cross-fades from FromPalette to Palette.
+    public int Palette;
+    public int FromPalette;
+    public double PaletteBlend = 1;
+    public double PaletteChangeIn = 8;
+
+    // Skin: a pattern of spots/bands over the colour, plus a drifting pearl sheen.
+    public int SkinPattern;
+    public double SkinStrength = 0.5;
+    public double SheenStrength = 0.25;
+    public double SheenPhase;
+
+    /// <summary>Start shifting to another colour; ignored if already going there.</summary>
+    public void ShiftTo(int palette, double holdSeconds = 25)
+    {
+        if (palette == Palette) return;
+        FromPalette = PaletteBlend >= 1 ? Palette : FromPalette;
+        Palette = palette;
+        PaletteBlend = 0;
+        PaletteChangeIn = holdSeconds;
+    }
 
     // Eye: pupil aim in -1..1 body-local units, plus an independent blink timer.
     public Vector PupilOffset;

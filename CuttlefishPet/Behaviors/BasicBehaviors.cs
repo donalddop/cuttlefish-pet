@@ -63,27 +63,6 @@ public sealed class SwimBehavior : BehaviorBase
     }
 }
 
-public sealed class FallBehavior : BehaviorBase
-{
-    public override string Name => "fall";
-    public override bool Interruptible => false;
-    private double _peakSpeed;
-
-    public override void Enter(BehaviorContext c) => c.Pet.Anim.Play("fall");
-
-    public override void Tick(BehaviorContext c, double dt)
-    {
-        var pet = c.Pet;
-        _peakSpeed = Math.Max(_peakSpeed, pet.Vel.Y);
-        if (pet.Surface != null)
-        {
-            if (_peakSpeed > 700) c.Sound.Play("splat", 0.35);
-            pet.Vel = new Vector(0, 0);
-            Done = true;
-        }
-    }
-}
-
 public sealed class SitBehavior : BehaviorBase
 {
     public override string Name => "sit";

@@ -24,6 +24,9 @@ public sealed class PetManager
     private readonly WorldState _world = new();
     private readonly Random _rng = new();
     private readonly List<Pet> _pets = new();
+    private readonly List<Prop> _props = new();
+    private readonly List<Pet> _leaving = new();
+    private readonly List<Point> _hatching = new();
     private double _clock, _lastDownAt = double.NegativeInfinity, _rivalCooldown;
     private Pet? _lastDownPet;
     private int _tick;
@@ -40,14 +43,23 @@ public sealed class PetManager
         _sound = sound;
     }
 
-    public void Spawn()
+    public void Spawn() => Spawn(null);
+
+    public void Spawn(Point? at)
     {
         var wa = System.Windows.Forms.Screen.PrimaryScreen!.WorkingArea; // physical px
         var pet = new Pet
         {
             Anim = new AnimationPlayer(_library),
-            Pos = new Point(wa.Left + 100 + _rng.NextDouble() * (wa.Width - 200), wa.Top + 60),
+            // Swim in from somewhere in open water rather than dropping from the sky.
+            Pos = at ?? new Point(wa.Left + 120 + _rng.NextDouble() * (wa.Width - 240),
+                                  wa.Top + 120 + _rng.NextDouble() * (wa.Height - 300)),
         };
+        pet.Palette = pet.FromPalette = Palettes.PickRandom(_rng);
+        pet.PaletteChangeIn = 4 + _rng.NextDouble() * 20;
+        pet.SkinPattern = _rng.Next(5);
+        pet.SkinStrength = 0.45 + _rng.NextDouble() * 0.30;
+        pet.SheenStrength = 0.10 + _rng.NextDouble() * 0.14;
         pet.Visual = _renderer.CreateVisual();
         pet.Machine = new BehaviorMachine(NewContext(pet));
         _pets.Add(pet);
@@ -77,6 +89,10 @@ public sealed class PetManager
     {
         Pet = pet, World = _world, Input = _input,
         Sound = _sound, Renderer = _renderer, Rng = _rng,
+        // Queued, never applied mid-tick: the pet list is being iterated.
+        SpawnPet = p => _hatching.Add(p),
+        AddProp = prop => { prop.Visual = _renderer.CreateProp(prop.Anim); _props.Add(prop); },
+        RemovePet = p => _leaving.Add(p),
     };
 
     public void Tick(double dt)
@@ -94,6 +110,7 @@ public sealed class PetManager
             pet.Machine.Tick(dt);
             PhysicsEngine.Tick(pet, _world, dt);
             pet.Anim.Tick(dt);
+            UpdateColour(pet, dt);
             UpdateEyes(pet, dt);
             MaybeBubble(pet, dt);
             _renderer.Update(pet);
@@ -101,7 +118,9 @@ public sealed class PetManager
                 wantClicks = true;
         }
 
+        ApplyArrivalsAndDepartures();
         TickTreats(dt);
+        TickProps(dt);
         CheckRivalry(dt);
         _renderer.TickEffects(dt);
 
@@ -144,6 +163,37 @@ public sealed class PetManager
                 foreach (var p in _pets) p.Machine.HandleMouse(e);
             }
         }
+    }
+
+    /// <summary>Chromatophores never sit still: colours drift, and moods override.</summary>
+    private void UpdateColour(Pet pet, double dt)
+    {
+        // The sheen never stops crawling over the skin.
+        pet.SheenPhase = (pet.SheenPhase + dt * 0.075) % 1.0;
+
+        if (pet.PaletteBlend < 1)
+            pet.PaletteBlend = Math.Min(1, pet.PaletteBlend + dt / 1.8);
+        else
+            pet.FromPalette = pet.Palette;
+
+        pet.PaletteChangeIn -= dt;
+        if (pet.PaletteChangeIn > 0) return;
+
+        // A colour change usually comes with a change of pattern too.
+        if (_rng.NextDouble() < 0.5) pet.SkinPattern = _rng.Next(5);
+
+        // Mood first, otherwise wander to a neighbouring colour.
+        string? mood = pet.Machine.Current.Name switch
+        {
+            "startle" or "flee" => "pearl",       // cuttlefish blanch when spooked
+            "rival" or "angry" => "ink",
+            "happy" or "eat" => "magenta",
+            "hunt" => "crimson",
+            "sleep" => "sand",
+            _ => null,
+        };
+        pet.ShiftTo(mood != null ? Palettes.IndexOf(mood) : Palettes.PickRandom(_rng),
+                    12 + _rng.NextDouble() * 30);
     }
 
     private void UpdateEyes(Pet pet, double dt)
@@ -221,6 +271,39 @@ public sealed class PetManager
         }
     }
 
+    /// <summary>Apply pet arrivals/removals queued by behaviors during the tick.</summary>
+    private void ApplyArrivalsAndDepartures()
+    {
+        foreach (var pet in _leaving)
+        {
+            if (!_pets.Remove(pet)) continue;
+            _renderer.RemoveVisual(pet.Visual);
+        }
+        _leaving.Clear();
+
+        foreach (var p in _hatching)
+            if (_pets.Count < 24) Spawn(p);   // sanity cap: eggs must not run away with it
+        _hatching.Clear();
+    }
+
+    private void TickProps(double dt)
+    {
+        for (int i = _props.Count - 1; i >= 0; i--)
+        {
+            var p = _props[i];
+            p.Age += dt;
+            if (p.Age >= p.Life)
+            {
+                p.OnExpire?.Invoke(p.Pos);
+                _renderer.RemoveProp(p.Visual);
+                _props.RemoveAt(i);
+                continue;
+            }
+            p.Visual.Opacity = p.Opacity;
+            _renderer.UpdateProp(p.Visual, p.Anim, p.Pos, p.Age);
+        }
+    }
+
     private void TickTreats(double dt)
     {
         for (int i = _world.Treats.Count - 1; i >= 0; i--)
@@ -237,8 +320,9 @@ public sealed class PetManager
 
             if (t.Surface == null)
             {
-                t.Vel.Y = Math.Min(t.Vel.Y + PhysicsEngine.Gravity * dt,
-                                   PhysicsEngine.TerminalVelocity);
+                // Food sinks slowly through water and wafts sideways on the way down.
+                t.Vel = new Vector(t.Vel.X * Math.Exp(-1.5 * dt) + Math.Sin(t.Age * 2.2) * 14 * dt,
+                                   Math.Min(t.Vel.Y * Math.Exp(-1.2 * dt) + 190 * dt, 130));
                 double nx = t.Pos.X + t.Vel.X * dt;
                 double ny = t.Pos.Y + t.Vel.Y * dt;
                 if (t.Vel.Y > 0)
@@ -305,12 +389,20 @@ public sealed class PetManager
         _world.CursorStill = _input.CursorStill;
         _world.TypingRate = _input.TypingRate;
         _world.IdleSeconds = GlobalInput.IdleSeconds();
+        _world.PetCount = _pets.Count;
 
         _world.Surfaces.Clear();
         foreach (var screen in System.Windows.Forms.Screen.AllScreens)
         {
             var wa = screen.WorkingArea;
             _world.Surfaces.Add(new Surface(SurfaceKind.Floor, IntPtr.Zero, wa.Left, wa.Right, wa.Bottom));
+            // The screen itself is climbable: both side edges plus a ceiling to hang from.
+            _world.Surfaces.Add(new Surface(SurfaceKind.Ceiling, IntPtr.Zero,
+                wa.Left + 20, wa.Right - 20, wa.Top + 2));
+            _world.Surfaces.Add(new Surface(SurfaceKind.ScreenLeft, IntPtr.Zero,
+                wa.Left, wa.Left, wa.Top + 2, wa.Bottom));
+            _world.Surfaces.Add(new Surface(SurfaceKind.ScreenRight, IntPtr.Zero,
+                wa.Right, wa.Right, wa.Top + 2, wa.Bottom));
         }
         if (TaskbarLocator.GetSurface() is { } taskbar)
             _world.Surfaces.Add(taskbar);

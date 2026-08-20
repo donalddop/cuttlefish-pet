@@ -319,6 +319,137 @@
       6.5
     ]
   },
+  "ceiling": {
+    "file": "ceiling.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 6,
+    "fps": 7,
+    "loop": true,
+    "anchor": [
+      30,
+      9
+    ],
+    "eye": [
+      39.24,
+      35.26,
+      6.5
+    ]
+  },
+  "hang": {
+    "file": "hang.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 4,
+    "fps": 4,
+    "loop": true,
+    "anchor": [
+      30,
+      9
+    ],
+    "eye": [
+      38.93,
+      35.1,
+      6.5
+    ]
+  },
+  "slide": {
+    "file": "slide.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 4,
+    "fps": 8,
+    "loop": true,
+    "anchor": [
+      32,
+      50
+    ],
+    "eye": [
+      27.25,
+      33.75,
+      7.5
+    ]
+  },
+  "parachute": {
+    "file": "parachute.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 4,
+    "fps": 5,
+    "loop": true,
+    "anchor": [
+      30,
+      55
+    ],
+    "eye": [
+      39.36,
+      40.96,
+      6.5
+    ]
+  },
+  "burrow": {
+    "file": "burrow.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 5,
+    "fps": 6,
+    "loop": false,
+    "anchor": [
+      30,
+      55
+    ],
+    "eye": [
+      39.72,
+      42.1,
+      6.5
+    ]
+  },
+  "ghost": {
+    "file": "ghost.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 4,
+    "fps": 5,
+    "loop": true,
+    "anchor": [
+      30,
+      55
+    ]
+  },
+  "balloon": {
+    "file": "balloon.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 4,
+    "fps": 4,
+    "loop": true,
+    "anchor": [
+      30,
+      55
+    ],
+    "eye": [
+      39.24,
+      40.58,
+      6.5
+    ]
+  },
+  "shock": {
+    "file": "shock.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 2,
+    "fps": 14,
+    "loop": true,
+    "anchor": [
+      30,
+      55
+    ],
+    "eye": [
+      38.64,
+      38.68,
+      7.5
+    ]
+  },
   "eye": {
     "file": "eye.png",
     "frameW": 16,
@@ -350,6 +481,30 @@
     "frames": 4,
     "fps": 8,
     "loop": false,
+    "anchor": [
+      8.0,
+      14
+    ]
+  },
+  "egg": {
+    "file": "egg.png",
+    "frameW": 24,
+    "frameH": 24,
+    "frames": 4,
+    "fps": 3,
+    "loop": true,
+    "anchor": [
+      12.0,
+      22
+    ]
+  },
+  "blot": {
+    "file": "blot.png",
+    "frameW": 16,
+    "frameH": 16,
+    "frames": 3,
+    "fps": 2,
+    "loop": true,
     "anchor": [
       8.0,
       14

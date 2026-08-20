@@ -9,20 +9,29 @@ public sealed class BehaviorMachine
 {
     private static Dictionary<string, double> _weights = new()
     {
-        ["idle"] = 20, ["swim"] = 26, ["sit"] = 13, ["sleep"] = 6,
-        ["camouflage"] = 9, ["climb"] = 11, ["jump"] = 9, ["chase"] = 6,
-        ["hunt"] = 16, ["peek"] = 9,
+        // open water
+        ["swimFree"] = 40, ["hover"] = 14, ["dart"] = 9, ["chase"] = 8,
+        ["hunt"] = 12, ["settle"] = 22,
+        // perched on something
+        ["patrol"] = 20, ["idle"] = 14, ["sit"] = 12, ["sleep"] = 6,
+        ["camouflage"] = 11, ["peek"] = 8, ["hang"] = 8, ["swing"] = 6,
+        ["climb"] = 8, ["climbDown"] = 5, ["slide"] = 5, ["leave"] = 26,
+        // rare set pieces — kept low so they stay surprises
+        ["burrow"] = 5, ["eggs"] = 2, ["blot"] = 4, ["nibble"] = 6,
+        ["inkBomb"] = 2, ["balloon"] = 3, ["ghost"] = 1, ["shock"] = 2,
     };
 
+    /// <summary>
+    /// Overlay tuning from behaviors.json onto the defaults. Merging, not replacing:
+    /// a file written for an older build must not silently switch off new behaviour.
+    /// </summary>
     public static void LoadWeights(string path)
     {
         try
         {
             using var doc = JsonDocument.Parse(File.ReadAllText(path));
-            var w = new Dictionary<string, double>();
             foreach (var p in doc.RootElement.GetProperty("weights").EnumerateObject())
-                w[p.Name] = p.Value.GetDouble();
-            _weights = w;
+                _weights[p.Name] = p.Value.GetDouble();
         }
         catch { /* keep defaults */ }
     }
@@ -35,7 +44,7 @@ public sealed class BehaviorMachine
     public BehaviorMachine(BehaviorContext ctx)
     {
         _ctx = ctx;
-        Current = new FallBehavior(); // pets spawn mid-air and drop in
+        Current = new SwimFreeBehavior(); // pets simply swim in
         Current.Enter(ctx);
     }
 
@@ -85,23 +94,25 @@ public sealed class BehaviorMachine
         Current.Tick(_ctx, dt);
     }
 
+    /// <summary>Hanging under the ceiling: poses anchored at the feet would float.</summary>
+    private bool OnCeiling => _ctx.Pet.Surface is { Kind: SurfaceKind.Ceiling };
+
     private void AmbientChecks(double dt)
     {
         var pet = _ctx.Pet;
         var world = _ctx.World;
 
-        // Lost the ground and nobody is handling it → fall.
-        if (pet.Surface == null && !Current.OverridesPhysics &&
-            Current is not (FallBehavior or JumpToWindowBehavior or FleeBehavior))
+        // Let go of a perch while doing something that assumed one → start swimming.
+        if (pet.Surface == null && !Current.OverridesPhysics && Current is not DriftBehavior)
         {
-            Force(new FallBehavior());
+            Force(new SwimFreeBehavior());
             return;
         }
 
         if (!Current.Interruptible) return;
 
         // User actually walked away (not just reading) → settle down until they're back.
-        if (world.IdleSeconds > 240 && Current is not SleepBehavior)
+        if (world.IdleSeconds > 240 && Current is not SleepBehavior && !OnCeiling)
         {
             Force(new SleepBehavior(away: true));
             return;
@@ -119,7 +130,7 @@ public sealed class BehaviorMachine
         }
 
         // Heavy typing → occasional excited wiggle.
-        if (world.TypingRate > 3 && Current is IdleBehavior or SitBehavior &&
+        if (world.TypingRate > 3 && !OnCeiling && Current is IdleBehavior or SitBehavior &&
             _ctx.Rng.NextDouble() < dt * 0.4)
             Force(new TypingReactBehavior());
     }
@@ -135,29 +146,69 @@ public sealed class BehaviorMachine
                 candidates.Add((make(), w));
         }
 
-        // A shrimp on the desktop trumps everything else.
-        if (pet.Surface != null && _ctx.World.NearestTreat(pet) is { } treat)
+        // A shrimp in the tank trumps everything else, wherever the pet is.
+        if (_ctx.World.NearestTreat(pet) is { } treat)
             return new HuntTreatBehavior(treat);
 
-        Add("idle", () => new IdleBehavior());
-        Add("swim", () => new SwimBehavior());
-
-        if (pet.Surface != null)
+        if (pet.Surface == null)
         {
+            // Open water.
+            Add("swimFree", () => new SwimFreeBehavior());
+            Add("hover", () => new HoverBehavior());
+            Add("dart", () => new DartBehavior());
+            if (HuntCursorBehavior.Possible(_ctx)) Add("hunt", () => new HuntCursorBehavior());
+            if ((_ctx.World.Cursor - pet.Pos).Length < 900)
+                Add("chase", () => new ChaseCursorBehavior());
+            if (SettleBehavior.Find(_ctx) is { } settle) Add("settle", () => settle);
+            Add("balloon", () => new BalloonBehavior());
+            Add("inkBomb", () => new InkBombBehavior());
+            Add("shock", () => new ShockBehavior());
+            if (_ctx.World.PetCount > 1) Add("ghost", () => new GhostBehavior());
+        }
+        else if (pet.Surface.Kind == SurfaceKind.Ceiling)
+        {
+            // Hanging upside down: walk along it, or let go.
+            Add("ceiling", () => new CeilingWalkBehavior());
+            Add("leave", () => new LeavePerchBehavior());
+        }
+        else if (pet.Surface.IsVertical)
+        {
+            // Clinging to a wall: crawl along it, or push off.
+            var up = ClimbBehavior.FindTarget(_ctx);
+            if (up != null) Add("climb", () => new ClimbBehavior(up));
+            var down = ClimbBehavior.FindTarget(_ctx, down: true);
+            if (down != null)
+            {
+                Add("climbDown", () => new ClimbBehavior(down, down: true));
+                Add("slide", () => new ClimbBehavior(down, down: true, slide: true));
+            }
+            Add("camouflage", () => new CamouflageBehavior());
+            Add("leave", () => new LeavePerchBehavior());
+        }
+        else
+        {
+            // Settled on a ledge: the taskbar, a title bar, the desktop floor.
+            Add("patrol", () => new SwimBehavior());
+            Add("idle", () => new IdleBehavior());
             Add("sit", () => new SitBehavior());
             Add("sleep", () => new SleepBehavior());
             Add("camouflage", () => new CamouflageBehavior());
-            if (HuntCursorBehavior.Possible(_ctx)) Add("hunt", () => new HuntCursorBehavior());
+            Add("leave", () => new LeavePerchBehavior());
             if (PeekBehavior.Possible(_ctx)) Add("peek", () => new PeekBehavior());
-
+            if (HuntCursorBehavior.Possible(_ctx)) Add("hunt", () => new HuntCursorBehavior());
+            if (BurrowBehavior.Possible(_ctx)) Add("burrow", () => new BurrowBehavior());
+            if (InkBlotBehavior.Possible(_ctx)) Add("blot", () => new InkBlotBehavior());
+            if (NibbleBehavior.Possible(_ctx)) Add("nibble", () => new NibbleBehavior());
+            if (LayEggsBehavior.Possible(_ctx) && _ctx.World.PetCount < 8)
+                Add("eggs", () => new LayEggsBehavior());
+            Add("shock", () => new ShockBehavior());
+            if (HangBehavior.Possible(_ctx))
+            {
+                Add("hang", () => new HangBehavior());
+                Add("swing", () => new HangBehavior(launch: true));
+            }
             var edge = ClimbBehavior.FindTarget(_ctx);
             if (edge != null) Add("climb", () => new ClimbBehavior(edge));
-
-            var jumpTarget = JumpToWindowBehavior.FindTarget(_ctx);
-            if (jumpTarget != null) Add("jump", () => new JumpToWindowBehavior(jumpTarget));
-
-            if (Math.Abs(_ctx.World.Cursor.X - pet.Pos.X) < 700)
-                Add("chase", () => new ChaseCursorBehavior());
         }
 
         double total = 0;
@@ -168,6 +219,6 @@ public sealed class BehaviorMachine
             roll -= w;
             if (roll <= 0) return b;
         }
-        return new IdleBehavior();
+        return new SwimFreeBehavior();
     }
 }

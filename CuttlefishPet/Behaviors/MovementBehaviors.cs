@@ -3,34 +3,53 @@ using CuttlefishPet.Core;
 
 namespace CuttlefishPet.Behaviors;
 
-/// <summary>Swim to a window's side edge, then tentacle-climb up and settle on top.</summary>
+/// <summary>
+/// Walk to a vertical edge — a window's side or the edge of the screen itself — then
+/// tentacle-climb along it. Upwards it ends on the window top or under the ceiling;
+/// downwards it rides the wall until something landable comes up. Sliding is the same
+/// move at speed, with a squeal.
+/// </summary>
 public sealed class ClimbBehavior : BehaviorBase
 {
-    public override string Name => "climb";
-    public override bool OverridesPhysics => _phase == Phase.Climbing;
+    public override string Name => _slide ? "slide" : "climb";
+    public override bool OverridesPhysics => _phase == Phase.OnWall;
 
-    private enum Phase { Approach, Climbing }
+    private enum Phase { Approach, OnWall }
     private Phase _phase = Phase.Approach;
     private Surface _edge;
-    private const double ClimbSpeed = 55;
+    private readonly bool _down, _slide;
     private const double ApproachSpeed = 85;
+    private double _speed;
 
-    public ClimbBehavior(Surface edge) => _edge = edge;
+    public ClimbBehavior(Surface edge, bool down = false, bool slide = false)
+    {
+        _edge = edge;
+        _down = down;
+        _slide = slide;
+        _speed = slide ? 300 : 55;
+    }
 
-    public static Surface? FindTarget(BehaviorContext c)
+    /// <summary>Nearest wall worth climbing from where the pet is standing.</summary>
+    public static Surface? FindTarget(BehaviorContext c, bool down = false)
     {
         var pet = c.Pet;
         Surface? best = null;
-        double bestDist = 500;
+        double bestDist = 620;
         foreach (var s in c.World.Vertical())
         {
-            double dist = Math.Abs(s.X1 - pet.Pos.X);
-            // Edge base must be reachable from the pet's level, and worth climbing.
-            if (dist < bestDist && s.Y2 >= pet.Pos.Y - 40 && s.Y < pet.Pos.Y - 100)
+            double dist = Math.Abs(s.X1 + s.ClingOffset - pet.Pos.X);
+            if (dist >= bestDist) continue;
+            if (down)
             {
-                best = s;
-                bestDist = dist;
+                // Need wall below us and somewhere to end up.
+                if (s.Y > pet.Pos.Y - 20 || s.Y2 < pet.Pos.Y + 120) continue;
             }
+            else
+            {
+                if (s.Y2 < pet.Pos.Y - 40 || s.Y > pet.Pos.Y - 120) continue;
+            }
+            best = s;
+            bestDist = dist;
         }
         return best;
     }
@@ -49,18 +68,18 @@ public sealed class ClimbBehavior : BehaviorBase
 
         if (_phase == Phase.Approach)
         {
-            pet.Pos.X += _edge.X1 - edge.X1; // window may drift while we approach — X is ours to steer
+            pet.Pos.X += edge.X1 - _edge.X1; // window may drift while we walk over
             _edge = edge;
+            if (pet.Surface == null) { Done = true; return; }
 
-            if (pet.Surface == null) { Done = true; return; } // fell while approaching
-            double wallX = edge.X1 + (edge.Kind == SurfaceKind.WindowLeft ? -12 : 12);
+            double wallX = edge.X1 + edge.ClingOffset;
             double dx = wallX - pet.Pos.X;
-            if (Math.Abs(dx) < 5)
+            if (Math.Abs(dx) < 6)
             {
-                if (pet.Pos.Y <= edge.Y || pet.Pos.Y > edge.Y2 + 60) { Done = true; return; } // level mismatch
-                _phase = Phase.Climbing;
-                pet.Anim.Play("climb");
-                pet.FacingRight = edge.Kind == SurfaceKind.WindowLeft;
+                if (pet.Pos.Y <= edge.Y || pet.Pos.Y > edge.Y2 + 60) { Done = true; return; }
+                _phase = Phase.OnWall;
+                pet.Anim.Play(_slide ? "slide" : "climb", restart: true);
+                pet.FacingRight = edge.ClingOffset < 0;
                 pet.Surface = null;
                 pet.Vel = new Vector(0, 0);
             }
@@ -69,138 +88,137 @@ public sealed class ClimbBehavior : BehaviorBase
                 pet.FacingRight = dx > 0;
                 pet.Pos.X += Math.Sign(dx) * ApproachSpeed * dt;
             }
+            return;
         }
-        else
-        {
-            // Stick to the wall (following the window if it moves) and go up.
-            pet.Pos.X = edge.X1 + (edge.Kind == SurfaceKind.WindowLeft ? -12 : 12);
-            pet.Pos.Y += (edge.Y - _edge.Y) - ClimbSpeed * dt;
-            _edge = edge;
 
-            if (pet.Pos.Y <= edge.Y + 4)
+        // Stuck to the wall: follow it sideways if the window moves, travel along it.
+        double step = _speed * dt;
+        pet.Pos.X = edge.X1 + edge.ClingOffset;
+        double prevY = pet.Pos.Y;
+        pet.Pos.Y += (edge.Y - _edge.Y) + (_down ? step : -step);
+        _edge = edge;
+
+        if (_down)
+        {
+            var landing = PhysicsEngine.FindLanding(pet.Pos.X, prevY, pet.Pos.Y, c.World);
+            if (landing != null)
             {
-                // Reached the top: hop over the rim onto the window top.
-                pet.Pos.Y = edge.Y;
+                pet.Pos.Y = landing.Y;
+                pet.Surface = landing;
+                Done = true;
+                return;
+            }
+            if (pet.Pos.Y >= edge.Y2) { Done = true; }  // ran out of wall → drop
+            return;
+        }
+
+        if (pet.Pos.Y <= edge.Y + 4)
+        {
+            pet.Pos.Y = edge.Y;
+            if (edge.Hwnd != IntPtr.Zero)
+            {
+                // Window edge: haul yourself over the rim onto the title bar.
                 pet.Pos.X += edge.Kind == SurfaceKind.WindowLeft ? 26 : -26;
-                Surface? top = null;
                 foreach (var s in c.World.Horizontal())
                     if (s.Kind == SurfaceKind.WindowTop && s.Hwnd == edge.Hwnd &&
                         pet.Pos.X >= s.X1 && pet.Pos.X <= s.X2)
-                        top = s;
-                pet.Surface = top; // null → falls, which is fine (top occluded)
-                if (top != null) Next = new SitBehavior();
-                Done = true;
+                        pet.Surface = s;
+                if (pet.Surface != null) Next = new SitBehavior();
             }
+            else
+            {
+                // Screen edge: reach over onto the ceiling and hang there.
+                pet.Pos.X += edge.Kind == SurfaceKind.ScreenLeft ? 30 : -30;
+                foreach (var s in c.World.Horizontal())
+                    if (s.Kind == SurfaceKind.Ceiling && pet.Pos.X >= s.X1 && pet.Pos.X <= s.X2)
+                        pet.Surface = s;
+                if (pet.Surface != null) Next = new CeilingWalkBehavior();
+            }
+            Done = true;
         }
     }
 }
 
-/// <summary>Ballistic jet-propelled hop onto another window top or the taskbar.</summary>
-public sealed class JumpToWindowBehavior : BehaviorBase
-{
-    public override string Name => "jump";
-    public override bool Interruptible => false;
-    private double _airTime;
-
-    public static Surface? FindTarget(BehaviorContext c)
-    {
-        var pet = c.Pet;
-        var candidates = new List<Surface>();
-        foreach (var s in c.World.Horizontal())
-        {
-            if (pet.Surface != null && s.SameAs(pet.Surface)) continue;
-            double cx = Math.Clamp(pet.Pos.X, s.X1, s.X2);
-            double dx = cx - pet.Pos.X, dy = s.Y - pet.Pos.Y;
-            // A "target" on the same walking line right under our feet is not a jump.
-            if (Math.Abs(dy) < 40 && Math.Abs(dx) < 120) continue;
-            if (Math.Abs(dx) < 520 && dy > -320 && dy < 600 && s.X2 - s.X1 > 90)
-                candidates.Add(s);
-        }
-        return candidates.Count == 0 ? null : candidates[c.Rng.Next(candidates.Count)];
-    }
-
-    private readonly Surface _target;
-    public JumpToWindowBehavior(Surface target) => _target = target;
-
-    public override void Enter(BehaviorContext c)
-    {
-        var pet = c.Pet;
-        pet.Anim.Play("jump");
-        c.Sound.Play("blip", 0.25);
-
-        double targetX = Math.Clamp(pet.Pos.X, _target.X1 + 30, _target.X2 - 30);
-        double dx = targetX - pet.Pos.X;
-        double dy = _target.Y - pet.Pos.Y;
-        double t = 0.4 + Math.Sqrt(dx * dx + dy * dy) / 1300;
-
-        pet.Surface = null;
-        pet.Vel = new Vector(dx / t, dy / t - 0.5 * PhysicsEngine.Gravity * t);
-        pet.FacingRight = dx >= 0;
-    }
-
-    public override void Tick(BehaviorContext c, double dt)
-    {
-        _airTime += dt;
-        if (c.Pet.Surface != null) { Done = true; return; } // landed (target or not)
-        if (_airTime > 4) { Next = new FallBehavior(); Done = true; }
-    }
-}
-
-/// <summary>Startled jet-dash away from a fast approaching cursor.</summary>
+/// <summary>Startled jet-blast away from a fast approaching cursor.</summary>
 public sealed class FleeBehavior : BehaviorBase
 {
     public override string Name => "flee";
     public override bool Interruptible => false;
+    public override bool OverridesPhysics => true;
+    private double _t;
 
     public override void Enter(BehaviorContext c)
     {
         var pet = c.Pet;
-        pet.Anim.Play("jump");
+        pet.Anim.Play("jump", restart: true);
         c.Sound.Play("blip", 0.35);
-        double away = pet.Pos.X >= c.World.Cursor.X ? 1 : -1;
+        var away = pet.Pos - c.World.Cursor;
+        if (away.Length < 1) away = new Vector(1, -1);
+        away.Normalize();
         pet.Surface = null;
-        pet.Vel = new Vector(away * 750, -560);
-        pet.FacingRight = away > 0;
+        pet.Vel = away * 950;
+        pet.FacingRight = away.X > 0;
+        c.Renderer.SpawnInk(pet.Pos);
     }
 
     public override void Tick(BehaviorContext c, double dt)
     {
-        if (c.Pet.Surface != null) Done = true;
+        var pet = c.Pet;
+        _t += dt;
+        pet.Vel *= Math.Exp(-1.6 * dt);
+        pet.Pos += pet.Vel * dt;
+        PhysicsEngine.ClampToTank(pet, c.World);
+        if (_t > 1.0 || pet.Vel.Length < 130)
+        {
+            Next = new SwimFreeBehavior();
+            Done = true;
+        }
     }
 }
 
-/// <summary>Curiously stalk the cursor along the current surface, then watch it.</summary>
+/// <summary>Swim over to the cursor and hover there, watching it.</summary>
 public sealed class ChaseCursorBehavior : BehaviorBase
 {
     public override string Name => "chase";
-    private const double Speed = 95;
+    public override bool OverridesPhysics => true;
+    private const double Speed = 150;
     private double _watchTime, _elapsed;
 
-    public override void Enter(BehaviorContext c) => c.Pet.Anim.Play("swim");
+    public override void Enter(BehaviorContext c)
+    {
+        c.Pet.Anim.Play("swim");
+        c.Pet.Surface = null;
+    }
 
     public override void Tick(BehaviorContext c, double dt)
     {
         var pet = c.Pet;
         _elapsed += dt;
-        if (pet.Surface == null || _elapsed > 12) { Done = true; return; }
+        if (_elapsed > 14) { Next = new SwimFreeBehavior(); Done = true; return; }
 
-        double dx = c.World.Cursor.X - pet.Pos.X;
-        if (Math.Abs(dx) > 900) { Done = true; return; } // lost interest
+        // Hover just off to the side of the cursor rather than sitting on top of it.
+        var target = c.World.Cursor + new Vector(pet.FacingRight ? -70 : 70, -20);
+        var to = target - pet.Pos;
 
-        if (Math.Abs(dx) > 100)
+        if (to.Length > 45)
         {
             pet.Anim.Play("swim");
-            pet.FacingRight = dx > 0;
-            double nx = pet.Pos.X + Math.Sign(dx) * Speed * dt;
-            pet.Pos.X = Math.Clamp(nx, pet.Surface.X1 + 8, pet.Surface.X2 - 8);
+            var desired = to / to.Length * Math.Min(Speed, to.Length * 2.2);
+            pet.Vel += (desired - pet.Vel) * Math.Min(1, 3.2 * dt);
+            pet.Pos += pet.Vel * dt;
+            PhysicsEngine.ClampToTank(pet, c.World);
+            if (Math.Abs(pet.Vel.X) > 12) pet.FacingRight = pet.Vel.X > 0;
             _watchTime = 0;
         }
         else
         {
-            pet.Anim.Play("idle"); // close enough: hover and stare
-            pet.FacingRight = dx > 0;
+            pet.Anim.Play("idle"); // close enough: hang in the water and stare
+            pet.Vel *= Math.Exp(-3 * dt);
+            pet.Pos += pet.Vel * dt;
+            pet.FacingRight = c.World.Cursor.X > pet.Pos.X;
+            pet.VisualBob = Math.Sin(_elapsed * 3) * 2.5;
             _watchTime += dt;
-            if (_watchTime > 2.5) Done = true;
+            if (_watchTime > 3) { Next = new SwimFreeBehavior(); Done = true; }
         }
     }
 }
