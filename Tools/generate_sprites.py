@@ -730,6 +730,18 @@ def make_icon():
     return path
 
 
+# A clutch of eggs has to be spotted from across the screen; a prey fish should
+# look like a mouthful, not a rival.
+PROP_SCALE = {
+    "egg": 1.9,
+    "blot": 1.6,
+    "shrimp": 1.4,
+    "fish": 1.0,
+    "bubble": 1.0,
+    "eye": 1.0,
+}
+
+
 def save_strip(name, frames, size):
     strip = Image.new("RGBA", (size * len(frames), size), (0, 0, 0, 0))
     for i, f in enumerate(frames):
@@ -768,6 +780,9 @@ def main():
         meta[name] = {
             "file": f"{name}.png", "frameW": size, "frameH": size, "frames": len(frames),
             "fps": fps, "loop": loop, "anchor": anchor,
+            # Drawn size relative to the source frame. Props come from smaller
+            # frames than the pets, so each is sized to sit right beside one.
+            "scale": PROP_SCALE.get(name, 1.0),
         }
 
     with open(os.path.join(OUT, "animations.json"), "w") as f:

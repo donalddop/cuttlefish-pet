@@ -17,6 +17,8 @@ public sealed class SpriteAnim
     public required Point Anchor { get; init; }
     public required int FrameW { get; init; }
     public required int FrameH { get; init; }
+    /// <summary>Drawn size relative to the source frame; props set their own.</summary>
+    public double Scale { get; init; } = 1;
     /// <summary>Eye centre in frame pixels; null when this action draws its own eye.</summary>
     public Point? EyeCenter { get; init; }
     public double EyeRadius { get; init; }
@@ -112,6 +114,7 @@ public static class SpriteLibrary
                 Fps = m.GetProperty("fps").GetDouble(),
                 Loop = m.GetProperty("loop").GetBoolean(),
                 Anchor = new Point(anchor[0].GetDouble(), anchor[1].GetDouble()),
+                Scale = m.TryGetProperty("scale", out var sc) ? sc.GetDouble() : 1,
                 FrameW = fw,
                 FrameH = fh,
                 EyeCenter = eyeCenter,

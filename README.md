@@ -96,7 +96,19 @@ krijgen.
 
 Twee zeekatten die elkaar tegenkomen imponeren elkaar met zebrastrepen tot er één met
 een inktwolk afdruipt. Anders zwemmen ze in formatie naast elkaar, houden ze een
-sprintwedstrijd over het scherm, of kruipen ze tegen elkaar aan om samen te slapen.
+sprintwedstrijd over het scherm, of kruipen ze tegen elkaar aan.
+
+**Levenscyclus**
+
+Ze leven 14 tot 30 minuten. Gaat een balts goed, dan zoekt ze een richel en legt een
+eitros; dat kost haar bijna al haar resterende tijd, precies zoals bij echte zeekatten.
+Uit de tros kruipt na een halve minuut een klein exemplaar op een derde van
+volwassen formaat, dat langzaam uitgroeit — jonge dieren beheersen camouflage nog niet,
+dus die zie je in kleur rondzwemmen. Als het einde komt trekt de kleur weg en zinkt hij
+met een sliert luchtbelletjes uit beeld.
+
+Drukte versnelt ieders klok en een tros komt alleen uit als er ruimte is, dus de groep
+regelt zijn eigen omvang. Loopt het toch vol: **Thin them out** in het tray-menu.
 
 ## Structuur
 

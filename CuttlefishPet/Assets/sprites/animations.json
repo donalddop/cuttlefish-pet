@@ -448,7 +448,8 @@
     "anchor": [
       8.0,
       8.0
-    ]
+    ],
+    "scale": 1.0
   },
   "shrimp": {
     "file": "shrimp.png",
@@ -460,7 +461,8 @@
     "anchor": [
       16.0,
       30
-    ]
+    ],
+    "scale": 1.4
   },
   "fish": {
     "file": "fish.png",
@@ -472,7 +474,8 @@
     "anchor": [
       16.0,
       16.0
-    ]
+    ],
+    "scale": 1.0
   },
   "bubble": {
     "file": "bubble.png",
@@ -484,7 +487,8 @@
     "anchor": [
       8.0,
       8.0
-    ]
+    ],
+    "scale": 1.0
   },
   "egg": {
     "file": "egg.png",
@@ -496,7 +500,8 @@
     "anchor": [
       12.0,
       22
-    ]
+    ],
+    "scale": 1.9
   },
   "blot": {
     "file": "blot.png",
@@ -508,6 +513,7 @@
     "anchor": [
       8.0,
       14
-    ]
+    ],
+    "scale": 1.6
   }
 }
