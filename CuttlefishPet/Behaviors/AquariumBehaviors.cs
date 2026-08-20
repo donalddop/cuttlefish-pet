@@ -175,13 +175,19 @@ public sealed class SettleBehavior : BehaviorBase
     }
 
     /// <summary>Pick somewhere worth resting: a nearby ledge, wall or the ceiling.</summary>
-    public static SettleBehavior? Find(BehaviorContext c)
+    public static SettleBehavior? Find(BehaviorContext c) => Find(c, landableOnly: false);
+
+    /// <param name="landableOnly">
+    /// Restrict to surfaces you can lay eggs on — a wall or the ceiling will not do.
+    /// </param>
+    public static SettleBehavior? Find(BehaviorContext c, bool landableOnly)
     {
         var pet = c.Pet;
         var options = new List<(Surface s, Point p)>();
 
         foreach (var s in c.World.Surfaces)
         {
+            if (landableOnly && !s.IsLandable) continue;
             Point spot;
             if (s.IsVertical)
             {

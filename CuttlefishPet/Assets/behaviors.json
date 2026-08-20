@@ -1,33 +1,16 @@
 {
-  "_comment": "Relative chance of each behaviour being picked. Merged over the built-in defaults, so you only need to list what you want to change. Set something to 0 to switch it off.",
-  "weights": {
-    "swimFree": 40,
-    "hover": 14,
-    "dart": 9,
-    "chase": 8,
-    "hunt": 12,
-    "settle": 22,
-
-    "patrol": 20,
-    "idle": 14,
-    "sit": 12,
-    "sleep": 6,
-    "camouflage": 11,
-    "peek": 8,
-    "hang": 8,
-    "swing": 6,
-    "climb": 8,
-    "climbDown": 5,
-    "slide": 5,
-    "leave": 26,
-
-    "burrow": 5,
-    "eggs": 2,
-    "blot": 4,
-    "nibble": 6,
-    "inkBomb": 2,
-    "balloon": 3,
-    "ghost": 1,
-    "shock": 2
-  }
+  "_comment": [
+    "Optional tuning. Anything you put under 'weights' is merged over the built-in",
+    "defaults, so list only what you want to change — leave the rest out and it keeps",
+    "following the app. Set a name to 0 to switch that behaviour off entirely.",
+    "",
+    "Open water:  swimFree hover dart chase hunt settle",
+    "On a perch:  patrol idle sit camouflage peek hang swing climb climbDown slide leave",
+    "Set pieces:  burrow eggs blot nibble inkBomb balloon ghost shock",
+    "Desktop:     push tease clock caret ride jet",
+    "Social:      pile colourShow",
+    "",
+    "Example: { \"weights\": { \"eggs\": 0, \"camouflage\": 40 } }"
+  ],
+  "weights": {}
 }

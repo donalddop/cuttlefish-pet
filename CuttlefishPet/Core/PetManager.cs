@@ -285,6 +285,12 @@ public sealed class PetManager
         int want = display == null ? pet.HomePalette : Palettes.IndexOf(display);
         if (pet.Machine.Current.Name != "colourShow") pet.ShiftTo(want, 3);
 
+        // Juveniles have not mastered camouflage yet, so the young stay visible in
+        // their own colour — which is also the only way you get to watch one grow up.
+        double youth = Math.Clamp((0.75 - pet.Scale) / 0.4, 0, 1);
+        if (youth > 0.25 && display == "glass") display = null;
+        vivid = Math.Max(vivid, youth * 0.7);
+
         // Ease toward the target look rather than snapping between states.
         pet.Vividness += (vivid - pet.Vividness) * Math.Min(1, dt * 2.2);
         pet.BodyOpacity = 0.52 + 0.48 * pet.Vividness;

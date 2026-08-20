@@ -43,6 +43,12 @@ public sealed class SpriteRenderer
         public bool FadeOut;
     }
 
+    /// <summary>
+    /// Props are drawn from smaller source frames than the pets, so they need
+    /// scaling up or an egg clutch is a speck nobody notices.
+    /// </summary>
+    private const double PropScale = 1.7;
+
     private readonly OverlayWindow _overlay;
     private readonly Dictionary<string, SpriteAnim> _library;
     private readonly SkinLibrary _skins;
@@ -274,12 +280,13 @@ public sealed class SpriteRenderer
         i = anim.Loop ? i % anim.Frames.Length : Math.Min(i, anim.Frames.Length - 1);
 
         img.Source = anim.Frames[i];
-        img.Width = anim.FrameW * k;
-        img.Height = anim.FrameH * k;
+        img.Width = anim.FrameW * PropScale * k;
+        img.Height = anim.FrameH * PropScale * k;
         img.RenderTransform = facingRight
             ? null
-            : new ScaleTransform(-1, 1, anim.FrameW * k / 2, 0);
-        var tl = _overlay.PhysToDiu(new Point(physPos.X - anim.Anchor.X, physPos.Y - anim.Anchor.Y));
+            : new ScaleTransform(-1, 1, anim.FrameW * PropScale * k / 2, 0);
+        var tl = _overlay.PhysToDiu(new Point(physPos.X - anim.Anchor.X * PropScale,
+                                              physPos.Y - anim.Anchor.Y * PropScale));
         Canvas.SetLeft(img, tl.X);
         Canvas.SetTop(img, tl.Y);
     }
