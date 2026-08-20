@@ -1,0 +1,13 @@
+<Window x:Class="CuttlefishPet.Rendering.OverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="CuttlefishPet"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        Topmost="True"
+        ResizeMode="NoResize">
+    <Canvas x:Name="PetCanvas" />
+</Window>

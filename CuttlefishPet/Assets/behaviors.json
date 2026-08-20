@@ -1,0 +1,14 @@
+{
+  "weights": {
+    "idle": 20,
+    "swim": 26,
+    "sit": 13,
+    "sleep": 6,
+    "camouflage": 9,
+    "climb": 11,
+    "jump": 9,
+    "chase": 6,
+    "hunt": 16,
+    "peek": 9
+  }
+}

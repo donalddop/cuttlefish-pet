@@ -1,0 +1,358 @@
+{
+  "idle": {
+    "file": "idle.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 6,
+    "fps": 6,
+    "loop": true,
+    "anchor": [
+      30,
+      55
+    ],
+    "eye": [
+      39.24,
+      40.58,
+      6.5
+    ]
+  },
+  "swim": {
+    "file": "swim.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 8,
+    "fps": 10,
+    "loop": true,
+    "anchor": [
+      30,
+      55
+    ],
+    "eye": [
+      39.6,
+      40.2,
+      6.5
+    ]
+  },
+  "fall": {
+    "file": "fall.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 4,
+    "fps": 10,
+    "loop": true,
+    "anchor": [
+      30,
+      55
+    ],
+    "eye": [
+      39.12,
+      41.38,
+      7.5
+    ]
+  },
+  "drag": {
+    "file": "drag.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 4,
+    "fps": 8,
+    "loop": true,
+    "anchor": [
+      30,
+      55
+    ],
+    "eye": [
+      38.83,
+      39.29,
+      6.5
+    ]
+  },
+  "climb": {
+    "file": "climb.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 6,
+    "fps": 8,
+    "loop": true,
+    "anchor": [
+      32,
+      50
+    ],
+    "eye": [
+      33.38,
+      33.75,
+      6.5
+    ]
+  },
+  "sit": {
+    "file": "sit.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 4,
+    "fps": 3,
+    "loop": true,
+    "anchor": [
+      30,
+      55
+    ],
+    "eye": [
+      40.03,
+      43.08,
+      6.5
+    ]
+  },
+  "sleep": {
+    "file": "sleep.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 4,
+    "fps": 2,
+    "loop": true,
+    "anchor": [
+      30,
+      55
+    ]
+  },
+  "flatten": {
+    "file": "flatten.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 6,
+    "fps": 7,
+    "loop": false,
+    "anchor": [
+      30,
+      55
+    ]
+  },
+  "mimic_icon": {
+    "file": "mimic_icon.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 1,
+    "fps": 1,
+    "loop": true,
+    "anchor": [
+      30,
+      55
+    ]
+  },
+  "ink": {
+    "file": "ink.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 6,
+    "fps": 12,
+    "loop": false,
+    "anchor": [
+      30,
+      55
+    ]
+  },
+  "jump": {
+    "file": "jump.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 4,
+    "fps": 10,
+    "loop": true,
+    "anchor": [
+      30,
+      55
+    ],
+    "eye": [
+      40.0,
+      37.5,
+      6.5
+    ]
+  },
+  "wiggle": {
+    "file": "wiggle.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 6,
+    "fps": 10,
+    "loop": true,
+    "anchor": [
+      30,
+      55
+    ],
+    "eye": [
+      39.41,
+      41.11,
+      7.5
+    ]
+  },
+  "startle": {
+    "file": "startle.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 2,
+    "fps": 8,
+    "loop": true,
+    "anchor": [
+      30,
+      55
+    ],
+    "eye": [
+      38.69,
+      38.83,
+      7.5
+    ]
+  },
+  "hunt": {
+    "file": "hunt.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 6,
+    "fps": 7,
+    "loop": true,
+    "anchor": [
+      30,
+      55
+    ],
+    "eye": [
+      40.05,
+      40.66,
+      7.5
+    ]
+  },
+  "strike": {
+    "file": "strike.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 4,
+    "fps": 11,
+    "loop": false,
+    "anchor": [
+      30,
+      55
+    ],
+    "eye": [
+      40.14,
+      39.82,
+      7.5
+    ]
+  },
+  "zebra": {
+    "file": "zebra.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 4,
+    "fps": 10,
+    "loop": true,
+    "anchor": [
+      30,
+      55
+    ],
+    "eye": [
+      39.44,
+      39.44,
+      7.5
+    ]
+  },
+  "happy": {
+    "file": "happy.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 6,
+    "fps": 11,
+    "loop": true,
+    "anchor": [
+      30,
+      55
+    ],
+    "eye": [
+      39.24,
+      40.58,
+      6.5
+    ]
+  },
+  "eat": {
+    "file": "eat.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 4,
+    "fps": 8,
+    "loop": true,
+    "anchor": [
+      30,
+      55
+    ],
+    "eye": [
+      39.55,
+      41.57,
+      6.5
+    ]
+  },
+  "stretch": {
+    "file": "stretch.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 4,
+    "fps": 5,
+    "loop": false,
+    "anchor": [
+      30,
+      55
+    ],
+    "eye": [
+      39.84,
+      42.48,
+      6.5
+    ]
+  },
+  "peek": {
+    "file": "peek.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 4,
+    "fps": 4,
+    "loop": true,
+    "anchor": [
+      30,
+      55
+    ],
+    "eye": [
+      39.38,
+      45.0,
+      6.5
+    ]
+  },
+  "eye": {
+    "file": "eye.png",
+    "frameW": 16,
+    "frameH": 16,
+    "frames": 2,
+    "fps": 1,
+    "loop": false,
+    "anchor": [
+      8.0,
+      14
+    ]
+  },
+  "shrimp": {
+    "file": "shrimp.png",
+    "frameW": 32,
+    "frameH": 32,
+    "frames": 4,
+    "fps": 6,
+    "loop": true,
+    "anchor": [
+      16.0,
+      30
+    ]
+  },
+  "bubble": {
+    "file": "bubble.png",
+    "frameW": 16,
+    "frameH": 16,
+    "frames": 4,
+    "fps": 8,
+    "loop": false,
+    "anchor": [
+      8.0,
+      14
+    ]
+  }
+}
