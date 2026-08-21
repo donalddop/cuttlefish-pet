@@ -86,7 +86,8 @@ public sealed class LayEggsBehavior : BehaviorBase
     private double _t;
     private bool _laid;
 
-    public static bool Possible(BehaviorContext c) => c.Pet.Surface is { IsLandable: true };
+    public static bool Possible(BehaviorContext c) =>
+        c.Pet.Surface is { IsLandable: true } && c.World.PetCount < 11;
 
     public override void Enter(BehaviorContext c)
     {
@@ -103,19 +104,30 @@ public sealed class LayEggsBehavior : BehaviorBase
         if (!_laid && _t > 1.4)
         {
             _laid = true;
-            var spot = new Point(pet.Pos.X + (pet.FacingRight ? -34 : 34), pet.Pos.Y);
-            c.AddProp(new Prop
+
+            // How many eggs is the whole population control in one line. An empty
+            // tank gets a big clutch; a full one gets a token single egg that the
+            // hatching cap will probably refuse anyway. A bloom adds two on top.
+            int clutch = Math.Clamp(4 - c.World.PetCount, 1, 3) + (c.World.Bloom > 0 ? 3 : 0);
+            for (int i = 0; i < clutch; i++)
             {
-                Anim = "egg",
-                Pos = spot,
-                Life = 40,
-                OnExpire = p => c.SpawnPet(new Point(p.X, p.Y - 40), hatchling: true),
-            });
+                var spot = new Point(pet.Pos.X + (pet.FacingRight ? -34 : 34) + (i - (clutch - 1) / 2.0) * 19,
+                                     pet.Pos.Y);
+                c.AddProp(new Prop
+                {
+                    Anim = "egg",
+                    Pos = spot,
+                    // Staggered a little so a brood trickles out instead of popping
+                    // into existence all at once.
+                    Life = 38 + i * 4 + c.Rng.NextDouble() * 3,
+                    OnExpire = p => c.SpawnPet(new Point(p.X, p.Y - 40), hatchling: true),
+                });
+            }
             c.Sound.Play("bubble", 0.3);
 
-            // Spawning is the last thing a cuttlefish does. Whatever life it had
-            // left, it has about two minutes now — which is what stops a tank
-            // breeding itself into a swarm.
+            // Spawning is the last thing a cuttlefish does — real ones die shortly
+            // after breeding. It is also what makes a boom collapse: a generation
+            // that all bred at once all dies at once.
             pet.Lifespan = Math.Min(pet.Lifespan, pet.Age + 120);
         }
         if (_t > 3) Done = true;
@@ -255,7 +267,8 @@ public sealed class InkBlotBehavior : BehaviorBase
     private double _t;
     private bool _done;
 
-    public static bool Possible(BehaviorContext c) => c.Pet.Surface is { IsLandable: true };
+    public static bool Possible(BehaviorContext c) =>
+        c.Pet.Surface is { IsLandable: true } && c.World.PetCount < 11;
 
     public override void Enter(BehaviorContext c) => c.Pet.Anim.Play("sit");
 

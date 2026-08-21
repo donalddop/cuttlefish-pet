@@ -58,6 +58,13 @@ public sealed class WorldState
     /// <summary>Everyone in the tank, so pets can notice each other.</summary>
     public List<Pet> Pets { get; } = new();
     public int PetCount => Pets.Count;
+
+    /// <summary>
+    /// Seconds left of a plankton bloom. Food is everywhere, courtship is quick and
+    /// clutches are large — this is what turns a quiet tank into a swarm. Zero the
+    /// rest of the time.
+    /// </summary>
+    public double Bloom { get; set; }
     /// <summary>Recent scroll wheel motion — a current that pushes swimmers about.</summary>
     public double ScrollCurrent { get; set; }
 

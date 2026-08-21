@@ -246,7 +246,7 @@ public sealed class BehaviorMachine
             if (BurrowBehavior.Possible(_ctx)) Add("burrow", () => new BurrowBehavior());
             if (InkBlotBehavior.Possible(_ctx)) Add("blot", () => new InkBlotBehavior());
             if (NibbleBehavior.Possible(_ctx)) Add("nibble", () => new NibbleBehavior());
-            if (LayEggsBehavior.Possible(_ctx) && _ctx.World.PetCount < 6)
+            if (LayEggsBehavior.Possible(_ctx))
                 Add("eggs", () => new LayEggsBehavior());
             Add("shock", () => new ShockBehavior());
             if (HangBehavior.Possible(_ctx))

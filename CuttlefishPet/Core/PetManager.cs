@@ -29,6 +29,7 @@ public sealed class PetManager
     private readonly List<(Point Pos, bool Hatchling)> _hatching = new();
     private double _clock, _lastDownAt = double.NegativeInfinity, _rivalCooldown;
     private double _preySpawnIn = 12, _courtCooldown = 30, _shrimpSpawnIn = 25;
+    private double _immigrationIn = 60, _bloomIn = 240;
     private double _sampleMs, _binCheckIn;
     private int _sampleCount;
     private int _lastHourChimed = -1;
@@ -36,6 +37,15 @@ public sealed class PetManager
     private int _tick;
 
     public int Count => _pets.Count;
+
+    /// <summary>
+    /// How readily two cuttlefish that meet in open water end up courting. Rises
+    /// sharply when the tank is nearly empty and collapses when it is full, which is
+    /// most of what pulls the population back from either extreme.
+    /// </summary>
+    private double CourtChance => _world.Bloom > 0
+        ? 0.85
+        : Math.Clamp(0.55 - _pets.Count * 0.07, 0.08, 0.55);
 
     public PetManager(OverlayWindow overlay, SpriteRenderer renderer,
         Dictionary<string, SpriteAnim> library, GlobalInput input, SoundService sound)
@@ -64,8 +74,12 @@ public sealed class PetManager
             Pos = at ?? new Point(wa.Left + 120 + _rng.NextDouble() * (wa.Width - 240),
                                   wa.Top + 120 + _rng.NextDouble() * (wa.Height - 300)),
         };
-        pet.Lifespan = (14 + _rng.NextDouble() * 16) * 60;   // 14–30 minutes undisturbed
         pet.BirthScale = hatchling ? 0.30 : 0.80;
+        // A clutch is one cohort: hatchlings draw from a short, tight range, so the
+        // whole brood reaches the end of its life within a few minutes of itself.
+        // That is what turns a swarm into a crash rather than a slow fade.
+        pet.Lifespan = hatchling ? (8 + _rng.NextDouble() * 4) * 60
+                                 : (14 + _rng.NextDouble() * 16) * 60;
         pet.GrowUpSeconds = pet.Lifespan * (hatchling ? 0.40 : 0.12);
         pet.Scale = pet.BirthScale;
         pet.HomePalette = Palettes.PickRandom(_rng);
@@ -91,6 +105,72 @@ public sealed class PetManager
         var pet = _pets[^1];
         _pets.RemoveAt(_pets.Count - 1);
         _renderer.RemoveVisual(pet.Visual);
+    }
+
+    /// <summary>
+    /// Keeps the tank alive without keeping it steady. Three forces, all of them
+    /// visible to anyone watching:
+    ///
+    /// A tank can never empty. Below two cuttlefish one drifts in from off-screen,
+    /// which also means a lone survivor eventually gets a mate.
+    ///
+    /// Blooms are what make a swarm. Every few minutes, if there is room, food turns
+    /// plentiful for a minute or so and breeding goes into overdrive — several large
+    /// clutches in quick succession.
+    ///
+    /// The crash needs no mechanism of its own: crowding speeds up ageing (see
+    /// AgeAndRetire), a clutch hatches as one cohort with near-identical lifespans,
+    /// and spawning kills the parent. So a swarm ages fast and dies together, and the
+    /// survivors inherit an empty tank and breed freely again.
+    /// </summary>
+    private void PopulationTick(double dt)
+    {
+        _world.Bloom = Math.Max(0, _world.Bloom - dt);
+
+        // The floor. Only counts down while the tank is nearly empty, so a healthy
+        // population never accumulates arrivals.
+        if (_pets.Count < 2)
+        {
+            // An empty tank is the one state that must not last. Any long wait
+            // already ticking gets cut short the moment the last one dies.
+            if (_pets.Count == 0)
+                _immigrationIn = Math.Min(_immigrationIn, 8 + _rng.NextDouble() * 12);
+            _immigrationIn -= dt;
+            if (_immigrationIn <= 0)
+            {
+                _immigrationIn = 45 + _rng.NextDouble() * 45;
+                SpawnDrifter();
+            }
+        }
+        else _immigrationIn = 45 + _rng.NextDouble() * 45;
+
+        // The boom. Held off while the tank is already full — a bloom there would
+        // only push against the crowding that is about to kill everyone anyway.
+        _bloomIn -= dt;
+        if (_bloomIn <= 0)
+        {
+            _bloomIn = 1200 + _rng.NextDouble() * 1200;
+            if (_pets.Count is >= 2 and <= 5)
+            {
+                _world.Bloom = 75;
+                _courtCooldown = 0;
+                Log($"bloom begint bij {_pets.Count} zeekatten");
+            }
+        }
+    }
+
+    /// <summary>One swims in from off the edge of the screen and joins the tank.</summary>
+    private void SpawnDrifter()
+    {
+        var tank = _world.VirtualScreen;
+        bool fromLeft = _rng.NextDouble() < 0.5;
+        var at = new Point(fromLeft ? tank.Left + 70 : tank.Right - 70,
+                           tank.Top + 150 + _rng.NextDouble() * (tank.Height - 300));
+        Spawn(at);
+        var arrival = _pets[^1];
+        arrival.Vel = new Vector(fromLeft ? 150 : -150, 0);
+        arrival.FacingRight = fromLeft;
+        Log($"nieuwkomer drijft binnen bij {_pets.Count - 1} zeekatten");
     }
 
     /// <summary>Drop a shrimp at the cursor for the pets to chase down.</summary>
@@ -156,6 +236,7 @@ public sealed class PetManager
         TickTreats(dt);
         TickProps(dt);
         CheckSocial(dt);
+        PopulationTick(dt);
         _renderer.TickEffects(dt);
 
         _overlay.SetClickThrough(!wantClicks);
@@ -363,8 +444,11 @@ public sealed class PetManager
     {
         if (pet.Dying) return;
 
+        // Crowding wears them out, and faster than linearly: a tank of four is a bit
+        // busy, a tank of eleven is a die-off waiting to happen. This is the entire
+        // bust half of the cycle — no separate crash logic anywhere.
         int crowd = Math.Max(0, _pets.Count - 3);
-        double pressure = 1 + crowd * 0.55;
+        double pressure = 1 + crowd * 0.5 + crowd * crowd * 0.03;
         pet.Age += dt * pressure;
 
         pet.ScaleTarget = pet.BirthScale + (1 - pet.BirthScale) *
@@ -564,14 +648,14 @@ public sealed class PetManager
                     a.Machine.Force(new RivalDisplayBehavior(b, aRetreats));
                     b.Machine.Force(new RivalDisplayBehavior(a, !aRetreats));
                 }
-                else if (a.Surface == null && b.Surface == null && roll < 0.3 &&
+                else if (a.Surface == null && b.Surface == null && roll < CourtChance &&
                          _courtCooldown <= 0)
                 {
                     // One puts on a display; the other decides how it lands.
                     bool welcome = _rng.NextDouble() < 0.55;
                     a.Machine.Force(new CourtshipBehavior(b, suitor: true, welcome));
                     b.Machine.Force(new CourtshipBehavior(a, suitor: false, welcome));
-                    _courtCooldown = 90;
+                    _courtCooldown = _world.Bloom > 0 ? 10 : 60 + _pets.Count * 30;
                 }
                 else if (a.Surface == null && b.Surface == null && roll < 0.42)
                 {
@@ -619,9 +703,11 @@ public sealed class PetManager
         _leaving.Clear();
 
         // Eggs only come to anything when there is room. Above the cap the clutch
-        // simply does not make it, which is how a real tank behaves too.
+        // simply does not make it, which is how a real tank behaves too. The cap is
+        // high enough to allow a proper swarm — crowding, not this line, is what
+        // ends one.
         foreach (var (pos, hatchling) in _hatching)
-            if (_pets.Count < 7) Spawn(pos, hatchling);
+            if (_pets.Count < 12) Spawn(pos, hatchling);
         _hatching.Clear();
     }
 
@@ -700,9 +786,11 @@ public sealed class PetManager
         // Shrimp turn up on their own, so there is usually something to hunt without
         // you having to throw one in.
         _shrimpSpawnIn -= dt;
-        if (_shrimpSpawnIn <= 0 && _world.Treats.Count < 2 && _pets.Count > 0)
+        if (_shrimpSpawnIn <= 0 && _world.Treats.Count < (_world.Bloom > 0 ? 6 : 2) && _pets.Count > 0)
         {
-            _shrimpSpawnIn = 60 + _rng.NextDouble() * 90;
+            // A bloom is meant to be obvious: shrimp everywhere, and everyone eating.
+            _shrimpSpawnIn = _world.Bloom > 0 ? 5 + _rng.NextDouble() * 5
+                                              : 60 + _rng.NextDouble() * 90;
             var tank = _world.VirtualScreen;
             AddTreat(new Point(tank.Left + 100 + _rng.NextDouble() * (tank.Width - 200),
                                tank.Top + tank.Height * 0.5 + _rng.NextDouble() * (tank.Height * 0.4)));
