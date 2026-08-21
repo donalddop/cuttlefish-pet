@@ -506,7 +506,10 @@ public sealed class PetManager
 
         // Juveniles have not mastered camouflage yet, so the young stay visible in
         // their own colour — which is also the only way you get to watch one grow up.
-        double youth = Math.Clamp((0.75 - pet.Scale) / 0.4, 0, 1);
+        // Keyed off actual age, not drawn size: a well-fed adult is bigger than its
+        // years and a pet posing as a taskbar icon is deliberately tiny, and neither
+        // of those is a juvenile.
+        double youth = Math.Clamp(1 - pet.Age / Math.Max(1, pet.GrowUpSeconds), 0, 1);
         if (youth > 0.25 && display == "glass") display = null;
         vivid = Math.Max(vivid, youth * 0.7);
 

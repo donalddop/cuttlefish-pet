@@ -23,7 +23,7 @@ public sealed class BehaviorMachine
         ["push"] = 6, ["tease"] = 5, ["clock"] = 4, ["caret"] = 12,
         ["ride"] = 6, ["jet"] = 7,
         // social and flourishes
-        ["pile"] = 10, ["colourShow"] = 6, ["icon"] = 12, ["play"] = 9,
+        ["pile"] = 10, ["colourShow"] = 6, ["icon"] = 22, ["play"] = 9,
         ["cross"] = 7, ["read"] = 16, ["bone"] = 70, ["bigBubble"] = 9,
     };
 
