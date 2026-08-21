@@ -85,7 +85,6 @@ public sealed class HuntTreatBehavior : BehaviorBase
 
     public override void Enter(BehaviorContext c)
     {
-        _treat.ClaimedBy = c.Pet;
         c.Pet.Anim.Play("swim");
         c.Pet.Surface = null;   // push off whatever it was holding
     }
@@ -138,8 +137,10 @@ public sealed class EatTreatBehavior : BehaviorBase
     public override bool NeedsPerch => false;   // plays out mid-water just fine
     public override bool Interruptible => false;
     private readonly Treat _treat;
-    private double _t;
+    private readonly TentacleStrike _strike = new();
+    private Vector _grab;
     private bool _grabbed;
+    private double _chew;
 
     public EatTreatBehavior(Treat treat) => _treat = treat;
 
@@ -151,21 +152,45 @@ public sealed class EatTreatBehavior : BehaviorBase
 
     public override void Tick(BehaviorContext c, double dt)
     {
-        _t += dt;
-        if (!_grabbed && _t > 0.35)
+        var pet = c.Pet;
+
+        // The shrimp is taken by the tentacles, not by swimming into it: the body
+        // hangs still and only the clubs cross the gap.
+        var mouth = TentacleStrike.Mouth(pet);
+        if (!_strike.Landed) pet.FacingRight = _treat.Pos.X > pet.Pos.X;   // turn to face it
+        _strike.Tick(pet, _strike.Landed ? mouth + _grab : _treat.Pos, dt);
+
+        if (_strike.JustLanded)
         {
+            _grab = _treat.Pos - mouth;
             _grabbed = true;
-            _treat.Eaten = true;                 // snatched by the feeding tentacles
-            c.Pet.Feed();                        // a meal puts on visible size
-            c.Pet.Anim.Play("eat", restart: true);
-            c.Sound.Play("blip", 0.35);
+            c.Sound.Play("blip", 0.3);
         }
-        if (_t > 1.6)
+        if (_grabbed) { _treat.Held = true; _treat.Pos = pet.StrikeTip; }   // hauled in
+
+        if (_strike.Finished && !_treat.Eaten)
         {
-            Next = new HappyBehavior(1.6);
-            Done = true;
+            _treat.Eaten = true;
+            pet.Feed();                              // a meal puts on visible size
+            pet.Anim.Play("eat", restart: true);
+            c.Sound.Play("blip", 0.35);
+            _chew = 0.9;
+        }
+
+        // Ends off the strike rather than a stopwatch of its own: a fixed timer here
+        // silently cut the animation short the moment the strike timings changed.
+        if (_treat.Eaten)
+        {
+            _chew -= dt;
+            if (_chew <= 0)
+            {
+                Next = new HappyBehavior(1.6);
+                Done = true;
+            }
         }
     }
+
+    public override void Exit(BehaviorContext c) => _treat.Held = false;
 }
 
 /// <summary>Pink flush and a bouncy flourish: petted, or pleased with a meal.</summary>

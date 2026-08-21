@@ -17,6 +17,9 @@ public sealed class StalkPreyBehavior : BehaviorBase
     private enum Phase { Creep, Strike, Feed }
     private Phase _phase = Phase.Creep;
     private readonly Prey _prey;
+    private readonly TentacleStrike _strike = new();
+    private Vector _grab;
+    private bool _caught;
     private double _t, _phaseT;
 
     public StalkPreyBehavior(Prey prey) => _prey = prey;
@@ -57,7 +60,8 @@ public sealed class StalkPreyBehavior : BehaviorBase
                 pet.Pos += pet.Vel * dt;
                 PhysicsEngine.ClampToTank(pet, c.World);
 
-                if (to.Length < 78)
+                // Striking range, not biting range: the tentacles cover the last stretch.
+                if (to.Length < 150)
                 {
                     _phase = Phase.Strike;
                     _phaseT = 0;
@@ -73,11 +77,33 @@ public sealed class StalkPreyBehavior : BehaviorBase
                 break;
 
             case Phase.Strike:
-                // Lunge the last stretch; a hit is close enough at the end of the reach.
-                pet.Pos += to * Math.Min(1, 7 * dt);
-                if (pet.Anim.Finished)
+                // The body holds station — this is the whole difference between a
+                // cuttlefish and something that just swims into its dinner. Only the
+                // tentacles travel, and the fish keeps struggling until they land.
+                pet.Vel *= Math.Exp(-6 * dt);
+                pet.Pos += pet.Vel * dt;
+                pet.FacingRight = to.X > 0;
+
+                // Tracking a moving fish until the clubs land, then holding whatever
+                // they closed on, measured from the mouth so it reels in cleanly.
+                var mouth = TentacleStrike.Mouth(pet);
+                _strike.Tick(pet, _strike.Landed ? mouth + _grab : _prey.Pos, dt);
+
+                if (_strike.JustLanded)
                 {
-                    if ((_prey.Pos - pet.Pos).Length < 95)
+                    // A miss is a real outcome. A fish that bolted during the wind-up
+                    // is simply out of reach by the time the tentacles arrive.
+                    _grab = _prey.Pos - mouth;
+                    _caught = _grab.Length < 135;
+                    c.Sound.Play(_caught ? "blip" : "squirt", _caught ? 0.3 : 0.2);
+                }
+
+                // Hauled back along the tentacles, still wriggling.
+                if (_caught) { _prey.Held = true; _prey.Pos = pet.StrikeTip; }
+
+                if (_strike.Finished)
+                {
+                    if (_caught)
                     {
                         _prey.Eaten = true;
                         pet.Feed(0.11);          // a whole fish is a proper meal
@@ -111,6 +137,7 @@ public sealed class StalkPreyBehavior : BehaviorBase
     {
         c.Pet.PupilTarget = null;
         if (_prey.StalkedBy == c.Pet) _prey.StalkedBy = null;
+        _prey.Held = false;   // a missed strike must not freeze the fish in place
     }
 }
 

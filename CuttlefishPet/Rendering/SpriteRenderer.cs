@@ -32,6 +32,15 @@ public sealed class PetVisual
     public required Image Eye { get; init; }
     public required ScaleTransform Flip { get; init; }
     public required RotateTransform Swing { get; init; }
+    /// <summary>
+    /// The two feeding tentacles, drawn as geometry rather than sprite frames — they
+    /// have to reach whatever is actually being struck at, at whatever distance. Two
+    /// paths over the same geometry: a dark one underneath so they stay visible on a
+    /// pale desktop, a pale one on top for the muscle itself. Sit behind the body, so
+    /// they read as coming out from under the arms.
+    /// </summary>
+    public required System.Windows.Shapes.Path TentacleEdge { get; init; }
+    public required System.Windows.Shapes.Path Tentacle { get; init; }
 }
 
 /// <summary>Draws pets (body + tracking pupil), props and one-shot effects.</summary>
@@ -114,6 +123,27 @@ public sealed class SpriteRenderer
         eye.HorizontalAlignment = HorizontalAlignment.Left;
         eye.VerticalAlignment = VerticalAlignment.Top;
 
+        var tentacleEdge = new System.Windows.Shapes.Path
+        {
+            Stroke = new SolidColorBrush(Color.FromArgb(150, 74, 56, 44)),
+            Fill = new SolidColorBrush(Color.FromArgb(150, 74, 56, 44)),
+            StrokeEndLineCap = PenLineCap.Round,
+            StrokeStartLineCap = PenLineCap.Round,
+            IsHitTestVisible = false,
+            Visibility = Visibility.Collapsed,
+        };
+        var tentacle = new System.Windows.Shapes.Path
+        {
+            Stroke = new SolidColorBrush(Color.FromRgb(246, 234, 216)),
+            Fill = new SolidColorBrush(Color.FromRgb(246, 234, 216)),
+            StrokeEndLineCap = PenLineCap.Round,
+            StrokeStartLineCap = PenLineCap.Round,
+            IsHitTestVisible = false,
+            Visibility = Visibility.Collapsed,
+        };
+        _overlay.PetCanvas.Children.Add(tentacleEdge);
+        _overlay.PetCanvas.Children.Add(tentacle);
+
         var flip = new ScaleTransform(1, 1);
         var swing = new RotateTransform(0);
         var root = new Grid
@@ -138,10 +168,16 @@ public sealed class SpriteRenderer
             Tint = tint, TintFill = tintFill, TintMask = tintMask,
             Sheen = sheen, SheenFill = sheenFill, SheenMask = sheenMask,
             Camo = camo, CamoMask = camoMask, Eye = eye, Flip = flip, Swing = swing,
+            TentacleEdge = tentacleEdge, Tentacle = tentacle,
         };
     }
 
-    public void RemoveVisual(PetVisual v) => _overlay.PetCanvas.Children.Remove(v.Root);
+    public void RemoveVisual(PetVisual v)
+    {
+        _overlay.PetCanvas.Children.Remove(v.Root);
+        _overlay.PetCanvas.Children.Remove(v.Tentacle);
+        _overlay.PetCanvas.Children.Remove(v.TentacleEdge);
+    }
 
     public void Update(Pet pet)
     {
@@ -277,6 +313,8 @@ public sealed class SpriteRenderer
         {
             v.Eye.Visibility = Visibility.Collapsed;
         }
+
+        UpdateTentacles(pet, v);
     }
 
     private static void Show(UIElement e) =>
@@ -284,6 +322,67 @@ public sealed class SpriteRenderer
 
     // ---- props (shrimp treats) ----
 
+
+    /// <summary>
+    /// Draw the feeding tentacles for this frame. Two strands bowing apart and
+    /// converging on a pair of clubs, rebuilt from scratch each tick — the geometry
+    /// is four segments, so this is cheaper than it sounds and it lets the reach
+    /// follow whatever the pet is actually striking at.
+    /// </summary>
+    private void UpdateTentacles(Pet pet, PetVisual v)
+    {
+        var mouth = TentacleStrike.Mouth(pet);
+        var d = pet.StrikeTip - mouth;
+        double len = d.Length;
+
+        // Tucked away, or so nearly so that drawing it would just be a smudge.
+        if (!pet.Striking || len < 6)
+        {
+            if (v.Tentacle.Visibility != Visibility.Collapsed)
+            {
+                v.Tentacle.Visibility = Visibility.Collapsed;
+                v.TentacleEdge.Visibility = Visibility.Collapsed;
+            }
+            return;
+        }
+
+        double k = _overlay.DeviceToDiu;
+        var a = _overlay.PhysToDiu(mouth);
+        var b = _overlay.PhysToDiu(pet.StrikeTip);
+        var dir = new Vector(b.X - a.X, b.Y - a.Y);
+        double dlen = Math.Max(1, dir.Length);
+        var normal = new Vector(-dir.Y, dir.X) / dlen;
+
+        // They bow apart over the first stretch and come together at the clubs; the
+        // longer the reach, the straighter they pull.
+        double bow = Math.Min(13, dlen * 0.17) * pet.Scale;
+        double club = 3.6 * pet.Scale * k;
+
+        var group = new GeometryGroup();
+        foreach (double side in stackalloc[] { -1.0, 1.0 })
+        {
+            var mid = new Point((a.X + b.X) / 2 + normal.X * bow * side,
+                                (a.Y + b.Y) / 2 + normal.Y * bow * side);
+            var figure = new PathFigure { StartPoint = a, IsClosed = false, IsFilled = false };
+            figure.Segments.Add(new QuadraticBezierSegment(mid, b, true));
+            var strand = new PathGeometry();
+            strand.Figures.Add(figure);
+            group.Children.Add(strand);
+
+            var tip = new Point(b.X + normal.X * club * 0.8 * side,
+                                b.Y + normal.Y * club * 0.8 * side);
+            group.Children.Add(new EllipseGeometry(tip, club, club * 0.72));
+        }
+
+        v.Tentacle.Data = group;
+        v.TentacleEdge.Data = group;
+        v.Tentacle.StrokeThickness = 2.1 * pet.Scale * k;
+        v.TentacleEdge.StrokeThickness = 3.6 * pet.Scale * k;
+        v.Tentacle.Opacity = 0.92 * pet.Fade;
+        v.TentacleEdge.Opacity = 0.55 * pet.Fade;
+        v.Tentacle.Visibility = Visibility.Visible;
+        v.TentacleEdge.Visibility = Visibility.Visible;
+    }
     public Image CreateProp(string anim)
     {
         var img = NewImage();

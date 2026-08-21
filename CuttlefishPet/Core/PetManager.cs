@@ -208,6 +208,9 @@ public sealed class PetManager
         bool wantClicks = false;
         foreach (var pet in _pets)
         {
+            // Immediate-mode: whoever is striking re-asserts it every tick, so a
+            // behaviour that ends mid-strike can never leave tentacles hanging.
+            pet.Striking = false;
             ReactToNewWindows(pet);
             pet.Machine.Tick(dt);
             PhysicsEngine.Tick(pet, _world, dt);
@@ -488,6 +491,9 @@ public sealed class PetManager
             "rival" or "angry" => ("ink", 1.0),
             "happy" or "eat" => ("magenta", 1.0),
             "hunt" or "stalk" => ("crimson", 0.95),
+            "bone" => ("pearl", 0.75),                          // blanched over a corpse
+            "boneRide" => ("coral", 1.0),                        // flustered, and stuck
+            "dying" => ("pearl", 0.55),                          // the colour goes first
             "court" => (null, 1.0),                             // its own colour, full blast
             "race" or "school" or "jet" => (null, 0.8),
             "colourShow" => (null, 1.0),                        // drives itself

@@ -114,6 +114,11 @@ public sealed class Pet
     /// <summary>Extra size earned by eating. A well-fed cuttlefish is a big one.</summary>
     public double Nourishment;
 
+    /// <summary>Feeding tentacles are out this frame; the renderer draws them.</summary>
+    public bool Striking;
+    /// <summary>Where the tentacle clubs are right now, in physical pixels.</summary>
+    public Point StrikeTip;
+
     /// <summary>A good meal puts on visible size, up to a point.</summary>
     public void Feed(double amount = 0.085) =>
         Nourishment = Math.Min(0.4, Nourishment + amount);

@@ -24,7 +24,7 @@ public sealed class BehaviorMachine
         ["ride"] = 6, ["jet"] = 7,
         // social and flourishes
         ["pile"] = 10, ["colourShow"] = 6, ["icon"] = 12, ["play"] = 9,
-        ["cross"] = 7, ["read"] = 16, ["bone"] = 30, ["bigBubble"] = 9,
+        ["cross"] = 7, ["read"] = 16, ["bone"] = 70, ["bigBubble"] = 9,
     };
 
     /// <summary>

@@ -181,7 +181,6 @@ public sealed class InvestigateBoneBehavior : BehaviorBase
                 _arrived = true;
                 _t = 0;
                 pet.Anim.Play("idle");
-                pet.ShiftTo(Palettes.IndexOf("pearl"), 12);   // blanched over it
             }
             else
             {
@@ -199,9 +198,18 @@ public sealed class InvestigateBoneBehavior : BehaviorBase
         pet.FacingRight = to.X > 0;
         pet.VisualBob = Math.Sin(_t * 1.8) * 3;
 
-        // A parting shove, and it drifts on.
+        // A parting shove — or, if there is a decent stretch of water overhead, he
+        // decides the thing is worth striking at, which goes about as well as you
+        // would expect from an animal grabbing hold of its own buoyancy aid.
         if (_t > 3.5)
         {
+            if (_bone.Pos.Y > c.World.VirtualScreen.Top + 320 && c.Rng.NextDouble() < 0.72)
+            {
+                Next = new BoneRideBehavior(_bone);
+                Done = true;
+                return;
+            }
+
             pet.Anim.Play("strike", restart: true);
             var push = to.Length < 1 ? new Vector(0, -40) : to / to.Length * 130;
             _bone.Nudge(push);
@@ -301,5 +309,104 @@ public static class ColourMimicry
             pet.SkinPattern = other.SkinPattern;
             return;
         }
+    }
+}
+
+/// <summary>
+/// He fires his feeding tentacles at a drifting cuttlebone — and a cuttlebone is
+/// mostly gas. Nothing comes back down the tentacles; instead he goes up. Too
+/// stubborn to let go, he gets towed to the top of the tank before working out that
+/// this was not food, lets go in a fluster and sinks back down.
+/// </summary>
+public sealed class BoneRideBehavior : BehaviorBase
+{
+    public override string Name => "boneRide";
+    public override bool OverridesPhysics => true;
+    public override bool NeedsPerch => false;
+
+    private readonly Bone _bone;
+    private readonly TentacleStrike _strike = new();
+    private Vector _grab;
+    private bool _hooked, _released;
+    private double _t, _rideT;
+
+    public BoneRideBehavior(Bone bone) => _bone = bone;
+
+    public override void Enter(BehaviorContext c)
+    {
+        c.Pet.Anim.Play("hunt", restart: true);
+        c.Pet.Surface = null;
+        c.Pet.Vel = new Vector(0, 0);
+    }
+
+    public override void Tick(BehaviorContext c, double dt)
+    {
+        var pet = c.Pet;
+        _t += dt;
+        pet.PupilTarget = _bone.Pos;
+
+        if (_bone.Expired && !_hooked) { Next = new SwimFreeBehavior(); Done = true; return; }
+
+        var mouth = TentacleStrike.Mouth(pet);
+        if (!_released)
+        {
+            _strike.Tick(pet, _hooked ? mouth + _grab : _bone.Pos, dt, holdOn: _hooked);
+            if (_strike.JustLanded)
+            {
+                _grab = _bone.Pos - mouth;
+                _hooked = _grab.Length < 150;
+                if (_hooked)
+                {
+                    c.Sound.Play("blip", 0.3);
+                    pet.Anim.Play("drag", restart: true);   // hanging off it
+                }
+            }
+        }
+
+        if (_hooked && !_released)
+        {
+            _rideT += dt;
+
+            // Hauled along under a rising cuttlebone. He weighs it down, so the pair
+            // climbs slower than the bone did alone — and wanders, because neither of
+            // them is steering.
+            var lift = new Vector(Math.Sin(_rideT * 1.6) * 26, -46);
+            pet.Vel += (lift - pet.Vel) * Math.Min(1, 2.4 * dt);
+            pet.Pos += pet.Vel * dt;
+            _bone.Pos = pet.StrikeTip;
+            _bone.Vel = pet.Vel;
+            pet.Rotation = Math.Sin(_rideT * 3.1) * 9;
+            pet.VisualBob = Math.Sin(_rideT * 6) * 2;
+            pet.FacingRight = _grab.X > 0;
+
+            // Fussing: a bubble now and then as it dawns on him what he is holding.
+            if (_rideT > 2.2 && c.Rng.NextDouble() < dt * 1.2)
+                c.Renderer.SpawnBubble(pet.Pos + new Vector(0, -34));
+
+            // Lets go near the surface, or once he has had enough of being luggage.
+            if (pet.Pos.Y < c.World.VirtualScreen.Top + 190 || _rideT > 5.5)
+            {
+                _released = true;
+                pet.Striking = false;
+                pet.Rotation = 0;
+                _bone.Nudge(new Vector(c.Rng.Next(-80, 81), -140));
+                c.Sound.Play("squirt", 0.35);
+                Next = new StartleBehavior();
+                Done = true;
+                return;
+            }
+        }
+        else if (!_hooked && _strike.Finished)
+        {
+            // Missed it entirely, which is its own small comedy.
+            Next = new SwimFreeBehavior();
+            Done = true;
+        }
+    }
+
+    public override void Exit(BehaviorContext c)
+    {
+        c.Pet.PupilTarget = null;
+        c.Pet.Rotation = 0;
     }
 }

@@ -13,6 +13,11 @@ public sealed class Prey
     public Vector Vel;
     public double Age;
     public bool Eaten;
+    /// <summary>
+    /// Gripped by a pair of feeding tentacles. It stops swimming under its own steam
+    /// while held — otherwise its own movement fights the pet reeling it in.
+    /// </summary>
+    public bool Held;
     public bool FacingRight = true;
     /// <summary>Set while a pet is committed to this fish, so they don't all converge.</summary>
     public Pet? StalkedBy;
@@ -28,6 +33,7 @@ public sealed class Prey
     public void Tick(double dt, WorldState world, Random rng)
     {
         Age += dt;
+        if (Held) return;
         _retarget -= dt;
         _panic = Math.Max(0, _panic - dt);
 

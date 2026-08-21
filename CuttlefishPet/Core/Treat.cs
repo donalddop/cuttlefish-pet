@@ -12,6 +12,11 @@ public sealed class Treat
     public Point Pos;
     public Vector Vel;
     public bool Eaten;
+    /// <summary>
+    /// Gripped by a pair of feeding tentacles. It stops swimming under its own steam
+    /// while held — otherwise its own movement fights the pet reeling it in.
+    /// </summary>
+    public bool Held;
     public double Age;
     public bool FacingRight = true;
     /// <summary>Set once a pet commits to it, so several pets don't converge on one.</summary>
@@ -26,6 +31,7 @@ public sealed class Treat
     public void Tick(double dt, WorldState world, Random rng)
     {
         Age += dt;
+        if (Held) return;
         _retarget -= dt;
         _restFor -= dt;
 
