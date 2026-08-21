@@ -46,10 +46,14 @@ public static class PhysicsEngine
     /// Scrolling stirs the tank and drags the swimmers along with it. Applied by the
     /// manager after the behaviour has had its say, because nearly every swimming
     /// behaviour steers the pet itself and would otherwise ignore the current.
+    ///
+    /// The current follows the content, not the wheel. Scrolling up pulls the page
+    /// down the screen, so that is the way the water moves too — pushing the pets
+    /// against the direction everything else is travelling reads as plain wrong.
     /// </summary>
     public static void ApplyScrollCurrent(Pet pet, WorldState world, double dt)
     {
-        double c = world.ScrollCurrent;
+        double c = -world.ScrollCurrent;
         if (Math.Abs(c) < 0.12) return;
         pet.Pos = new Point(pet.Pos.X + Math.Sin(pet.Pos.Y * 0.008) * c * 70 * dt,
                             pet.Pos.Y - c * 230 * dt);
