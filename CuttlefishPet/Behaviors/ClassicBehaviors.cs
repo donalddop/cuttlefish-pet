@@ -87,8 +87,8 @@ public sealed class LayEggsBehavior : BehaviorBase
     private bool _laid;
 
     public static bool Possible(BehaviorContext c) =>
-        c.Pet.Surface is { IsLandable: true } && c.Pet.Mature &&
-        c.World.PetCount < c.World.Settings.Ceiling - 1;
+        c.Pet.Surface is { IsLandable: true } &&
+        c.Pet.Mature;
 
     public override void Enter(BehaviorContext c)
     {

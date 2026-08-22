@@ -21,9 +21,6 @@ public sealed class Settings
     /// </summary>
     public int TargetPopulation { get; set; } = 5;
 
-    /// <summary>Hard ceiling, so a bloom cannot bury the desktop.</summary>
-    public int Ceiling => Math.Clamp((int)Math.Round(TargetPopulation * 2.4), 4, 20);
-
     private static string Path =>
         System.IO.Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),

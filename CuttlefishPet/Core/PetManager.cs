@@ -73,15 +73,15 @@ public sealed class PetManager
         }
     }
 
-    /// <summary>Hard ceiling on the population, derived from the target.</summary>
-    public int PopulationCeiling => _settings.Ceiling;
-
-    /// <summary>Fill the tank to its resting level, at startup or after a change.</summary>
+    /// <summary>
+    /// Top the tank up to its resting level. Only ever adds: there is no upper
+    /// limit on the population, and thinning out is what the tray menu is for.
+    /// </summary>
     public void StockTank()
     {
         while (_pets.Count < _settings.TargetPopulation) Spawn();
-        while (_pets.Count > _settings.Ceiling) RemoveOne();
     }
+
     public void Spawn() => Spawn(null);
 
     /// <param name="hatchling">
@@ -878,7 +878,7 @@ public sealed class PetManager
         // high enough to allow a proper swarm — crowding, not this line, is what
         // ends one.
         foreach (var (pos, hatchling) in _hatching)
-            if (_pets.Count < _settings.Ceiling) Spawn(pos, hatchling);
+            Spawn(pos, hatchling);
         _hatching.Clear();
     }
 

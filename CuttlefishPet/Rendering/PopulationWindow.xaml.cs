@@ -101,6 +101,7 @@ public sealed class PopulationWindow : Window
     {
         int n = _manager.TargetPopulation;
         _readout.Text = $"Rustniveau {n}. Ze zwemmen hier omheen — soms een zwerm, " +
-                        $"daarna weer weinig. Nooit meer dan {_manager.PopulationCeiling}.";
+                        "daarna weer weinig. Er is geen bovengrens — een goede bloei " +
+                        "kan er een veelvoud van maken.";
     }
 }
