@@ -59,6 +59,9 @@ public sealed class WorldState
     public List<Pet> Pets { get; } = new();
     public int PetCount => Pets.Count;
 
+    /// <summary>User-tunable settings; the density rules are all measured against these.</summary>
+    public Settings Settings { get; set; } = new();
+
     /// <summary>
     /// Seconds left of a plankton bloom. Food is everywhere, courtship is quick and
     /// clutches are large — this is what turns a quiet tank into a swarm. Zero the

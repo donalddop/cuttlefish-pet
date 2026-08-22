@@ -292,8 +292,8 @@ public sealed class SpriteRenderer
         {
             var eyeAnim = _library["eye"];
             double scale = w / anim.FrameW;
-            double size = anim.EyeRadius * 2 * scale;
-            double travel = anim.EyeRadius * 0.34 * scale;
+            double size = anim.EyeRadius * 2 * scale * pet.PupilScale;
+            double travel = anim.EyeRadius * 0.52 * scale;
 
             v.Eye.Source = eyeAnim.Palettes[pet.Palette][pet.Blinking ? 1 : 0];
             v.Eye.Width = size;

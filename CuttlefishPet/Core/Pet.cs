@@ -81,6 +81,8 @@ public sealed class Pet
 
     // Eye: pupil aim in -1..1 body-local units, plus an independent blink timer.
     public Vector PupilOffset;
+    /// <summary>Pupil size multiplier: wide when interested, narrow while hiding.</summary>
+    public double PupilScale = 1;
     /// <summary>Something specific to look at instead of the cursor.</summary>
     public Point? PupilTarget;
     /// <summary>A passing thing that caught its eye, e.g. where you just clicked.</summary>
@@ -119,28 +121,31 @@ public sealed class Pet
     /// <summary>Where the tentacle clubs are right now, in physical pixels.</summary>
     public Point StrikeTip;
 
-    /// <summary>
-    /// Size from age alone, ignoring anything eating has added. This is what decides
-    /// whether a cuttlefish counts as grown up — a well-fed youngster is bigger than
-    /// its years, and that should not make it old enough to breed.
-    /// </summary>
-    public double GrownScale =>
-        BirthScale + (1 - BirthScale) * Math.Clamp(Age / Math.Max(1, GrowUpSeconds), 0, 1);
+    /// <summary>Nothing grows past this, however well it eats.</summary>
+    public const double MaxScale = 1.35;
 
-    /// <summary>Old enough to court and to lay: half grown.</summary>
+    /// <summary>
+    /// Size, and the whole of it: a cuttlefish grows by eating and by nothing else.
+    /// Age puts no size on at all, so a hatchling that never finds a meal stays a
+    /// hatchling until it dies of old age, and food is what the population actually
+    /// runs on.
+    /// </summary>
+    public double GrownScale => Math.Min(MaxScale, BirthScale + Nourishment);
+
+    /// <summary>Big enough to court and to lay: half grown, which means fed.</summary>
     public bool Mature => GrownScale >= 0.5;
 
     /// <summary>A short swell right after a meal, so eating visibly puts on size.</summary>
     public double Swell;
 
     /// <summary>
-    /// A good meal puts on visible size, up to a point. The swell is the readable
-    /// part: the body puffs past its new size and settles back into it, so a meal
-    /// looks like growth rather than a number going up somewhere.
+    /// A meal is the only thing that puts on size. The swell is the readable part:
+    /// the body puffs past its new size and settles back into it, so eating
+    /// visibly grows the animal rather than moving a number somewhere.
     /// </summary>
     public void Feed(double amount = 0.12)
     {
-        Nourishment = Math.Min(0.5, Nourishment + amount);
+        Nourishment += amount;   // GrownScale is what clamps it, at MaxScale
         Swell = 0.18;
     }
 

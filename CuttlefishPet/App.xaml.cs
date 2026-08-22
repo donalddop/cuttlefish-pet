@@ -51,7 +51,7 @@ public partial class App : Application
         _input.Install();
 
         _manager = new PetManager(_overlay, renderer, library, _input, _sound);
-        _manager.Spawn();
+        _manager.StockTank();
 
         SetupTray();
         _commands = new CommandServer(Dispatcher, RunCommand);
@@ -80,12 +80,31 @@ public partial class App : Application
             case "add": _manager.Spawn(); break;
             case "remove": _manager.RemoveOne(); break;
             case "cull": _manager.CullTo(1); break;
+            case "population": ShowPopulationWindow(); break;
             case "shrimp": _manager.TossTreat(); break;
             case "mute": if (_muteItem != null) _muteItem.Checked = !_muteItem.Checked; break;
             case "exit": Shutdown(); break;
         }
     }
 
+
+    private PopulationWindow? _popWindow;
+
+    /// <summary>
+    /// One window, reused: a second click on the tray item brings the existing one
+    /// forward rather than stacking another copy behind it.
+    /// </summary>
+    private void ShowPopulationWindow()
+    {
+        if (_popWindow is { IsLoaded: true })
+        {
+            _popWindow.Activate();
+            return;
+        }
+        _popWindow = new PopulationWindow(_manager);
+        _popWindow.Closed += (_, _) => _popWindow = null;
+        _popWindow.Show();
+    }
     private void SetupTray()
     {
         var menu = new System.Windows.Forms.ContextMenuStrip();
@@ -93,6 +112,7 @@ public partial class App : Application
         menu.Items.Add("Remove one", null, (_, _) => RunCommand("remove"));
         menu.Items.Add("Thin them out", null, (_, _) => RunCommand("cull"));
         menu.Items.Add("Toss a shrimp", null, (_, _) => RunCommand("shrimp"));
+        menu.Items.Add("Population…", null, (_, _) => RunCommand("population"));
         var mute = new System.Windows.Forms.ToolStripMenuItem("Mute sounds") { CheckOnClick = true, Checked = true };
         mute.CheckedChanged += (_, _) => _sound.Muted = mute.Checked;
         _muteItem = mute;

@@ -87,7 +87,8 @@ public sealed class LayEggsBehavior : BehaviorBase
     private bool _laid;
 
     public static bool Possible(BehaviorContext c) =>
-        c.Pet.Surface is { IsLandable: true } && c.Pet.Mature && c.World.PetCount < 11;
+        c.Pet.Surface is { IsLandable: true } && c.Pet.Mature &&
+        c.World.PetCount < c.World.Settings.Ceiling - 1;
 
     public override void Enter(BehaviorContext c)
     {
@@ -108,7 +109,8 @@ public sealed class LayEggsBehavior : BehaviorBase
             // How many eggs is the whole population control in one line. An empty
             // tank gets a big clutch; a full one gets a token single egg that the
             // hatching cap will probably refuse anyway. A bloom adds two on top.
-            int clutch = Math.Clamp(4 - c.World.PetCount, 1, 3) + (c.World.Bloom > 0 ? 3 : 0);
+            int clutch = Math.Clamp(c.World.Settings.TargetPopulation + 1 - c.World.PetCount, 1, 3)
+                         + (c.World.Bloom > 0 ? 3 : 0);
             for (int i = 0; i < clutch; i++)
             {
                 var spot = new Point(pet.Pos.X + (pet.FacingRight ? -34 : 34) + (i - (clutch - 1) / 2.0) * 19,

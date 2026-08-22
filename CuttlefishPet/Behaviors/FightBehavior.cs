@@ -28,14 +28,17 @@ public sealed class FightBehavior : BehaviorBase
     private readonly Pet _other;
     private readonly bool _wins;
     private readonly bool _fatal;
+    private readonly Action<Pet>? _prize;
     private double _t;
     private bool _settled;
 
-    public FightBehavior(Pet other, bool wins, bool fatal)
+    /// <param name="prize">Handed the winner once it is over: the thing they fought over.</param>
+    public FightBehavior(Pet other, bool wins, bool fatal, Action<Pet>? prize = null)
     {
         _other = other;
         _wins = wins;
         _fatal = fatal;
+        _prize = prize;
     }
 
     public override void Enter(BehaviorContext c)
@@ -91,6 +94,7 @@ public sealed class FightBehavior : BehaviorBase
 
             if (_wins)
             {
+                _prize?.Invoke(pet);   // to the victor, the shrimp
                 pet.Anim.Play("happy", restart: true);
                 c.Sound.Play("blip", 0.35);
             }

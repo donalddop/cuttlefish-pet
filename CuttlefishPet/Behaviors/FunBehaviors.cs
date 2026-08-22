@@ -87,6 +87,10 @@ public sealed class HuntTreatBehavior : BehaviorBase
     {
         c.Pet.Anim.Play("swim");
         c.Pet.Surface = null;   // push off whatever it was holding
+        // Called dibs. Others steer clear of a claimed shrimp unless they are close
+        // enough to argue about it — and without this the claim was never set at
+        // all, so neither the tug of war nor the food fights could ever start.
+        _treat.ClaimedBy = c.Pet;
     }
 
     public override void Tick(BehaviorContext c, double dt)

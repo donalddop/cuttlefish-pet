@@ -22,6 +22,7 @@ public sealed class PetManager
     private readonly WindowTracker _tracker = new();
     private readonly SoundService _sound;
     private readonly WorldState _world = new();
+    private readonly Settings _settings;
     private readonly Random _rng = new();
     private readonly List<Pet> _pets = new();
     private readonly List<Prop> _props = new();
@@ -30,6 +31,7 @@ public sealed class PetManager
     private double _clock, _lastDownAt = double.NegativeInfinity, _rivalCooldown;
     private double _preySpawnIn = 12, _courtCooldown = 30, _shrimpSpawnIn = 25;
     private double _immigrationIn = 60, _bloomIn = 240, _fightCooldown = 120;
+    private double _ritualIn = 600;
     private double _sampleMs, _binCheckIn;
     private int _sampleCount;
     private int _lastHourChimed = -1;
@@ -45,7 +47,7 @@ public sealed class PetManager
     /// </summary>
     private double CourtChance => _world.Bloom > 0
         ? 0.85
-        : Math.Clamp(0.55 - _pets.Count * 0.07, 0.08, 0.55);
+        : Math.Clamp(0.55 - 0.21 * _pets.Count / _settings.TargetPopulation, 0.08, 0.55);
 
     public PetManager(OverlayWindow overlay, SpriteRenderer renderer,
         Dictionary<string, SpriteAnim> library, GlobalInput input, SoundService sound)
@@ -55,8 +57,31 @@ public sealed class PetManager
         _library = library;
         _input = input;
         _sound = sound;
+        _settings = Settings.Load();
+        _world.Settings = _settings;
     }
 
+    /// <summary>How full the tank is meant to be; the slider writes this.</summary>
+    public int TargetPopulation
+    {
+        get => _settings.TargetPopulation;
+        set
+        {
+            _settings.TargetPopulation = Math.Clamp(value, Settings.MinPopulation,
+                                                    Settings.MaxPopulation);
+            _settings.Save();
+        }
+    }
+
+    /// <summary>Hard ceiling on the population, derived from the target.</summary>
+    public int PopulationCeiling => _settings.Ceiling;
+
+    /// <summary>Fill the tank to its resting level, at startup or after a change.</summary>
+    public void StockTank()
+    {
+        while (_pets.Count < _settings.TargetPopulation) Spawn();
+        while (_pets.Count > _settings.Ceiling) RemoveOne();
+    }
     public void Spawn() => Spawn(null);
 
     /// <param name="hatchling">
@@ -109,6 +134,50 @@ public sealed class PetManager
 
     /// <summary>
     /// Keeps the tank alive without keeping it steady. Three forces, all of them
+
+    /// <summary>
+    /// The rare gathering. Needs at least three of them free at the same moment and
+    /// somewhere in the tank with room for a ring; the long cooldown is what keeps
+    /// it an event rather than a habit.
+    /// </summary>
+    private void MaybeRitual(double dt)
+    {
+        _ritualIn -= dt;
+        if (_ritualIn > 0 || _pets.Count < 3) return;
+
+        var willing = new List<Pet>();
+        foreach (var pet in _pets)
+        {
+            if (!pet.Machine.Current.Interruptible || pet.Dying) continue;
+            willing.Add(pet);
+        }
+        if (willing.Count < 3) return;
+
+        // Between three and seven, whoever happens to be free.
+        int want = Math.Min(willing.Count, 3 + _rng.Next(5));
+        while (willing.Count > want) willing.RemoveAt(_rng.Next(willing.Count));
+
+        var tank = _world.VirtualScreen;
+        double radius = 120 + willing.Count * 16;
+        var centre = new Point(
+            tank.Left + radius + 90 + _rng.NextDouble() * Math.Max(1, tank.Width - 2 * radius - 180),
+            tank.Top + radius + 140 + _rng.NextDouble() * Math.Max(1, tank.Height - 2 * radius - 300));
+
+        // One colour for the whole ring: that is most of what makes it read as a
+        // gathering rather than several cuttlefish that happen to be near each other.
+        int robe = Palettes.PickRandom(_rng);
+        double spin = (_rng.NextDouble() < 0.5 ? -1 : 1) * (0.42 + _rng.NextDouble() * 0.22);
+
+        for (int i = 0; i < willing.Count; i++)
+        {
+            willing[i].HomePalette = robe;
+            willing[i].Machine.Force(new RitualBehavior(
+                centre, radius, i * Math.Tau / willing.Count, spin));
+        }
+
+        _ritualIn = 1500 + _rng.NextDouble() * 1800;
+        Log($"ritueel met {willing.Count} zeekatten op ({centre.X:F0},{centre.Y:F0})");
+    }
     /// visible to anyone watching:
     ///
     /// A tank can never empty. Below two cuttlefish one drifts in from off-screen,
@@ -150,7 +219,7 @@ public sealed class PetManager
         if (_bloomIn <= 0)
         {
             _bloomIn = 1200 + _rng.NextDouble() * 1200;
-            if (_pets.Count is >= 2 and <= 5)
+            if (_pets.Count >= 2 && _pets.Count <= _settings.TargetPopulation + 2)
             {
                 _world.Bloom = 75;
                 _courtCooldown = 0;
@@ -240,6 +309,7 @@ public sealed class PetManager
         TickProps(dt);
         CheckSocial(dt);
         PopulationTick(dt);
+        MaybeRitual(dt);
         _renderer.TickEffects(dt);
 
         _overlay.SetClickThrough(!wantClicks);
@@ -450,14 +520,14 @@ public sealed class PetManager
         // Crowding wears them out, and faster than linearly: a tank of four is a bit
         // busy, a tank of eleven is a die-off waiting to happen. This is the entire
         // bust half of the cycle — no separate crash logic anywhere.
-        int crowd = Math.Max(0, _pets.Count - 3);
+        int crowd = Math.Max(0, _pets.Count - _settings.TargetPopulation);
         double pressure = 1 + crowd * 0.34 + crowd * crowd * 0.022;
         pet.Age += dt * pressure;
 
         // Size is age plus whatever eating has added, with a brief puff on top of a
         // fresh meal. Eased rather than snapped, so it reads as swelling.
         pet.Swell = Math.Max(0, pet.Swell - dt * 0.26);
-        pet.ScaleTarget = pet.GrownScale + pet.Nourishment + pet.Swell;
+        pet.ScaleTarget = pet.GrownScale + pet.Swell;
         pet.Scale += (pet.ScaleTarget - pet.Scale) * Math.Min(1, dt * 1.9);
 
         if (pet.Age >= pet.Lifespan && pet.Machine.Current.Interruptible)
@@ -496,6 +566,7 @@ public sealed class PetManager
             "dying" => ("pearl", 0.55),                          // the colour goes first
             "court" => (null, 1.0),                             // its own colour, full blast
             "imitate" => (null, 0.9),                           // wearing whatever it copied
+            "ritual" => (null, 1.0),                            // the whole ring in one colour
             "fight" => ("ink", 1.0),
             "race" or "school" or "jet" => (null, 0.8),
             "colourShow" => (null, 1.0),                        // drives itself
@@ -506,12 +577,11 @@ public sealed class PetManager
         int want = display == null ? pet.HomePalette : Palettes.IndexOf(display);
         if (pet.Machine.Current.Name != "colourShow") pet.ShiftTo(want, 3);
 
-        // Juveniles have not mastered camouflage yet, so the young stay visible in
-        // their own colour — which is also the only way you get to watch one grow up.
-        // Keyed off actual age, not drawn size: a well-fed adult is bigger than its
-        // years and a pet posing as a taskbar icon is deliberately tiny, and neither
-        // of those is a juvenile.
-        double youth = Math.Clamp(1 - pet.Age / Math.Max(1, pet.GrowUpSeconds), 0, 1);
+        // Small ones have not mastered camouflage yet, so they stay visible in their
+        // own colour — which is also the only way you get to watch one grow up. Keyed
+        // off GrownScale, which is size from food alone: it ignores both the swell
+        // after a meal and the deliberate shrink of a pet posing as a taskbar icon.
+        double youth = Math.Clamp((0.60 - pet.GrownScale) / 0.30, 0, 1);
         if (youth > 0.25 && display == "glass") display = null;
         vivid = Math.Max(vivid, youth * 0.7);
 
@@ -545,7 +615,7 @@ public sealed class PetManager
 
     private void UpdateEyes(Pet pet, double dt)
     {
-        // Pupils track the cursor; body-local so the sprite flip doesn't invert them.
+        // Where the attention is. Body-local, so the sprite flip does not invert it.
         var anim = pet.Anim.Current;
         if (anim.EyeCenter is Point ec)
         {
@@ -559,10 +629,29 @@ public sealed class PetManager
                          _world.NearestTreat(pet) is { } t ? t.Pos : _world.Cursor);
             var d = to - eye;
             double len = d.Length;
-            var aim = len < 1 ? new Vector(0, 0) : d / len * Math.Min(1, len / 180);
+
+            // Full deflection whatever the distance. Scaling it down for anything
+            // close by — which is what this used to do — made a pet staring at the
+            // shrimp under its nose look like it was staring into space.
+            var aim = len < 1 ? new Vector(0, 0) : d / len;
             if (!pet.FacingRight) aim.X = -aim.X;
-            pet.PupilOffset = aim;
+
+            // Eyes move in jumps, not sweeps. Fast enough to read as a flick, slow
+            // enough that you see which way it went.
+            pet.PupilOffset += (aim - pet.PupilOffset) * Math.Min(1, dt * 17);
         }
+
+        // Wide when something has its attention, narrow while it is hiding. This is
+        // the other half of reading a cuttlefish: pupil size says how interested.
+        double want = pet.Machine.Current.Name switch
+        {
+            "hunt" or "stalk" or "huntTreat" or "eat" or "strike" => 1.30,
+            "startle" or "flee" or "shock" or "fight" => 1.34,
+            "imitate" or "bone" or "inspect" or "icon" => 1.18,
+            "camouflage" or "lurk" or "sit" or "idle" => 0.84,
+            _ => 1.0,
+        };
+        pet.PupilScale += (want - pet.PupilScale) * Math.Min(1, dt * 6);
 
         pet.GlanceFor = Math.Max(0, pet.GlanceFor - dt);
         pet.BlinkLeft -= dt;
@@ -609,19 +698,41 @@ public sealed class PetManager
     /// <summary>
     /// A shrimp with one cuttlefish already on it is an invitation to a second.
     /// </summary>
-    private bool StartTugOfWar()
+    /// <summary>
+    /// Two cuttlefish after the same mouthful. Usually that is a tug of war, which
+    /// nobody gets hurt in; once in a while it escalates into a real fight, and the
+    /// winner eats. Food is the only thing they fight over — a cuttlefish that is
+    /// simply passing another has no quarrel with it.
+    /// </summary>
+    private bool ContestFood()
     {
         foreach (var treat in _world.Treats)
         {
             if (treat.Expired || treat.ClaimedBy == null) continue;
             var holder = treat.ClaimedBy;
             if (!holder.Machine.Current.Interruptible) continue;
+            // The holder has to be closing on it, and the two of them have to be in
+            // the same part of the tank — otherwise two of them square up from
+            // opposite corners over a shrimp neither has reached.
+            if ((holder.Pos - treat.Pos).Length > 420) continue;
 
             foreach (var other in _pets)
             {
                 if (ReferenceEquals(other, holder)) continue;
                 if (!other.Machine.Current.Interruptible) continue;
                 if ((other.Pos - treat.Pos).Length > 260) continue;
+                if ((other.Pos - holder.Pos).Length > 340) continue;
+
+                if (Escalates(holder, other))
+                {
+                    StartFight(holder, other, winner =>
+                    {
+                        if (treat.Expired) return;
+                        treat.Eaten = true;
+                        winner.Feed();
+                    });
+                    return true;
+                }
 
                 bool holderWins = _rng.NextDouble() < 0.5;
                 holder.Machine.Force(new TugOfWarBehavior(treat, -1, holderWins));
@@ -629,7 +740,52 @@ public sealed class PetManager
                 return true;
             }
         }
+
+        // A stalked fish is worth arguing over too, and there is no tug-of-war
+        // version of that — a fish either gets eaten or gets away.
+        foreach (var fish in _world.Prey)
+        {
+            if (fish.Expired || fish.StalkedBy == null) continue;
+            var hunter = fish.StalkedBy;
+            if (!hunter.Machine.Current.Interruptible) continue;
+            if ((hunter.Pos - fish.Pos).Length > 420) continue;
+
+            foreach (var other in _pets)
+            {
+                if (ReferenceEquals(other, hunter)) continue;
+                if (!other.Machine.Current.Interruptible) continue;
+                if ((other.Pos - fish.Pos).Length > 240) continue;
+                if ((other.Pos - hunter.Pos).Length > 340) continue;
+                if (!Escalates(hunter, other)) continue;
+
+                StartFight(hunter, other, winner =>
+                {
+                    if (fish.Expired) return;
+                    fish.Eaten = true;
+                    winner.Feed(0.16);
+                });
+                return true;
+            }
+        }
         return false;
+    }
+
+    /// <summary>Is this squabble going to turn into a real fight?</summary>
+    private bool Escalates(Pet a, Pet b) =>
+        a.Mature && b.Mature && _fightCooldown <= 0 && _pets.Count > 2 &&
+        _rng.NextDouble() < 0.28;
+
+    private void StartFight(Pet a, Pet b, Action<Pet> prize)
+    {
+        _fightCooldown = 600 + _rng.NextDouble() * 1200;
+        _rivalCooldown = 20;
+        bool aWins = _rng.NextDouble() < 0.5;
+        // A death has to leave a tank that still works, so it needs company left
+        // behind and can never be the last straw.
+        bool fatal = _pets.Count > 3 && _rng.NextDouble() < 0.22;
+        a.Machine.Force(new FightBehavior(b, aWins, fatal && !aWins, prize));
+        b.Machine.Force(new FightBehavior(a, !aWins, fatal && aWins, prize));
+        Log($"gevecht om eten bij {_pets.Count} zeekatten, dodelijk={fatal}");
     }
 
     private void CheckSocial(double dt)
@@ -640,7 +796,7 @@ public sealed class PetManager
         if (_pets.Count < 2 || _rivalCooldown > 0) return;
 
         // A contested shrimp beats anything else two cuttlefish might do together.
-        if (StartTugOfWar()) { _rivalCooldown = 14; return; }
+        if (ContestFood()) { _rivalCooldown = 14; return; }
 
         for (int i = 0; i < _pets.Count; i++)
         {
@@ -654,22 +810,7 @@ public sealed class PetManager
                 bool perched = a.Surface != null && b.Surface != null;
                 double roll = _rng.NextDouble();
 
-                // Two grown cuttlefish meeting face to face. Usually it stays a
-                // colour argument; now and then neither backs down.
-                if (a.Mature && b.Mature && _fightCooldown <= 0 &&
-                    _rng.NextDouble() < 0.3 && _pets.Count > 2)
-                {
-                    _fightCooldown = 900 + _rng.NextDouble() * 1500;
-                    _rivalCooldown = 20;
-                    bool aWins = _rng.NextDouble() < 0.5;
-                    // A death here has to leave a tank that still works, so it needs
-                    // company left behind and cannot be the last straw.
-                    bool fatal = _pets.Count > 3 && _rng.NextDouble() < 0.22;
-                    a.Machine.Force(new FightBehavior(b, aWins, fatal && !aWins));
-                    b.Machine.Force(new FightBehavior(a, !aWins, fatal && aWins));
-                    Log($"gevecht bij {_pets.Count} zeekatten, dodelijk={fatal}");
-                }
-                else if (perched && Math.Abs(a.Pos.Y - b.Pos.Y) < 40)
+                if (perched && Math.Abs(a.Pos.Y - b.Pos.Y) < 40)
                 {
                     bool aRetreats = _rng.NextDouble() < 0.5;
                     a.Machine.Force(new RivalDisplayBehavior(b, aRetreats));
@@ -683,7 +824,9 @@ public sealed class PetManager
                     bool welcome = _rng.NextDouble() < 0.55;
                     a.Machine.Force(new CourtshipBehavior(b, suitor: true, welcome));
                     b.Machine.Force(new CourtshipBehavior(a, suitor: false, welcome));
-                    _courtCooldown = _world.Bloom > 0 ? 10 : 60 + _pets.Count * 30;
+                    _courtCooldown = _world.Bloom > 0
+                        ? 10
+                        : 60 + 90.0 * _pets.Count / _settings.TargetPopulation;
                 }
                 else if (a.Surface == null && b.Surface == null && roll < 0.42)
                 {
@@ -735,7 +878,7 @@ public sealed class PetManager
         // high enough to allow a proper swarm — crowding, not this line, is what
         // ends one.
         foreach (var (pos, hatchling) in _hatching)
-            if (_pets.Count < 12) Spawn(pos, hatchling);
+            if (_pets.Count < _settings.Ceiling) Spawn(pos, hatchling);
         _hatching.Clear();
     }
 
@@ -748,7 +891,7 @@ public sealed class PetManager
         _preySpawnIn -= dt;
         if (_preySpawnIn <= 0 && _world.Prey.Count < 2 && _pets.Count > 0)
         {
-            _preySpawnIn = 45 + _rng.NextDouble() * 90;
+            _preySpawnIn = (35 + _rng.NextDouble() * 65) * 5.0 / _settings.TargetPopulation;
             var t = _world.VirtualScreen;
             bool fromLeft = _rng.NextDouble() < 0.5;
             var fish = new Prey
@@ -818,8 +961,11 @@ public sealed class PetManager
         {
             // A bloom shows as shrimp arriving the moment the last one is eaten,
             // rather than as a crowded tank — two at a time is plenty to look at.
-            _shrimpSpawnIn = _world.Bloom > 0 ? 5 + _rng.NextDouble() * 5
-                                              : 60 + _rng.NextDouble() * 90;
+            // Scaled to the target: a fuller tank needs feeding faster, or everyone
+            // in it stays a hatchling. Still never more than two on screen at once.
+            _shrimpSpawnIn = (_world.Bloom > 0 ? 5 + _rng.NextDouble() * 5
+                                               : 40 + _rng.NextDouble() * 50)
+                             * 5.0 / _settings.TargetPopulation;
             var tank = _world.VirtualScreen;
             AddTreat(new Point(tank.Left + 100 + _rng.NextDouble() * (tank.Width - 200),
                                tank.Top + tank.Height * 0.5 + _rng.NextDouble() * (tank.Height * 0.4)));
