@@ -53,6 +53,46 @@ public static class Palettes
         return 0;
     }
 
+
+    /// <summary>
+    /// The chromatophore state that comes closest to a colour taken off the screen.
+    /// Palettes are hue rotations, so matching is mostly a matter of hue distance —
+    /// but a washed-out target should land on a washed-out palette, hence the
+    /// saturation term. Grey and near-black go to pearl and ink respectively, which
+    /// is what a cuttlefish would do with them anyway.
+    /// </summary>
+    public static int NearestTo(Color c)
+    {
+        double max = Math.Max(c.R, Math.Max(c.G, c.B)) / 255.0;
+        double min = Math.Min(c.R, Math.Min(c.G, c.B)) / 255.0;
+        double sat = max <= 0 ? 0 : (max - min) / max;
+
+        if (max < 0.18) return IndexOf("ink");
+        if (sat < 0.12) return IndexOf("pearl");
+
+        double hue = Hue(c);
+        int best = IndexOf("opal");
+        double bestCost = double.MaxValue;
+        for (int i = 0; i < All.Length; i++)
+        {
+            var p = All[i];
+            if (p.Name is "glass" or "sand") continue;    // not colours you can copy
+            double d = Math.Abs(((p.HueShift - hue + 540) % 360) - 180);
+            double cost = (180 - d) + Math.Abs(p.Sat - sat) * 40;
+            if (cost < bestCost) { bestCost = cost; best = i; }
+        }
+        return best;
+    }
+
+    private static double Hue(Color c)
+    {
+        double r = c.R / 255.0, g = c.G / 255.0, b = c.B / 255.0;
+        double max = Math.Max(r, Math.Max(g, b)), min = Math.Min(r, Math.Min(g, b));
+        double d = max - min;
+        if (d < 1e-6) return 0;
+        double h = max == r ? (g - b) / d % 6 : max == g ? (b - r) / d + 2 : (r - g) / d + 4;
+        return (h * 60 + 360) % 360;
+    }
     /// <summary>Weighted pick, so the cool iridescent tones dominate.</summary>
     public static int PickRandom(Random rng)
     {

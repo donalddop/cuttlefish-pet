@@ -29,7 +29,7 @@ public sealed class PetManager
     private readonly List<(Point Pos, bool Hatchling)> _hatching = new();
     private double _clock, _lastDownAt = double.NegativeInfinity, _rivalCooldown;
     private double _preySpawnIn = 12, _courtCooldown = 30, _shrimpSpawnIn = 25;
-    private double _immigrationIn = 60, _bloomIn = 240;
+    private double _immigrationIn = 60, _bloomIn = 240, _fightCooldown = 120;
     private double _sampleMs, _binCheckIn;
     private int _sampleCount;
     private int _lastHourChimed = -1;
@@ -78,8 +78,8 @@ public sealed class PetManager
         // A clutch is one cohort: hatchlings draw from a short, tight range, so the
         // whole brood reaches the end of its life within a few minutes of itself.
         // That is what turns a swarm into a crash rather than a slow fade.
-        pet.Lifespan = hatchling ? (8 + _rng.NextDouble() * 4) * 60
-                                 : (14 + _rng.NextDouble() * 16) * 60;
+        pet.Lifespan = hatchling ? (18 + _rng.NextDouble() * 10) * 60
+                                 : (26 + _rng.NextDouble() * 24) * 60;
         pet.GrowUpSeconds = pet.Lifespan * (hatchling ? 0.40 : 0.12);
         pet.Scale = pet.BirthScale;
         pet.HomePalette = Palettes.PickRandom(_rng);
@@ -451,14 +451,14 @@ public sealed class PetManager
         // busy, a tank of eleven is a die-off waiting to happen. This is the entire
         // bust half of the cycle — no separate crash logic anywhere.
         int crowd = Math.Max(0, _pets.Count - 3);
-        double pressure = 1 + crowd * 0.5 + crowd * crowd * 0.03;
+        double pressure = 1 + crowd * 0.34 + crowd * crowd * 0.022;
         pet.Age += dt * pressure;
 
-        pet.ScaleTarget = pet.BirthScale + (1 - pet.BirthScale) *
-                          Math.Clamp(pet.Age / Math.Max(1, pet.GrowUpSeconds), 0, 1)
-                          + pet.Nourishment;
-        // Eased rather than snapped, so a meal shows as a visible swell.
-        pet.Scale += (pet.ScaleTarget - pet.Scale) * Math.Min(1, dt * 1.6);
+        // Size is age plus whatever eating has added, with a brief puff on top of a
+        // fresh meal. Eased rather than snapped, so it reads as swelling.
+        pet.Swell = Math.Max(0, pet.Swell - dt * 0.26);
+        pet.ScaleTarget = pet.GrownScale + pet.Nourishment + pet.Swell;
+        pet.Scale += (pet.ScaleTarget - pet.Scale) * Math.Min(1, dt * 1.9);
 
         if (pet.Age >= pet.Lifespan && pet.Machine.Current.Interruptible)
             pet.Machine.Force(new DyingBehavior());
@@ -495,6 +495,8 @@ public sealed class PetManager
             "boneRide" => ("coral", 1.0),                        // flustered, and stuck
             "dying" => ("pearl", 0.55),                          // the colour goes first
             "court" => (null, 1.0),                             // its own colour, full blast
+            "imitate" => (null, 0.9),                           // wearing whatever it copied
+            "fight" => ("ink", 1.0),
             "race" or "school" or "jet" => (null, 0.8),
             "colourShow" => (null, 1.0),                        // drives itself
             "camouflage" => ("glass", 0.0),
@@ -633,6 +635,7 @@ public sealed class PetManager
     private void CheckSocial(double dt)
     {
         _rivalCooldown -= dt;
+        _fightCooldown -= dt;
         _courtCooldown -= dt;
         if (_pets.Count < 2 || _rivalCooldown > 0) return;
 
@@ -651,13 +654,29 @@ public sealed class PetManager
                 bool perched = a.Surface != null && b.Surface != null;
                 double roll = _rng.NextDouble();
 
-                if (perched && Math.Abs(a.Pos.Y - b.Pos.Y) < 40)
+                // Two grown cuttlefish meeting face to face. Usually it stays a
+                // colour argument; now and then neither backs down.
+                if (a.Mature && b.Mature && _fightCooldown <= 0 &&
+                    _rng.NextDouble() < 0.3 && _pets.Count > 2)
+                {
+                    _fightCooldown = 900 + _rng.NextDouble() * 1500;
+                    _rivalCooldown = 20;
+                    bool aWins = _rng.NextDouble() < 0.5;
+                    // A death here has to leave a tank that still works, so it needs
+                    // company left behind and cannot be the last straw.
+                    bool fatal = _pets.Count > 3 && _rng.NextDouble() < 0.22;
+                    a.Machine.Force(new FightBehavior(b, aWins, fatal && !aWins));
+                    b.Machine.Force(new FightBehavior(a, !aWins, fatal && aWins));
+                    Log($"gevecht bij {_pets.Count} zeekatten, dodelijk={fatal}");
+                }
+                else if (perched && Math.Abs(a.Pos.Y - b.Pos.Y) < 40)
                 {
                     bool aRetreats = _rng.NextDouble() < 0.5;
                     a.Machine.Force(new RivalDisplayBehavior(b, aRetreats));
                     b.Machine.Force(new RivalDisplayBehavior(a, !aRetreats));
                 }
-                else if (a.Surface == null && b.Surface == null && roll < CourtChance &&
+                else if (a.Mature && b.Mature &&
+                         a.Surface == null && b.Surface == null && roll < CourtChance &&
                          _courtCooldown <= 0)
                 {
                     // One puts on a display; the other decides how it lands.
@@ -795,9 +814,10 @@ public sealed class PetManager
         // Shrimp turn up on their own, so there is usually something to hunt without
         // you having to throw one in.
         _shrimpSpawnIn -= dt;
-        if (_shrimpSpawnIn <= 0 && _world.Treats.Count < (_world.Bloom > 0 ? 6 : 2) && _pets.Count > 0)
+        if (_shrimpSpawnIn <= 0 && _world.Treats.Count < 2 && _pets.Count > 0)
         {
-            // A bloom is meant to be obvious: shrimp everywhere, and everyone eating.
+            // A bloom shows as shrimp arriving the moment the last one is eaten,
+            // rather than as a crowded tank — two at a time is plenty to look at.
             _shrimpSpawnIn = _world.Bloom > 0 ? 5 + _rng.NextDouble() * 5
                                               : 60 + _rng.NextDouble() * 90;
             var tank = _world.VirtualScreen;

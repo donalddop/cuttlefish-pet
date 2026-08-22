@@ -25,6 +25,7 @@ public sealed class BehaviorMachine
         // social and flourishes
         ["pile"] = 10, ["colourShow"] = 6, ["icon"] = 22, ["play"] = 9,
         ["cross"] = 7, ["read"] = 16, ["bone"] = 70, ["bigBubble"] = 9,
+        ["imitate"] = 24,
     };
 
     /// <summary>
@@ -207,6 +208,7 @@ public sealed class BehaviorMachine
             Add("bigBubble", () => new BigBubbleBehavior());
             Add("cross", () => new EdgeCrossBehavior(_ctx.Rng.NextDouble() < 0.5 ? -1 : 1));
             if (ReadAlongBehavior.Possible(_ctx)) Add("read", () => new ReadAlongBehavior());
+            if (ImitateBehavior.Find(_ctx) is { } copy) Add("imitate", () => copy);
             if (SleepPileBehavior.Find(_ctx) is { } pile) Add("pile", () => pile);
             if (IconMimicBehavior.Find(_ctx) is { } icon) Add("icon", () => icon);
         }

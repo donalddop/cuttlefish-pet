@@ -119,9 +119,30 @@ public sealed class Pet
     /// <summary>Where the tentacle clubs are right now, in physical pixels.</summary>
     public Point StrikeTip;
 
-    /// <summary>A good meal puts on visible size, up to a point.</summary>
-    public void Feed(double amount = 0.085) =>
-        Nourishment = Math.Min(0.4, Nourishment + amount);
+    /// <summary>
+    /// Size from age alone, ignoring anything eating has added. This is what decides
+    /// whether a cuttlefish counts as grown up — a well-fed youngster is bigger than
+    /// its years, and that should not make it old enough to breed.
+    /// </summary>
+    public double GrownScale =>
+        BirthScale + (1 - BirthScale) * Math.Clamp(Age / Math.Max(1, GrowUpSeconds), 0, 1);
+
+    /// <summary>Old enough to court and to lay: half grown.</summary>
+    public bool Mature => GrownScale >= 0.5;
+
+    /// <summary>A short swell right after a meal, so eating visibly puts on size.</summary>
+    public double Swell;
+
+    /// <summary>
+    /// A good meal puts on visible size, up to a point. The swell is the readable
+    /// part: the body puffs past its new size and settles back into it, so a meal
+    /// looks like growth rather than a number going up somewhere.
+    /// </summary>
+    public void Feed(double amount = 0.12)
+    {
+        Nourishment = Math.Min(0.5, Nourishment + amount);
+        Swell = 0.18;
+    }
 
     /// <summary>
     /// Seconds since this pet last visited each cell of a 3x3 grid over the screen.

@@ -87,7 +87,7 @@ public sealed class LayEggsBehavior : BehaviorBase
     private bool _laid;
 
     public static bool Possible(BehaviorContext c) =>
-        c.Pet.Surface is { IsLandable: true } && c.World.PetCount < 11;
+        c.Pet.Surface is { IsLandable: true } && c.Pet.Mature && c.World.PetCount < 11;
 
     public override void Enter(BehaviorContext c)
     {
@@ -268,7 +268,7 @@ public sealed class InkBlotBehavior : BehaviorBase
     private bool _done;
 
     public static bool Possible(BehaviorContext c) =>
-        c.Pet.Surface is { IsLandable: true } && c.World.PetCount < 11;
+        c.Pet.Surface is { IsLandable: true };
 
     public override void Enter(BehaviorContext c) => c.Pet.Anim.Play("sit");
 
