@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using CuttlefishPet.Core;
 using CuttlefishPet.Rendering;
 
@@ -187,7 +187,7 @@ public sealed class ColourShowBehavior : BehaviorBase
         {
             _shown++;
             _nextShift = 0.75;
-            pet.SkinPattern = c.Rng.Next(5);
+            pet.Borrow(pet.HomePalette, c.Rng.Next(5), 12);
             pet.ShiftTo(Palettes.PickRandom(c.Rng), 0.7);
         }
         if (_shown >= 6 && _nextShift <= 0) Done = true;

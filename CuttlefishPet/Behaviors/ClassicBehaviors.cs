@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using CuttlefishPet.Core;
 using CuttlefishPet.Rendering;
 
@@ -111,6 +111,11 @@ public sealed class LayEggsBehavior : BehaviorBase
             // hatching cap will probably refuse anyway. A bloom adds two on top.
             int clutch = Math.Clamp(c.World.Settings.TargetPopulation + 1 - c.World.PetCount, 1, 3)
                          + (c.World.Bloom > 0 ? 3 : 0);
+
+            // Read the parents out now: the eggs outlive the pair that laid them,
+            // and a Genome is a value, so nothing here keeps a dead pet alive.
+            var mother = pet.Genome;
+            var father = pet.Mate ?? pet.Genome;
             for (int i = 0; i < clutch; i++)
             {
                 var spot = new Point(pet.Pos.X + (pet.FacingRight ? -34 : 34) + (i - (clutch - 1) / 2.0) * 19,
@@ -122,7 +127,10 @@ public sealed class LayEggsBehavior : BehaviorBase
                     // Staggered a little so a brood trickles out instead of popping
                     // into existence all at once.
                     Life = 38 + i * 4 + c.Rng.NextDouble() * 3,
-                    OnExpire = p => c.SpawnPet(new Point(p.X, p.Y - 40), hatchling: true),
+                    // Each egg is rolled separately, so one clutch is a spread of
+                    // siblings rather than a row of identical twins.
+                    OnExpire = p => c.SpawnPet(new Point(p.X, p.Y - 40), hatchling: true,
+                                               inherit: Genome.Inherit(mother, father, c.Rng)),
                 });
             }
             c.Sound.Play("bubble", 0.3);

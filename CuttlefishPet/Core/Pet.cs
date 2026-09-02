@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Media.Imaging;
 using CuttlefishPet.Behaviors;
 using CuttlefishPet.Rendering;
@@ -9,6 +9,18 @@ namespace CuttlefishPet.Core;
 public sealed class Pet
 {
     public const double RenderScale = 1.7;
+
+    /// <summary>Stable for life. Without it nobody can remember anybody.</summary>
+    public int Id;
+
+    /// <summary>What it was born with; never changes while it lives.</summary>
+    public Genome Genome;
+
+    /// <summary>
+    /// The partner's traits, kept from an accepted courtship until the eggs go
+    /// down, so a clutch takes after both parents rather than just the one laying.
+    /// </summary>
+    public Genome? Mate;
 
     /// <summary>Anchor (foot/contact) point.</summary>
     public Point Pos;
@@ -38,8 +50,21 @@ public sealed class Pet
     public double PaletteChangeIn = 8;
     /// <summary>This individual's own colour, shown only when something is going on.</summary>
     public int HomePalette;
-    /// <summary>Own timer: displays must not keep re-rolling the personal colour.</summary>
-    public double HomeChangeIn = 30;
+    /// <summary>
+    /// Seconds left wearing somebody else's colour. Mimicry, imitation and the
+    /// ritual all borrow the body for a while; when the loan runs out the pet
+    /// settles back onto the colour it inherited, because that colour is the only
+    /// way you can tell one cuttlefish from another.
+    /// </summary>
+    public double BorrowedFor;
+
+    /// <summary>Wear another colour and pattern for a while, then come back.</summary>
+    public void Borrow(int palette, int pattern, double seconds)
+    {
+        HomePalette = palette;
+        SkinPattern = pattern;
+        BorrowedFor = Math.Max(BorrowedFor, seconds);
+    }
     /// <summary>0 = translucent glass, 1 = solid colour. Eased toward the mood.</summary>
     public double Vividness;
     /// <summary>Overall alpha, low while glassy. Separate from <see cref="Fade"/>.</summary>

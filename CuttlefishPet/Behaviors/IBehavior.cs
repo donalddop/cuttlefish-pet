@@ -1,4 +1,4 @@
-using CuttlefishPet.Audio;
+﻿using CuttlefishPet.Audio;
 using CuttlefishPet.Core;
 using CuttlefishPet.Interop;
 using CuttlefishPet.Rendering;
@@ -6,7 +6,7 @@ using CuttlefishPet.Rendering;
 namespace CuttlefishPet.Behaviors;
 
 /// <summary>Named so call sites read as intent, not as a bare boolean.</summary>
-public delegate void SpawnPet(System.Windows.Point at, bool hatchling);
+public delegate void SpawnPet(System.Windows.Point at, bool hatchling, CuttlefishPet.Core.Genome? inherit = null);
 
 public sealed class BehaviorContext
 {

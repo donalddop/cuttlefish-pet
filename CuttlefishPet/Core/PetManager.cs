@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using CuttlefishPet.Audio;
 using CuttlefishPet.Behaviors;
 using CuttlefishPet.Interop;
@@ -27,7 +27,10 @@ public sealed class PetManager
     private readonly List<Pet> _pets = new();
     private readonly List<Prop> _props = new();
     private readonly List<Pet> _leaving = new();
-    private readonly List<(Point Pos, bool Hatchling)> _hatching = new();
+    private readonly List<(Point Pos, bool Hatchling, Genome? Inherit)> _hatching = new();
+
+    /// <summary>Hands out the identity every pet keeps for life.</summary>
+    private int _nextId;
     private double _clock, _lastDownAt = double.NegativeInfinity, _rivalCooldown;
     private double _preySpawnIn = 12, _courtCooldown = 30, _shrimpSpawnIn = 25;
     private double _immigrationIn = 60, _bloomIn = 240, _fightCooldown = 120;
@@ -89,7 +92,11 @@ public sealed class PetManager
     /// as a young adult instead, because waiting ten minutes for a pet to become
     /// visible is nobody's idea of fun.
     /// </param>
-    public void Spawn(Point? at, bool hatchling = false)
+    /// <param name="inherit">
+    /// The traits worked out from the parents when this one came out of an egg.
+    /// Null for anything that swam in from outside, which gets a fresh roll.
+    /// </param>
+    public void Spawn(Point? at, bool hatchling = false, Genome? inherit = null)
     {
         var wa = System.Windows.Forms.Screen.PrimaryScreen!.WorkingArea; // physical px
         var pet = new Pet
@@ -107,15 +114,25 @@ public sealed class PetManager
                                  : (26 + _rng.NextDouble() * 24) * 60;
         pet.GrowUpSeconds = pet.Lifespan * (hatchling ? 0.40 : 0.12);
         pet.Scale = pet.BirthScale;
-        pet.HomePalette = Palettes.PickRandom(_rng);
+        pet.Id = ++_nextId;
+        pet.Genome = inherit ?? Genome.Random(_rng);
+        // Colour and pattern are inherited rather than rolled fresh every so often,
+        // so a brood looks like its parents and you can follow one animal around.
+        pet.HomePalette = pet.Genome.Chroma;
+        pet.SkinPattern = pet.Genome.Pattern;
         pet.Palette = pet.FromPalette = Palettes.Glass;   // arrives near-invisible
         pet.PaletteChangeIn = 20 + _rng.NextDouble() * 40;
-        pet.SkinPattern = _rng.Next(5);
         pet.SkinStrength = 0.45 + _rng.NextDouble() * 0.30;
         pet.SheenStrength = 0.10 + _rng.NextDouble() * 0.14;
         pet.Visual = _renderer.CreateVisual();
         pet.Machine = new BehaviorMachine(NewContext(pet));
         _pets.Add(pet);
+
+        var g = pet.Genome;
+        Log($"#{pet.Id} {(inherit is null ? "nieuw" : "uit ei")} " +
+            $"{Palettes.All[g.Chroma].Name}/{g.Pattern} " +
+            $"lef={g.Boldness:F2} sociaal={g.Sociability:F2} nieuwsgierig={g.Curiosity:F2} " +
+            $"stofwisseling={g.Metabolism:F2} onrustig={g.Restlessness:F2}");
     }
 
     /// <summary>Send everyone but a handful drifting off — the panic button.</summary>
@@ -170,7 +187,7 @@ public sealed class PetManager
 
         for (int i = 0; i < willing.Count; i++)
         {
-            willing[i].HomePalette = robe;
+            willing[i].Borrow(robe, willing[i].SkinPattern, 80);
             willing[i].Machine.Force(new RitualBehavior(
                 centre, radius, i * Math.Tau / willing.Count, spin));
         }
@@ -260,7 +277,7 @@ public sealed class PetManager
         Pet = pet, World = _world, Input = _input,
         Sound = _sound, Renderer = _renderer, Rng = _rng,
         // Queued, never applied mid-tick: the pet list is being iterated.
-        SpawnPet = (p, hatchling) => _hatching.Add((p, hatchling)),
+        SpawnPet = (p, hatchling, inherit) => _hatching.Add((p, hatchling, inherit)),
         AddProp = prop => { prop.Visual = _renderer.CreateProp(prop.Anim); _props.Add(prop); },
         AddBone = at => _world.Bones.Add(new Bone { Pos = at, Visual = _renderer.CreateProp("bone") }),
         RemovePet = p => _leaving.Add(p),
@@ -592,13 +609,17 @@ public sealed class PetManager
         pet.BodyOpacity = 0.52 + 0.48 * pet.Vividness;
         pet.SheenStrength = 0.10 + 0.14 * (1 - pet.Vividness);   // glassier = more shimmer
 
-        // Every so often it settles on a different personal colour and pattern.
-        pet.HomeChangeIn -= dt;
-        if (pet.HomeChangeIn <= 0)
+        // A borrowed colour is given back. The personal colour itself is inherited
+        // and never re-rolled: it is the only thing that says this is the same
+        // cuttlefish you were watching a minute ago.
+        if (pet.BorrowedFor > 0)
         {
-            pet.HomeChangeIn = 25 + _rng.NextDouble() * 50;
-            pet.HomePalette = Palettes.PickRandom(_rng);
-            if (_rng.NextDouble() < 0.5) pet.SkinPattern = _rng.Next(5);
+            pet.BorrowedFor -= dt;
+            if (pet.BorrowedFor <= 0)
+            {
+                pet.HomePalette = pet.Genome.Chroma;
+                pet.SkinPattern = pet.Genome.Pattern;
+            }
         }
 
         if (pet.PaletteBlend < 1)
@@ -877,8 +898,8 @@ public sealed class PetManager
         // simply does not make it, which is how a real tank behaves too. The cap is
         // high enough to allow a proper swarm — crowding, not this line, is what
         // ends one.
-        foreach (var (pos, hatchling) in _hatching)
-            Spawn(pos, hatchling);
+        foreach (var (pos, hatchling, inherit) in _hatching)
+            Spawn(pos, hatchling, inherit);
         _hatching.Clear();
     }
 

@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using CuttlefishPet.Core;
 using CuttlefishPet.Rendering;
 
@@ -305,8 +305,9 @@ public static class ColourMimicry
             if (ReferenceEquals(other, pet)) continue;
             if ((other.Pos - pet.Pos).Length > 260) continue;
             if (other.HomePalette == pet.HomePalette) return;
-            pet.HomePalette = other.HomePalette;
-            pet.SkinPattern = other.SkinPattern;
+            // Borrowed, not adopted: it drifts back to its own colour afterwards,
+            // so copying a neighbour cannot erase who this one is.
+            pet.Borrow(other.HomePalette, other.SkinPattern, 90 + rng.NextDouble() * 60);
             return;
         }
     }

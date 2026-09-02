@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using CuttlefishPet.Core;
 using CuttlefishPet.Rendering;
 
@@ -218,8 +218,7 @@ public sealed class ImitateBehavior : BehaviorBase
     {
         if (_it.Tankmate is { } mate)
         {
-            pet.HomePalette = mate.HomePalette;
-            pet.SkinPattern = mate.SkinPattern;
+            pet.Borrow(mate.HomePalette, mate.SkinPattern, 120);
             return;
         }
 
@@ -230,7 +229,7 @@ public sealed class ImitateBehavior : BehaviorBase
             // Best effort: a failed grab just means it keeps its own colour, which
             // is a perfectly good outcome for an animal trying to be a shrimp.
             var look = CamoSampler.Sample(box);
-            if (look != null) pet.HomePalette = Palettes.NearestTo(look.Dominant);
+            if (look != null) pet.Borrow(Palettes.NearestTo(look.Dominant), pet.SkinPattern, 120);
         });
     }
 

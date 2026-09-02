@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using CuttlefishPet.Core;
 using CuttlefishPet.Rendering;
 
@@ -201,8 +201,14 @@ public sealed class CourtshipBehavior : BehaviorBase
 
         if (_welcome)
         {
-            // Accepted: swim off as a pair, and she will nest before long.
-            if (!_suitor) c.Pet.WantsToNest = true;
+            // Accepted: swim off as a pair, and she will nest before long. Whose
+            // traits went into the clutch is settled here, while both are still
+            // alongside each other — by hatching time the father may well be dead.
+            if (!_suitor)
+            {
+                c.Pet.WantsToNest = true;
+                c.Pet.Mate = _other.Genome;
+            }
             Next = new FollowBehavior(_other, new Vector(80, 26));
         }
         else if (_suitor)
