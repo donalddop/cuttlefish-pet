@@ -120,6 +120,7 @@ public sealed class PetManager
         // so a brood looks like its parents and you can follow one animal around.
         pet.HomePalette = pet.Genome.Chroma;
         pet.SkinPattern = pet.Genome.Pattern;
+        pet.Drives.Stagger(_rng);
         pet.Palette = pet.FromPalette = Palettes.Glass;   // arrives near-invisible
         pet.PaletteChangeIn = 20 + _rng.NextDouble() * 40;
         pet.SkinStrength = 0.45 + _rng.NextDouble() * 0.30;
@@ -133,6 +134,27 @@ public sealed class PetManager
             $"{Palettes.All[g.Chroma].Name}/{g.Pattern} " +
             $"lef={g.Boldness:F2} sociaal={g.Sociability:F2} nieuwsgierig={g.Curiosity:F2} " +
             $"stofwisseling={g.Metabolism:F2} onrustig={g.Restlessness:F2}");
+    }
+
+    /// <summary>
+    /// Feed the needs the sensory facts they run on. The scan for company is the
+    /// only cost here, and at a tankful of pets it is nothing.
+    /// </summary>
+    private void UpdateDrives(Pet pet, double dt)
+    {
+        bool company = false;
+        foreach (var other in _pets)
+        {
+            if (ReferenceEquals(other, pet)) continue;
+            if ((other.Pos - pet.Pos).LengthSquared < Drives.CompanyRange * Drives.CompanyRange)
+            {
+                company = true;
+                break;
+            }
+        }
+
+        double fright = pet.Alarmed ? 1 : Math.Min(0.6, pet.Pestered / 4);
+        pet.Drives.Tick(dt, pet.Genome, pet.Surface != null, pet.Vel.Length, company, fright);
     }
 
     /// <summary>Send everyone but a handful drifting off — the panic button.</summary>
@@ -305,6 +327,7 @@ public sealed class PetManager
             AvoidRecycleBin(pet, dt);
             pet.Anim.Tick(dt);
             AgeAndRetire(pet, dt);
+            UpdateDrives(pet, dt);
             UpdateExploration(pet, dt);
             ColourMimicry.Apply(pet, _world, _rng, dt);
             UpdateCamoSkin(pet, dt);
@@ -1023,7 +1046,7 @@ public sealed class PetManager
         try
         {
             var lines = _pets.Select((p, i) =>
-                $"{DateTime.Now:HH:mm:ss} pet{i} pos=({p.Pos.X:F0},{p.Pos.Y:F0}) vel=({p.Vel.X:F0},{p.Vel.Y:F0}) " +
+                $"{DateTime.Now:HH:mm:ss} pet#{p.Id} pos=({p.Pos.X:F0},{p.Pos.Y:F0}) vel=({p.Vel.X:F0},{p.Vel.Y:F0}) " +
                 $"behavior={p.Machine.Current.Name} anim={p.Anim.Current.Name} surface={p.Surface?.Kind.ToString() ?? "none"} " +
                 $"colour={Palettes.All[p.Palette].Name} vivid={p.Vividness:F2} " +
                 $"age={p.Age:F0}/{p.Lifespan:F0}s scale={p.Scale:F2}");

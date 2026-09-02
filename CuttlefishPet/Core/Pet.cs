@@ -22,6 +22,9 @@ public sealed class Pet
     /// </summary>
     public Genome? Mate;
 
+    /// <summary>What it wants right now. Weighs every choice the machine makes.</summary>
+    public readonly Drives Drives = new();
+
     /// <summary>Anchor (foot/contact) point.</summary>
     public Point Pos;
     public Vector Vel;
@@ -172,6 +175,7 @@ public sealed class Pet
     {
         Nourishment += amount;   // GrownScale is what clamps it, at MaxScale
         Swell = 0.18;
+        Drives.Fed(amount);
     }
 
     /// <summary>

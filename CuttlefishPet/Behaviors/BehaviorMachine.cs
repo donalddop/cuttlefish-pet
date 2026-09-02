@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Text.Json;
 using CuttlefishPet.Core;
 using CuttlefishPet.Interop;
@@ -27,6 +27,7 @@ public sealed class BehaviorMachine
         ["cross"] = 7, ["read"] = 16, ["bone"] = 70, ["bigBubble"] = 9,
         ["imitate"] = 24,
     };
+
 
     /// <summary>
     /// Overlay tuning from behaviors.json onto the defaults. Merging, not replacing:
@@ -57,7 +58,11 @@ public sealed class BehaviorMachine
 
     public void Force(BehaviorBase next)
     {
-        Log($"{Current.Name} -> {next.Name} pos=({_ctx.Pet.Pos.X:F0},{_ctx.Pet.Pos.Y:F0}) vel=({_ctx.Pet.Vel.X:F0},{_ctx.Pet.Vel.Y:F0})");
+        _ctx.Pet.Drives.Started(next.Name);
+        var d = _ctx.Pet.Drives;
+        Log($"#{_ctx.Pet.Id} {Current.Name} -> {next.Name} " +
+            $"honger={d.Hunger:F2} moe={d.Fatigue:F2} alleen={d.Loneliness:F2} " +
+            $"verveeld={d.Boredom:F2} bang={d.Fear:F2}");
         Current.Exit(_ctx);
         _ctx.Pet.VisualBob = 0; // never carry a hover-bob into the next behavior
         Current = next;
@@ -152,8 +157,11 @@ public sealed class BehaviorMachine
 
         void Add(string key, Func<BehaviorBase> make)
         {
-            if (_weights.TryGetValue(key, out var w) && w > 0)
-                candidates.Add((make(), w));
+            if (!_weights.TryGetValue(key, out var w) || w <= 0) return;
+            // The flat weight says how often this belongs in a cuttlefish's life at
+            // all; what it gets multiplied by here is this cuttlefish, right now.
+            w *= Appetites.Weigh(key, pet.Drives, pet.Genome);
+            if (w > 0.01) candidates.Add((make(), w));
         }
 
         // Food competes on the same footing as everything else rather than short-

@@ -117,6 +117,7 @@ regelt zijn eigen omvang. Loopt het toch vol: **Thin them out** in het tray-menu
 - `CuttlefishPet/Interop` — Win32 P/Invoke: vensters, taskbar, klok, tekstcursor, globale muis/toetsenbord-hooks
 - `CuttlefishPet/Rendering` — klikdoorlatend overlay-venster, sprite-renderer met oog-, huid- en glanslagen, kleurpaletten, screen sampler
 - `Tools/` — generatoren voor sprites, huidtexturen, geluid en het tray-icoon, plus previewscripts (`uv run`)
+- `Tools/DriveTests/` — controles op het genoom, de drijfveren en de gedragsweging (`dotnet run --project Tools/DriveTests`)
 
 ## Zelf aanpassen
 

@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The drives and the appetite table are numbers, and numbers drift when you tune
+    them. A plain console runner rather than a test framework, so the repo stays
+    free of packages: it returns the number of failures as its exit code.
+
+    Run it with: dotnet run  (from this folder)
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="..\..\CuttlefishPet\Core\Genome.cs" />
+    <Compile Include="..\..\CuttlefishPet\Core\Drives.cs" />
+    <Compile Include="..\..\CuttlefishPet\Core\Appetites.cs" />
+    <Compile Include="..\..\CuttlefishPet\Rendering\Palette.cs" />
+  </ItemGroup>
+
+</Project>
