@@ -440,14 +440,14 @@
   },
   "eye": {
     "file": "eye.png",
-    "frameW": 16,
-    "frameH": 16,
+    "frameW": 32,
+    "frameH": 32,
     "frames": 2,
     "fps": 1,
     "loop": false,
     "anchor": [
-      8.0,
-      8.0
+      16.0,
+      16.0
     ],
     "scale": 1.0
   },

@@ -39,7 +39,8 @@ ARM_DARK = (196, 128, 90, 255)
 SPOT = (170, 102, 70, 110)
 EYE_WHITE = (252, 250, 242, 255)
 IRIS = (120, 88, 60, 255)
-PUPIL = (38, 28, 26, 255)
+PUPIL = (30, 20, 20, 255)
+PUPIL_RIM = (13, 8, 8, 255)
 INK = (44, 38, 52, 255)
 FLUSH = (232, 146, 146, 255)        # happy/excited colour flush
 FLUSH_DARK = (212, 118, 122, 255)
@@ -89,6 +90,42 @@ def tilt_point(pt, center, angle):
     ImageDraw.Draw(dot).ellipse([pt[0] - 3, pt[1] - 3, pt[0] + 3, pt[1] + 3], fill=255)
     box = dot.rotate(angle, center=center, resample=Image.BICUBIC).getbbox()
     return pt if box is None else ((box[0] + box[2]) / 2, (box[1] + box[3]) / 2)
+
+
+def draw_pupil(d, cx, cy, r):
+    """The signature W-shaped pupil: a soft zigzag band plus two glassy highlights.
+
+    r is the iris radius it sits inside of. Drawn as a rounded polyline with a
+    darker rim underneath (for contrast against any iris/palette colour) and a
+    slimmer bright fill on top, so the W reads clearly even shrunk down small.
+    """
+    hw, dip = r * 0.80, r * 0.60
+    top_outer, top_mid = -r * 0.08, -r * 0.14
+    pts = [
+        (cx - hw, cy + top_outer),
+        (cx - hw * 0.5, cy + dip),
+        (cx, cy + top_mid),
+        (cx + hw * 0.5, cy + dip),
+        (cx + hw, cy + top_outer),
+    ]
+    stroke = r * 0.29
+    d.line(pts, fill=PUPIL_RIM, width=int(stroke * 1.5), joint="curve")
+    for x, y in pts:
+        rr = stroke * 0.75
+        d.ellipse([x - rr, y - rr, x + rr, y + rr], fill=PUPIL_RIM)
+    d.line(pts, fill=PUPIL, width=int(stroke), joint="curve")
+    for x, y in pts:
+        rr = stroke * 0.48
+        d.ellipse([x - rr, y - rr, x + rr, y + rr], fill=PUPIL)
+    # glassy highlight over the left hump, plus a tiny sparkle lower-right. These
+    # are what make the eye read as alive rather than as a hole in the head.
+    hl_r = r * 0.21
+    hl_x, hl_y = cx - hw * 0.50, cy + top_outer - r * 0.06
+    d.ellipse([hl_x - hl_r, hl_y - hl_r * 1.35, hl_x + hl_r, hl_y + hl_r * 1.35],
+              fill=(255, 255, 255, 245))
+    sp_r = r * 0.085
+    sp_x, sp_y = cx + hw * 0.46, cy + dip * 0.10
+    d.ellipse([sp_x - sp_r, sp_y - sp_r, sp_x + sp_r, sp_y + sp_r], fill=(255, 255, 255, 165))
 
 
 def draw_cuttlefish(
@@ -260,10 +297,7 @@ def draw_cuttlefish(
         d.ellipse([ex - ir, ey - ir, ex + ir, ey + ir], fill=IRIS)
         eye = (ex, ey, er)
         if baked_eye == "open":  # no overlay for this action: draw the pupil in place
-            pw = ir * 0.85
-            d.line([(ex - pw, ey - pw * 0.1), (ex - pw * 0.5, ey + pw * 0.42), (ex, ey - pw * 0.05),
-                    (ex + pw * 0.5, ey + pw * 0.42), (ex + pw, ey - pw * 0.1)],
-                   fill=PUPIL, width=int(ir * 0.55), joint="curve")
+            draw_pupil(d, ex, ey, ir)
             eye = None
 
     if puff:
@@ -539,25 +573,22 @@ def a_parachute(n=4):
 # ---------------- props ----------------
 
 def prop_eye():
-    """Overlay: frame 0 = W-pupil, frame 1 = closed lid. 16px final."""
-    big, small = 64, 16
+    """Overlay: frame 0 = W-pupil, frame 1 = closed lid. 32px final (was 16px --
+    doubled so the W stays crisp once the app scales it up to on-screen size)."""
+    big, small = 128, 32
     frames = []
 
     pupil = Image.new("RGBA", (big, big), (0, 0, 0, 0))
     d = ImageDraw.Draw(pupil)
-    c, pw = big / 2, big * 0.26
-    d.line([(c - pw, c - pw * 0.1), (c - pw * 0.5, c + pw * 0.42), (c, c - pw * 0.05),
-            (c + pw * 0.5, c + pw * 0.42), (c + pw, c - pw * 0.1)],
-           fill=PUPIL, width=int(big * 0.17), joint="curve")
-    d.ellipse([c - pw * 0.3, c - pw * 0.85, c + pw * 0.05, c - pw * 0.45],
-              fill=(255, 255, 255, 200))
+    c = big / 2
+    draw_pupil(d, c, c, c * 0.62)
     frames.append(pupil.resize((small, small), Image.LANCZOS))
 
     lid = Image.new("RGBA", (big, big), (0, 0, 0, 0))
     d = ImageDraw.Draw(lid)
     r = big * 0.46
-    d.ellipse([c - r, c - r, c + r, c + r], fill=MANTLE, outline=OUTLINE, width=4)
-    d.arc([c - r * 0.75, c - r * 0.3, c + r * 0.75, c + r * 0.8], 15, 165, fill=OUTLINE, width=4)
+    d.ellipse([c - r, c - r, c + r, c + r], fill=MANTLE, outline=OUTLINE, width=8)
+    d.arc([c - r * 0.75, c - r * 0.3, c + r * 0.75, c + r * 0.8], 15, 165, fill=OUTLINE, width=8)
     frames.append(lid.resize((small, small), Image.LANCZOS))
     return frames, small
 
@@ -793,15 +824,26 @@ ANCHORS = {
 
 
 def make_icon():
-    """A crisp multi-size .ico so the tray entry is recognisably the pet."""
-    img, _ = draw_cuttlefish(fin_phase=1.0, arm_splay=0.4, squash=0.05,
-                            baked_eye="open", fin_amp=8)
+    """A crisp multi-size .ico so the tray entry is recognisably the pet.
+
+    The pupil is painted last, at icon resolution, rather than baked into the
+    256px body art and scaled with it -- a W drawn 16px wide turns to mush the
+    moment it is blown up to fill a 256px icon.
+    """
+    img, eye = draw_cuttlefish(fin_phase=1.0, arm_splay=0.4, squash=0.05,
+                               fin_amp=8)
     box = img.getbbox()
     art = img.crop(box)
     side = max(art.size) + 24
     canvas = Image.new("RGBA", (side, side), (0, 0, 0, 0))
-    canvas.paste(art, ((side - art.width) // 2, (side - art.height) // 2), art)
+    off = ((side - art.width) // 2, (side - art.height) // 2)
+    canvas.paste(art, off, art)
     canvas = canvas.resize((256, 256), Image.LANCZOS)
+    if eye:
+        k = 256 / side
+        ex = (eye[0] - box[0] + off[0]) * k
+        ey = (eye[1] - box[1] + off[1]) * k
+        draw_pupil(ImageDraw.Draw(canvas), ex, ey, eye[2] * 0.62 * k)
     path = os.path.join(OUT, "..", "app.ico")
     canvas.save(path, sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
     return path
