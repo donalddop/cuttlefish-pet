@@ -35,6 +35,9 @@ public sealed class PetManager
     private double _preySpawnIn = 12, _courtCooldown = 30, _shrimpSpawnIn = 25;
     private double _immigrationIn = 60, _bloomIn = 240, _fightCooldown = 120;
     private double _ritualIn = 600;
+
+    /// <summary>Seconds to the next autosave. A kill or a crash costs a minute, not a tank.</summary>
+    private double _saveIn = 60;
     private double _sampleMs, _binCheckIn;
     private int _sampleCount;
     private int _lastHourChimed = -1;
@@ -83,6 +86,86 @@ public sealed class PetManager
     public void StockTank()
     {
         while (_pets.Count < _settings.TargetPopulation) Spawn();
+    }
+
+    /// <summary>Write the tank out as it stands.</summary>
+    public void SaveTank()
+    {
+        var state = new TankState { NextId = _nextId };
+        foreach (var pet in _pets)
+        {
+            var d = pet.Drives;
+            var saved = new SavedPet
+            {
+                Id = pet.Id,
+                Genome = pet.Genome,
+                Age = pet.Age,
+                Lifespan = pet.Lifespan,
+                BirthScale = pet.BirthScale,
+                GrowUpSeconds = pet.GrowUpSeconds,
+                Nourishment = pet.Nourishment,
+                X = pet.Pos.X,
+                Y = pet.Pos.Y,
+                Hunger = d.Hunger, Fatigue = d.Fatigue, Loneliness = d.Loneliness,
+                Boredom = d.Boredom, Fear = d.Fear,
+            };
+            foreach (var (behavior, worth) in pet.Memory.Learned) saved.Learned[behavior] = worth;
+            foreach (var (id, bond) in pet.Relations.Everyone) saved.Bonds[id] = bond;
+            state.Pets.Add(saved);
+        }
+        state.Save();
+    }
+
+    /// <summary>
+    /// Put back the tank from the last session. Returns how many came back, so the
+    /// caller can top up from there; nothing saved simply means nothing to put back.
+    /// </summary>
+    public int RestoreTank()
+    {
+        var state = TankState.Load();
+        if (state == null || state.Pets.Count == 0) return 0;
+
+        _nextId = Math.Max(_nextId, state.NextId);
+        var wa = System.Windows.Forms.Screen.PrimaryScreen!.WorkingArea;
+
+        foreach (var saved in state.Pets)
+        {
+            // A screen that has changed size since last time must not strand
+            // anybody off the edge of it.
+            var pos = new Point(
+                Math.Clamp(saved.X, wa.Left + 40, wa.Right - 40),
+                Math.Clamp(saved.Y, wa.Top + 40, wa.Bottom - 40));
+
+            var pet = new Pet { Anim = new AnimationPlayer(_library), Pos = pos };
+            pet.Id = saved.Id;
+            pet.Genome = saved.Genome;
+            pet.Age = saved.Age;
+            pet.Lifespan = saved.Lifespan;
+            pet.BirthScale = saved.BirthScale;
+            pet.GrowUpSeconds = saved.GrowUpSeconds;
+            pet.Nourishment = saved.Nourishment;
+            pet.Scale = pet.GrownScale;
+            pet.ScaleTarget = pet.GrownScale;
+            pet.HomePalette = pet.Genome.Chroma;
+            pet.SkinPattern = pet.Genome.Pattern;
+            pet.Palette = pet.FromPalette = Palettes.Glass;
+            pet.PaletteChangeIn = 20 + _rng.NextDouble() * 40;
+            pet.SkinStrength = 0.45 + _rng.NextDouble() * 0.30;
+
+            var d = pet.Drives;
+            d.Hunger = saved.Hunger; d.Fatigue = saved.Fatigue;
+            d.Loneliness = saved.Loneliness; d.Boredom = saved.Boredom; d.Fear = saved.Fear;
+            foreach (var (behavior, worth) in saved.Learned) pet.Memory.Relearn(behavior, worth);
+            foreach (var (id, bond) in saved.Bonds) pet.Relations.Remember(id, bond);
+
+            pet.Visual = _renderer.CreateVisual();
+            pet.Machine = new BehaviorMachine(NewContext(pet));
+            _pets.Add(pet);
+            _nextId = Math.Max(_nextId, pet.Id);
+        }
+
+        Log($"tank hervat: {_pets.Count} zeekatten terug van {state.SavedAt}");
+        return _pets.Count;
     }
 
     public void Spawn() => Spawn(null);
@@ -310,6 +393,9 @@ public sealed class PetManager
     public void Tick(double dt)
     {
         _clock += dt;
+
+        _saveIn -= dt;
+        if (_saveIn <= 0) { _saveIn = 60; SaveTank(); }
         _input.Tick(dt);
         _tracker.Tick();
         RebuildWorld(dt);

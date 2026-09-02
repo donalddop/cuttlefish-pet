@@ -119,6 +119,10 @@ regelt zijn eigen omvang. Loopt het toch vol: **Thin them out** in het tray-menu
 - `Tools/` — generatoren voor sprites, huidtexturen, geluid en het tray-icoon, plus previewscripts (`uv run`)
 - `Tools/DriveTests/` — controles op het genoom, de drijfveren en de gedragsweging (`dotnet run --project Tools/DriveTests`)
 
+De tank zelf staat in `%LocalAppData%\CuttlefishPet\tank.json`: genen, leeftijden, wat elk dier
+geleerd heeft en wat ze van elkaar vinden. Hij wordt elke minuut weggeschreven en bij het
+starten teruggezet. Verwijder dat bestand om met een verse genenpoel te beginnen.
+
 ## Zelf aanpassen
 
 - **Gedrag**: `Assets/behaviors.json` bevat de kans per gedrag. Waardes worden over de

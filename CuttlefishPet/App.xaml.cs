@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Threading;
@@ -51,6 +51,9 @@ public partial class App : Application
         _input.Install();
 
         _manager = new PetManager(_overlay, renderer, library, _input, _sound);
+        // Last session's tank first; StockTank only ever adds, so a population that
+        // came back short of its resting level is topped up with newcomers.
+        _manager.RestoreTank();
         _manager.StockTank();
 
         SetupTray();
@@ -149,6 +152,7 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         _loop?.Stop();
+        _manager?.SaveTank();
         _commands?.Dispose();
         _input?.Dispose();
         if (_tray != null) { _tray.Visible = false; _tray.Dispose(); }

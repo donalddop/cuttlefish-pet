@@ -183,6 +183,45 @@ Check("the company of a friend counts double",
       amongFriends.Loneliness < amongStrangers.Loneliness * 0.75,
       $"friends={amongFriends.Loneliness:F2} strangers={amongStrangers.Loneliness:F2}");
 
+// ---------- persistence (S5) ----------
+// A record struct with nothing but a primary constructor is exactly where a
+// round trip quietly turns into a tank of default-valued blanks.
+var before5 = new Genome(0.73, 0.21, 0.64, 1.19, 0.38, Palettes.IndexOf("azure"), 3);
+var after5 = System.Text.Json.JsonSerializer.Deserialize<Genome>(
+    System.Text.Json.JsonSerializer.Serialize(before5));
+Check("a genome survives the trip to disk", after5 == before5, $"{after5}");
+
+var tank = new TankState { NextId = 42 };
+var one = new SavedPet
+{
+    Id = 7, Genome = before5, Age = 120, Lifespan = 1800, BirthScale = 0.3,
+    GrowUpSeconds = 700, Nourishment = 0.4, X = 1200, Y = 340,
+    Hunger = 0.61, Fatigue = 0.22, Loneliness = 0.05, Boredom = 0.44, Fear = 0.0,
+};
+one.Learned["hunt"] = 0.8;
+one.Learned["pile"] = -0.3;
+one.Bonds[9] = 0.72;
+one.Bonds[11] = -0.4;
+tank.Pets.Add(one);
+
+var back = System.Text.Json.JsonSerializer.Deserialize<TankState>(
+    System.Text.Json.JsonSerializer.Serialize(tank))!;
+Check("the tank survives the trip", back.Pets.Count == 1 && back.NextId == 42);
+var b = back.Pets[0];
+Check("an animal comes back whole",
+      b.Id == 7 && b.Genome == before5 && Math.Abs(b.Age - 120) < 1e-9 && Math.Abs(b.Hunger - 0.61) < 1e-9);
+Check("what it learned comes back", Math.Abs(b.Learned["hunt"] - 0.8) < 1e-9 && Math.Abs(b.Learned["pile"] + 0.3) < 1e-9);
+Check("who it knows comes back", Math.Abs(b.Bonds[9] - 0.72) < 1e-9 && Math.Abs(b.Bonds[11] + 0.4) < 1e-9);
+
+// And that the restored values actually land back in a live animal's head.
+var revived = new Memory();
+foreach (var (behavior, worth) in b.Learned) revived.Relearn(behavior, worth);
+Check("a restored animal still knows what worked", revived.Appeal("hunt") > 1.4 && revived.Appeal("pile") < 0.85,
+      $"hunt={revived.Appeal("hunt"):F2} pile={revived.Appeal("pile"):F2}");
+var knownAgain = new Relations();
+foreach (var (id, bond) in b.Bonds) knownAgain.Remember(id, bond);
+Check("and who it liked", knownAgain.Dearest() == 9 && knownAgain.With(11) < 0);
+
 Console.WriteLine(failed == 0 ? "\nALL PASS" : $"\n{failed} FAILED");
 return failed;
 
