@@ -58,7 +58,11 @@ public sealed class BehaviorMachine
 
     public void Force(BehaviorBase next)
     {
+        // Judge what is ending before anything about the animal moves on, then let
+        // it start forming an opinion about what comes next.
+        _ctx.Pet.Memory.Ended(_ctx.Pet.Drives.State);
         _ctx.Pet.Drives.Started(next.Name);
+        _ctx.Pet.Memory.Began(next.Name, _ctx.Pet.Drives.State);
         var d = _ctx.Pet.Drives;
         Log($"#{_ctx.Pet.Id} {Current.Name} -> {next.Name} " +
             $"honger={d.Hunger:F2} moe={d.Fatigue:F2} alleen={d.Loneliness:F2} " +
@@ -160,7 +164,7 @@ public sealed class BehaviorMachine
             if (!_weights.TryGetValue(key, out var w) || w <= 0) return;
             // The flat weight says how often this belongs in a cuttlefish's life at
             // all; what it gets multiplied by here is this cuttlefish, right now.
-            w *= Appetites.Weigh(key, pet.Drives, pet.Genome);
+            w *= Appetites.Weigh(key, pet.Drives, pet.Genome) * pet.Memory.Appeal(key);
             if (w > 0.01) candidates.Add((make(), w));
         }
 

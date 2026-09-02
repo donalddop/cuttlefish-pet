@@ -104,4 +104,27 @@ public static class Appetites
 
     /// <summary>Behaviours the needs have an opinion about. Used by the tests.</summary>
     public static IReadOnlyCollection<string> Known => _table.Keys;
+
+    /// <summary>
+    /// How much good a behaviour did, judged only on the needs it could actually
+    /// have done something about: it ate, it rested, it found company. Fear and
+    /// boredom are deliberately left out -- fear bleeds off by itself and boredom
+    /// is settled by the mere act of starting something, so scoring on either would
+    /// hand out credit to whatever happened to be running at the time.
+    ///
+    /// Null means this behaviour makes no such claim, and so is never judged.
+    /// </summary>
+    public static double? Payoff(string behavior, DriveState before, DriveState after)
+    {
+        if (!_table.TryGetValue(behavior, out var a)) return null;
+        double total = a.Hunger + a.Fatigue + a.Loneliness;
+        if (total <= 0) return null;
+
+        double eased = a.Hunger * (before.Hunger - after.Hunger)
+                     + a.Fatigue * (before.Fatigue - after.Fatigue)
+                     + a.Loneliness * (before.Loneliness - after.Loneliness);
+        // A third of a need settled is full marks; a need that climbed throughout
+        // is the animal noticing that this did not work.
+        return Math.Clamp(eased / total * 3, -1, 1);
+    }
 }

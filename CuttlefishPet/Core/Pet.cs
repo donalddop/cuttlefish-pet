@@ -25,6 +25,12 @@ public sealed class Pet
     /// <summary>What it wants right now. Weighs every choice the machine makes.</summary>
     public readonly Drives Drives = new();
 
+    /// <summary>What it has learned about its own repertoire, on this desktop.</summary>
+    public readonly Memory Memory = new();
+
+    /// <summary>Who it knows, and how that went.</summary>
+    public readonly Relations Relations = new();
+
     /// <summary>Anchor (foot/contact) point.</summary>
     public Point Pos;
     public Vector Vel;

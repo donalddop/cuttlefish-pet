@@ -9,8 +9,17 @@
 /// The time constants are set against the lifespan the tank already runs on --
 /// 26 to 50 minutes -- so a need has to matter within minutes to matter at all.
 /// </summary>
+/// <summary>
+/// A copy of what an animal wanted at one moment, so two moments can be compared.
+/// </summary>
+public readonly record struct DriveState(
+    double Hunger, double Fatigue, double Loneliness, double Boredom, double Fear);
+
 public sealed class Drives
 {
+    /// <summary>A snapshot, for working out afterwards whether something helped.</summary>
+    public DriveState State => new(Hunger, Fatigue, Loneliness, Boredom, Fear);
+
     /// <summary>Wants food. Fills on its own, emptied by a meal.</summary>
     public double Hunger;
     /// <summary>Wants to stop swimming. Paid off by sitting on something.</summary>
@@ -45,9 +54,13 @@ public sealed class Drives
 
     /// <param name="perched">On a surface rather than in open water.</param>
     /// <param name="speed">Current speed in px/s: what swimming actually costs.</param>
-    /// <param name="company">Another cuttlefish within <see cref="CompanyRange"/>.</param>
+    /// <param name="company">
+    /// 0 when it is on its own, 1 for a stranger nearby, up to 2 for the company of
+    /// one it is fond of. Being among friends settles loneliness twice as fast as
+    /// being among anybody, which is most of what having friends is for.
+    /// </param>
     /// <param name="fright">0..1 from the outside world: alarm, or being grabbed.</param>
-    public void Tick(double dt, Genome g, bool perched, double speed, bool company, double fright)
+    public void Tick(double dt, Genome g, bool perched, double speed, double company, double fright)
     {
         Hunger = Clamp(Hunger + dt / HungerFill * g.Metabolism);
 
@@ -57,7 +70,9 @@ public sealed class Drives
             ? Fatigue - dt / 70
             : Fatigue + dt * speed / 14000);
 
-        Loneliness = Clamp(company ? Loneliness - dt / 45 : Loneliness + dt / 330);
+        Loneliness = Clamp(company > 0
+            ? Loneliness - dt / 45 * company
+            : Loneliness + dt / 330);
 
         // The one need whose pace is the animal's own: a restless one runs out of
         // patience with whatever it is doing in half the time a placid one takes.

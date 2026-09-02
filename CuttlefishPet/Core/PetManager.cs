@@ -142,15 +142,17 @@ public sealed class PetManager
     /// </summary>
     private void UpdateDrives(Pet pet, double dt)
     {
-        bool company = false;
+        double company = 0;
         foreach (var other in _pets)
         {
             if (ReferenceEquals(other, pet)) continue;
-            if ((other.Pos - pet.Pos).LengthSquared < Drives.CompanyRange * Drives.CompanyRange)
-            {
-                company = true;
-                break;
-            }
+            if ((other.Pos - pet.Pos).LengthSquared > Drives.CompanyRange * Drives.CompanyRange)
+                continue;
+
+            // Time alongside is how a stranger becomes somebody it recognises. It
+            // stops at familiar: going further than that takes an occasion.
+            pet.Relations.Warm(other.Id, dt / 420, Relations.Familiar);
+            company = Math.Max(company, 1 + Math.Max(0, pet.Relations.With(other.Id)));
         }
 
         double fright = pet.Alarmed ? 1 : Math.Min(0.6, pet.Pestered / 4);
@@ -328,6 +330,7 @@ public sealed class PetManager
             pet.Anim.Tick(dt);
             AgeAndRetire(pet, dt);
             UpdateDrives(pet, dt);
+            pet.Memory.Tick(dt);
             UpdateExploration(pet, dt);
             ColourMimicry.Apply(pet, _world, _rng, dt);
             UpdateCamoSkin(pet, dt);
@@ -819,6 +822,14 @@ public sealed class PetManager
         a.Mature && b.Mature && _fightCooldown <= 0 && _pets.Count > 2 &&
         _rng.NextDouble() < 0.28;
 
+    /// <summary>
+    /// What the pair make of each other, as something to multiply odds by. Two that
+    /// have spent the evening in the same corner court readily; two that have
+    /// already fallen out mostly do not.
+    /// </summary>
+    private static double Familiarity(Pet a, Pet b) =>
+        Math.Clamp(1 + (a.Relations.With(b.Id) + b.Relations.With(a.Id)) / 2, 0.25, 2.0);
+
     private void StartFight(Pet a, Pet b, Action<Pet> prize)
     {
         _fightCooldown = 600 + _rng.NextDouble() * 1200;
@@ -829,6 +840,10 @@ public sealed class PetManager
         bool fatal = _pets.Count > 3 && _rng.NextDouble() < 0.22;
         a.Machine.Force(new FightBehavior(b, aWins, fatal && !aWins, prize));
         b.Machine.Force(new FightBehavior(a, !aWins, fatal && aWins, prize));
+        // Neither of them comes out of this thinking better of the other, and the
+        // one that lost carries it furthest.
+        a.Relations.Cool(b.Id, aWins ? 0.25 : 0.55);
+        b.Relations.Cool(a.Id, aWins ? 0.55 : 0.25);
         Log($"gevecht om eten bij {_pets.Count} zeekatten, dodelijk={fatal}");
     }
 
@@ -861,7 +876,8 @@ public sealed class PetManager
                     b.Machine.Force(new RivalDisplayBehavior(a, !aRetreats));
                 }
                 else if (a.Mature && b.Mature &&
-                         a.Surface == null && b.Surface == null && roll < CourtChance &&
+                         a.Surface == null && b.Surface == null &&
+                         roll < CourtChance * Familiarity(a, b) &&
                          _courtCooldown <= 0)
                 {
                     // One puts on a display; the other decides how it lands.
@@ -914,6 +930,7 @@ public sealed class PetManager
         {
             if (!_pets.Remove(pet)) continue;
             _renderer.RemoveVisual(pet.Visual);
+            foreach (var survivor in _pets) survivor.Relations.Forget(pet.Id);
         }
         _leaving.Clear();
 

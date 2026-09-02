@@ -21,6 +21,8 @@
     <Compile Include="..\..\CuttlefishPet\Core\Genome.cs" />
     <Compile Include="..\..\CuttlefishPet\Core\Drives.cs" />
     <Compile Include="..\..\CuttlefishPet\Core\Appetites.cs" />
+    <Compile Include="..\..\CuttlefishPet\Core\Memory.cs" />
+    <Compile Include="..\..\CuttlefishPet\Core\Relations.cs" />
     <Compile Include="..\..\CuttlefishPet\Rendering\Palette.cs" />
   </ItemGroup>
 

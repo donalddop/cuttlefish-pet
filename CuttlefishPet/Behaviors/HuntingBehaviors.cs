@@ -209,11 +209,15 @@ public sealed class CourtshipBehavior : BehaviorBase
                 c.Pet.WantsToNest = true;
                 c.Pet.Mate = _other.Genome;
             }
+            // Both sides run their own copy of this, so warming its own bond here
+            // is enough to leave the pair thinking well of each other.
+            pet.Relations.Warm(_other.Id, 0.45);
             Next = new FollowBehavior(_other, new Vector(80, 26));
         }
         else if (_suitor)
         {
             pet.ShiftTo(Palettes.IndexOf("pearl"), 8);   // rebuffed, blanched
+            pet.Relations.Cool(_other.Id, 0.15);
             Next = new SwimFreeBehavior();
         }
         else
