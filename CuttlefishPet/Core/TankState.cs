@@ -60,19 +60,38 @@ public sealed class TankState
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "CuttlefishPet", "tank.json");
 
+    /// <summary>Why the last <see cref="Load"/> gave up, if it did.</summary>
+    public static string? LastLoadError { get; private set; }
+
     public static TankState? Load()
     {
+        LastLoadError = null;
         try
         {
             if (!File.Exists(Path)) return null;
             var state = JsonSerializer.Deserialize<TankState>(File.ReadAllText(Path));
-            return state?.Version == 1 ? state : null;
+            if (state == null) { LastLoadError = "leeg bestand"; return null; }
+            if (state.Version != 1) { LastLoadError = $"versie {state.Version}"; return null; }
+            return state;
         }
-        catch { return null; }   // a corrupt tank is a fresh tank, not a crash
+        catch (Exception ex)
+        {
+            // A corrupt tank is still a fresh tank rather than a crash -- but it
+            // says so now instead of looking like an empty first run.
+            LastLoadError = Describe(ex);
+            return null;
+        }
     }
 
-    public void Save()
+    /// <summary>
+    /// Writes the tank out. Returns null when that worked and the reason when it
+    /// did not -- never throws, and never fails quietly. A save that gives up
+    /// without saying so is indistinguishable from one that never ran, and the
+    /// whole point of this file is that it is still there tomorrow.
+    /// </summary>
+    public string? Save()
     {
+        string tmp = Path + ".tmp";
         try
         {
             SavedAt = DateTime.UtcNow.ToString("o");
@@ -80,11 +99,18 @@ public sealed class TankState
             // Written beside the target and moved into place, so a machine that
             // goes down mid-write leaves the previous tank intact rather than half
             // a file that loses the lot.
-            string tmp = Path + ".tmp";
             File.WriteAllText(tmp, JsonSerializer.Serialize(this,
                 new JsonSerializerOptions { WriteIndented = true }));
             File.Move(tmp, Path, overwrite: true);
+            return null;
         }
-        catch { /* read-only profile: the session simply will not carry over */ }
+        catch (Exception ex)
+        {
+            // Do not leave a half-written temporary lying next to a good tank.
+            try { if (File.Exists(tmp)) File.Delete(tmp); } catch { }
+            return Describe(ex);
+        }
     }
+
+    private static string Describe(Exception ex) => $"{ex.GetType().Name}: {ex.Message}";
 }

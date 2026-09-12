@@ -38,6 +38,10 @@ public sealed class PetManager
 
     /// <summary>Seconds to the next autosave. A kill or a crash costs a minute, not a tank.</summary>
     private double _saveIn = 60;
+
+    /// <summary>So a failing save says so once, not once a minute forever.</summary>
+    private bool _saveFailing;
+    private bool _saveConfirmed;
     private double _sampleMs, _binCheckIn;
     private int _sampleCount;
     private int _lastHourChimed = -1;
@@ -113,7 +117,18 @@ public sealed class PetManager
             foreach (var (id, bond) in pet.Relations.Everyone) saved.Bonds[id] = bond;
             state.Pets.Add(saved);
         }
-        state.Save();
+
+        if (state.Save() is string why)
+        {
+            if (!_saveFailing) Log($"tank opslaan MISLUKT: {why}");
+            _saveFailing = true;
+            return;
+        }
+
+        if (_saveFailing) Log("tank opslaan werkt weer");
+        else if (!_saveConfirmed) Log($"tank bewaard: {state.Pets.Count} zeekatten");
+        _saveFailing = false;
+        _saveConfirmed = true;
     }
 
     /// <summary>
@@ -123,7 +138,12 @@ public sealed class PetManager
     public int RestoreTank()
     {
         var state = TankState.Load();
-        if (state == null || state.Pets.Count == 0) return 0;
+        if (state == null)
+        {
+            if (TankState.LastLoadError is string bad) Log($"tank laden mislukt: {bad}");
+            return 0;
+        }
+        if (state.Pets.Count == 0) return 0;
 
         _nextId = Math.Max(_nextId, state.NextId);
         var wa = System.Windows.Forms.Screen.PrimaryScreen!.WorkingArea;
