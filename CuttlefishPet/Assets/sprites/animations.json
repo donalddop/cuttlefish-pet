@@ -433,6 +433,40 @@
       55
     ]
   },
+  "mimic_fish": {
+    "file": "mimic_fish.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 6,
+    "fps": 7,
+    "loop": false,
+    "anchor": [
+      30,
+      55
+    ],
+    "eye": [
+      39.12,
+      40.2,
+      6.5
+    ]
+  },
+  "mimic_shrimp": {
+    "file": "mimic_shrimp.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 6,
+    "fps": 7,
+    "loop": false,
+    "anchor": [
+      30,
+      55
+    ],
+    "eye": [
+      39.0,
+      39.82,
+      6.5
+    ]
+  },
   "threat": {
     "file": "threat.png",
     "frameW": 64,

@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using CuttlefishPet.Core;
 
 namespace CuttlefishPet.Behaviors;
@@ -12,7 +12,7 @@ public sealed class HuntCursorBehavior : BehaviorBase
 {
     public override string Name => "hunt";
     public override bool OverridesPhysics => true;
-    private enum Phase { Stalk, Strike }
+    private enum Phase { Stalk, Strike, Miss }
     private Phase _phase = Phase.Stalk;
     private double _elapsed;
 
@@ -66,11 +66,105 @@ public sealed class HuntCursorBehavior : BehaviorBase
         }
         else if (pet.Anim.Finished)
         {
-            if ((c.World.Cursor - pet.Pos).Length < 110) Next = new HappyBehavior(1.2);
-            else Next = new SwimFreeBehavior();
-            Done = true;
+            if (_phase == Phase.Miss)
+            {
+                Next = new SwimFreeBehavior();
+                Done = true;
+            }
+            else if ((c.World.Cursor - pet.Pos).Length < 110)
+            {
+                // Catching it is play rather than a meal, but it has to be worth
+                // something. A hunt that never pays anything back at all is one
+                // the animal quite correctly learns to give up on -- which is
+                // exactly what the tank had been quietly doing.
+                pet.Feed(0.04);
+                pet.Relations.Warm(Relations.You, 0.05);
+                Next = new HappyBehavior(1.2);
+                Done = true;
+            }
+            else
+            {
+                // The miss is the half worth watching: it is what teaches it.
+                _phase = Phase.Miss;
+                pet.Anim.Play("miss", restart: true);
+            }
         }
     }
+}
+
+/// <summary>
+/// Taking food from your hand. A cursor held still long enough reads as an offer:
+/// a hungry animal comes over in the open -- no stalking, no display -- takes it,
+/// and thinks rather better of you afterwards.
+///
+/// This is the only thing in the tank that builds a bond with the person at the
+/// keyboard instead of with another cuttlefish, and it is why a tank that gets
+/// played with ends up tamer than one left alone.
+/// </summary>
+public sealed class HandFeedBehavior : BehaviorBase
+{
+    public override string Name => "handFeed";
+    public override bool OverridesPhysics => true;
+    private double _t;
+    private bool _fed;
+
+    public static bool Possible(BehaviorContext c)
+    {
+        var pet = c.Pet;
+        if (c.World.CursorStill < 2.5 || pet.Drives.Hunger < 0.45) return false;
+        double d = (c.World.Cursor - pet.Pos).Length;
+        if (d is < 60 or > 520) return false;
+        // Coming to the hand in the open takes either nerve or a good opinion of
+        // whoever is holding it.
+        return pet.Genome.Boldness + pet.Relations.With(Relations.You) > 0.5;
+    }
+
+    public override void Enter(BehaviorContext c)
+    {
+        c.Pet.Anim.Play("swim");
+        c.Pet.Surface = null;
+    }
+
+    public override void Tick(BehaviorContext c, double dt)
+    {
+        var pet = c.Pet;
+        _t += dt;
+        var to = c.World.Cursor - pet.Pos;
+
+        // The offer is withdrawn the moment the hand moves.
+        if (!_fed && c.World.CursorVelocity.Length > 500) { Next = new SwimFreeBehavior(); Done = true; return; }
+        if (_t > 12) { Next = new SwimFreeBehavior(); Done = true; return; }
+
+        pet.FacingRight = to.X > 0;
+        pet.PupilTarget = c.World.Cursor;
+
+        if (!_fed && to.Length > 52)
+        {
+            var go = to / to.Length * 120;
+            pet.Vel += (go - pet.Vel) * Math.Min(1, 3 * dt);
+            pet.Pos += pet.Vel * dt;
+            PhysicsEngine.ClampToTank(pet, c.World);
+            return;
+        }
+
+        if (!_fed)
+        {
+            _fed = true;
+            pet.Anim.Play("eat", restart: true);
+            pet.Feed(0.10);
+            pet.Relations.Warm(Relations.You, 0.22);
+            pet.ShiftTo(pet.HomePalette, 6);
+            c.Sound.Play("blip", 0.35);
+        }
+        else
+        {
+            pet.Vel *= Math.Max(0, 1 - dt * 3);
+            pet.Pos += pet.Vel * dt;
+            if (pet.Anim.Finished) { Next = new HappyBehavior(1.0); Done = true; }
+        }
+    }
+
+    public override void Exit(BehaviorContext c) => c.Pet.PupilTarget = null;
 }
 
 /// <summary>Swim straight at a shrimp from anywhere in the tank, then eat it.</summary>

@@ -1,4 +1,4 @@
-namespace CuttlefishPet.Core;
+﻿namespace CuttlefishPet.Core;
 
 /// <summary>
 /// Who this cuttlefish knows, and how it feels about them. One number per animal,
@@ -13,6 +13,14 @@ public sealed class Relations
 {
     /// <summary>As far as merely being around each other can take a bond.</summary>
     public const double Familiar = 0.5;
+
+    /// <summary>
+    /// The person at the keyboard, filed under an id no cuttlefish can have. They
+    /// bond with the hand that feeds them and hold it against the one that raps on
+    /// the glass, and because it lives in the same table as everybody else it is
+    /// saved and restored along with them.
+    /// </summary>
+    public const int You = -1;
 
     private readonly Dictionary<int, double> _bond = new();
 
@@ -37,7 +45,7 @@ public sealed class Relations
         int? best = null;
         double bestBond = atLeast;
         foreach (var (id, bond) in _bond)
-            if (bond > bestBond) { bestBond = bond; best = id; }
+            if (id != You && bond > bestBond) { bestBond = bond; best = id; }
         return best;
     }
 

@@ -24,6 +24,7 @@ public sealed class BehaviorMachine
         ["ride"] = 6, ["jet"] = 7,
         // social and flourishes
         ["pile"] = 10, ["colourShow"] = 6, ["icon"] = 22, ["play"] = 9,
+        ["handFeed"] = 30,
         ["cross"] = 7, ["read"] = 16, ["bone"] = 70, ["bigBubble"] = 9,
         ["imitate"] = 24,
     };
@@ -139,7 +140,11 @@ public sealed class BehaviorMachine
 
         // Cursor rushing at the pet → startled dash.
         var toPet = pet.Pos - world.Cursor;
-        if (_fleeCooldown <= 0 && toPet.Length < 140 &&
+        // How close it lets the cursor come before bolting is a matter of nerve:
+        // what it was born with, plus whatever it has come to make of you. A timid
+        // stranger bolts from a long way off; one you have hand-fed barely minds.
+        double nerve = Math.Clamp(pet.Genome.Boldness + pet.Relations.With(Relations.You), 0, 1.6);
+        if (_fleeCooldown <= 0 && toPet.Length < 190 - 95 * nerve &&
             world.CursorVelocity.Length > 1000 &&
             System.Windows.Vector.Multiply(world.CursorVelocity, toPet) > 0)
         {
@@ -203,6 +208,7 @@ public sealed class BehaviorMachine
             Add("swimFree", () => new SwimFreeBehavior());
             Add("hover", () => new HoverBehavior());
             Add("dart", () => new DartBehavior());
+            if (HandFeedBehavior.Possible(_ctx)) Add("handFeed", () => new HandFeedBehavior());
             if (HuntCursorBehavior.Possible(_ctx)) Add("hunt", () => new HuntCursorBehavior());
             if ((_ctx.World.Cursor - pet.Pos).Length < 900)
                 Add("chase", () => new ChaseCursorBehavior());

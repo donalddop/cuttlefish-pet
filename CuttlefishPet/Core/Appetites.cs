@@ -27,6 +27,7 @@ public static class Appetites
     {
         // food
         ["huntTreat"] = new(Hunger: 1.3),
+        ["handFeed"]  = new(Hunger: 1.4, Boldness: 0.5),
         ["hunt"]      = new(Hunger: 1.0, Boredom: 0.4, Boldness: 0.6),
         ["stalk"]     = new(Hunger: 1.1, Boldness: 0.3),
         ["nibble"]    = new(Hunger: 0.6, Curiosity: 0.4),

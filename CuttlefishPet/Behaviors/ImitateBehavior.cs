@@ -76,7 +76,9 @@ public sealed class ImitateBehavior : BehaviorBase
             options.Add(new Subject
             {
                 Where = () => fish.Expired ? null : fish.Pos,
-                Pose = "hunt",
+                // Its own shape, not the hunting pose standing in for one: arms
+                // folded away and a tail fan grown off the back.
+                Pose = "mimic_fish",
                 Size = 46,
             });
 
@@ -85,7 +87,7 @@ public sealed class ImitateBehavior : BehaviorBase
             options.Add(new Subject
             {
                 Where = () => treat.Expired ? null : treat.Pos,
-                Pose = "hunt",
+                Pose = "mimic_shrimp",
                 Size = 38,
             });
 

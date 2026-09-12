@@ -134,6 +134,7 @@ def draw_cuttlefish(
     arms_tucked=False, arms_to_mouth=False, squash=0.0, stretch_x=1.0,
     baked_eye=None, tilt=0.0, fin_amp=7.0, puff=False, wide_eye=False,
     cloud=None, zebra=False, blanch=False, dream=None, eyespots=0.0,
+    tail=0.0, antennae=0.0,
     flush=False, tentacles=0.0,
     grip=0, canopy=False, scuff=False,
     sink=0.0, balloon=False, shock=False, ghost=False, display_arms=0.0,
@@ -248,6 +249,33 @@ def draw_cuttlefish(
                 ld.rounded_rectangle([bx - 11, body[1] - 20, bx + 11, body[3] + 20],
                                      radius=10, fill=STRIPE)
         masked_overlay(img, paint, body)
+
+    if tail:
+        # Mimicry: a caudal fan off the back end. The outline is the whole of the
+        # trick -- a cuttlefish with its arms hidden and a tail grown on reads as a
+        # fish long before the colour has caught up.
+        def paint(ld):
+            # Kept modest on purpose: the mantle already fills most of the
+            # 256px frame, and a fan any longer than this is simply clipped off
+            # the edge of it and vanishes.
+            rx, ry = body[0] + 14, cy
+            span, reach = h * 0.70 * tail, w * 0.24 * tail
+            ld.polygon([(rx, ry - span * 0.30), (rx, ry + span * 0.30),
+                        (rx - reach, ry + span), (rx - reach * 0.42, ry),
+                        (rx - reach, ry - span)],
+                       fill=fin_col, outline=fin_edge_col, width=5)
+        blend(img, paint)
+
+    if antennae:
+        # And a pair of feelers out front, which is what says shrimp.
+        def paint(ld):
+            for s in (-1, 1):
+                y0 = cy + s * h * 0.09
+                tapered(ld, (cx + w * 0.40, y0),
+                        (cx + w * 0.70, y0 + s * 12 * antennae),
+                        (cx + w * 0.98, y0 + s * 30 * antennae),
+                        4.5, 1.2, ARM_DARK)
+        blend(img, paint)
 
     if dream is not None:
         # Asleep: chromatophores firing with nothing to say. Blotches rather than
@@ -498,6 +526,30 @@ def a_strike(n=4):
     ext = (0.15, 0.75, 1.0, 0.5)
     return [draw_cuttlefish(fin_phase=i * 1.6, arm_splay=-0.8, stretch_x=1.12, squash=-0.05,
                             fin_amp=6, wide_eye=True, tentacles=ext[i]) for i in range(n)]
+
+
+def a_mimic_fish(n=6):
+    """Having a go at being a fish: stretch out, fold the arms away, grow a tail.
+
+    The old version of this played the hunting pose and hoped. What a mimicking
+    cuttlefish actually changes is its outline, so here the arms tuck out of sight
+    and a caudal fan appears off the back over the first few frames -- you get to
+    watch it become the other thing rather than cutting to it.
+    """
+    grow = (0.0, 0.35, 0.72, 1.0, 1.0, 1.0)
+    return [draw_cuttlefish(
+        fin_phase=i * 1.5, arms_tucked=True, fin_amp=3.5,
+        stretch_x=1.0 + 0.16 * grow[i], squash=0.13 * grow[i],
+        tail=grow[i]) for i in range(n)]
+
+
+def a_mimic_shrimp(n=6):
+    """Having a go at being a shrimp: hunched down small, with a pair of feelers."""
+    grow = (0.0, 0.4, 0.75, 1.0, 1.0, 1.0)
+    return [draw_cuttlefish(
+        fin_phase=i * 1.2, arms_tucked=True, fin_amp=2.5,
+        stretch_x=1.0 - 0.15 * grow[i], squash=-0.05 - 0.15 * grow[i],
+        antennae=grow[i]) for i in range(n)]
 
 
 def a_sleep(n=6):
@@ -887,6 +939,8 @@ ACTIONS = {
     "balloon":    (a_balloon,     2.5, True),
     "shock":      (a_shock,      10,   True),
     "sleep":      (a_sleep,       3,   True),
+    "mimic_fish":   (a_mimic_fish,   7, False),
+    "mimic_shrimp": (a_mimic_shrimp, 7, False),
     "threat":     (a_threat,      6,   False),
     "miss":       (a_miss,        9,   False),
     "court":      (a_court,       4,   True),
