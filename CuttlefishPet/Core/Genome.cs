@@ -1,6 +1,19 @@
-using CuttlefishPet.Rendering;
+﻿using CuttlefishPet.Rendering;
 
 namespace CuttlefishPet.Core;
+
+/// <summary>
+/// What a hatchling is handed by the animals that made it: the traits it is born
+/// with, and a diluted head start on what its mother had worked out about this
+/// particular desktop.
+///
+/// The second half is what turns learning into something the tank accumulates. An
+/// animal lives half an hour and barely gets a dozen goes at any one behaviour --
+/// far too few to form much of an opinion. A lineage lives as long as you keep the
+/// app around, and opinions that keep being confirmed survive the animals holding
+/// them.
+/// </summary>
+public sealed record Heritage(Genome Genome, IReadOnlyDictionary<string, double> Lore);
 
 /// <summary>
 /// The handful of numbers that make one cuttlefish not another. Fixed at hatching,

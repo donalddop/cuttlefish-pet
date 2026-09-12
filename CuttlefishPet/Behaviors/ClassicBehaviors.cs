@@ -116,6 +116,10 @@ public sealed class LayEggsBehavior : BehaviorBase
             // and a Genome is a value, so nothing here keeps a dead pet alive.
             var mother = pet.Genome;
             var father = pet.Mate ?? pet.Genome;
+            // Only the mother's experience travels. Courtship records the father's
+            // traits but not his opinions, and copying a whole second mind onto
+            // every egg to pass on a handful of numbers is not worth the weight.
+            var taught = new Dictionary<string, double>(pet.Memory.Learned);
             for (int i = 0; i < clutch; i++)
             {
                 var spot = new Point(pet.Pos.X + (pet.FacingRight ? -34 : 34) + (i - (clutch - 1) / 2.0) * 19,
@@ -130,7 +134,9 @@ public sealed class LayEggsBehavior : BehaviorBase
                     // Each egg is rolled separately, so one clutch is a spread of
                     // siblings rather than a row of identical twins.
                     OnExpire = p => c.SpawnPet(new Point(p.X, p.Y - 40), hatchling: true,
-                                               inherit: Genome.Inherit(mother, father, c.Rng)),
+                                               inherit: new Heritage(
+                                                   Genome.Inherit(mother, father, c.Rng),
+                                                   Memory.PassedOn(taught, c.Rng))),
                 });
             }
             c.Sound.Play("bubble", 0.3);

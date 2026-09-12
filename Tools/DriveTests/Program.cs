@@ -222,6 +222,48 @@ var knownAgain = new Relations();
 foreach (var (id, bond) in b.Bonds) knownAgain.Remember(id, bond);
 Check("and who it liked", knownAgain.Dearest() == 9 && knownAgain.With(11) < 0);
 
+// ---------- inherited learning ----------
+var taught = new Dictionary<string, double> { ["hunt"] = 0.80, ["pile"] = -0.60, ["idle"] = 0.01 };
+var broods = Enumerable.Range(0, 400).Select(_ => Memory.PassedOn(taught, rng)).ToList();
+Check("a hatchling starts at half its mother's conviction",
+      Math.Abs(broods.Average(b => b["hunt"]) - 0.40) < 0.03, $"mean={broods.Average(b => b["hunt"]):F3}");
+Check("and inherits her doubts as well as her enthusiasms",
+      broods.Average(b => b["pile"]) < -0.25, $"mean={broods.Average(b => b["pile"]):F3}");
+Check("convictions that came to nothing are not passed on",
+      broods.Count(b => b.ContainsKey("idle")) < broods.Count / 2);
+Check("siblings do not inherit the same certainty",
+      broods.Select(b => Math.Round(b["hunt"], 3)).Distinct().Count() > 50);
+Check("an inexperienced mother teaches nothing",
+      Memory.PassedOn(new Dictionary<string, double>(), rng).Count == 0);
+
+// Down the generations: an opinion the tank keeps confirming should deepen rather
+// than wash out, and one nothing confirms should fade away.
+var lineage = new Dictionary<string, double> { ["hunt"] = 0.3 };
+for (int gen = 0; gen < 8; gen++)
+{
+    var child = new Memory();
+    foreach (var (behavior, worth) in Memory.PassedOn(lineage, rng)) child.Relearn(behavior, worth);
+    // Each generation finds hunting works again, as it would on a desktop with food.
+    for (int i = 0; i < 6; i++)
+    {
+        child.Began("hunt", new DriveState(0.9, 0.3, 0.3, 0.5, 0));
+        child.Ended(new DriveState(0.45, 0.3, 0.3, 0.5, 0));
+        child.Tick(400);
+    }
+    lineage = new Dictionary<string, double>(child.Learned);
+}
+Check("an opinion the tank keeps confirming deepens over generations", lineage["hunt"] > 0.75, $"worth={lineage["hunt"]:F2}");
+
+var fading = new Dictionary<string, double> { ["hunt"] = 0.6 };
+for (int gen = 0; gen < 8; gen++)
+{
+    var child = new Memory();
+    foreach (var (behavior, worth) in Memory.PassedOn(fading, rng)) child.Relearn(behavior, worth);
+    fading = new Dictionary<string, double>(child.Learned);   // nothing confirms it
+}
+Check("and one nothing confirms washes out", !fading.ContainsKey("hunt") || fading["hunt"] < 0.05,
+      fading.ContainsKey("hunt") ? $"{fading["hunt"]:F3}" : "gone");
+
 Console.WriteLine(failed == 0 ? "\nALL PASS" : $"\n{failed} FAILED");
 return failed;
 

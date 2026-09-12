@@ -1,4 +1,4 @@
-namespace CuttlefishPet.Core;
+﻿namespace CuttlefishPet.Core;
 
 /// <summary>
 /// What one cuttlefish has worked out about its own repertoire, on this desktop.
@@ -79,4 +79,29 @@ public sealed class Memory
     /// <summary>Put a saved opinion back, on restoring a tank from disk.</summary>
     public void Relearn(string behavior, double worth) =>
         _worth[behavior] = Math.Clamp(worth, -1, 1);
+
+    /// <summary>How much of a parent's conviction a hatchling starts out with.</summary>
+    private const double Dilution = 0.5;
+
+    /// <summary>
+    /// What the next generation begins believing. Halved, nudged either way, and
+    /// dropped entirely when what is left comes to nothing -- so a brood takes
+    /// after its mother's experience without being born certain of it, and an
+    /// opinion only survives the generations that keep finding it true.
+    /// </summary>
+    public static Dictionary<string, double> PassedOn(
+        IReadOnlyDictionary<string, double> parent, Random rng)
+    {
+        var lore = new Dictionary<string, double>();
+        foreach (var (behavior, worth) in parent)
+        {
+            double passed = worth * Dilution;
+            // Judged before the nudge, not after: an opinion she never really formed
+            // must not reach the next generation as a small random conviction.
+            if (Math.Abs(passed) < 0.03) continue;
+            passed += (rng.NextDouble() - rng.NextDouble()) * 0.08;
+            lore[behavior] = Math.Clamp(passed, -1, 1);
+        }
+        return lore;
+    }
 }

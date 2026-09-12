@@ -27,7 +27,7 @@ public sealed class PetManager
     private readonly List<Pet> _pets = new();
     private readonly List<Prop> _props = new();
     private readonly List<Pet> _leaving = new();
-    private readonly List<(Point Pos, bool Hatchling, Genome? Inherit)> _hatching = new();
+    private readonly List<(Point Pos, bool Hatchling, Heritage? Inherit)> _hatching = new();
 
     /// <summary>Hands out the identity every pet keeps for life.</summary>
     private int _nextId;
@@ -196,10 +196,11 @@ public sealed class PetManager
     /// visible is nobody's idea of fun.
     /// </param>
     /// <param name="inherit">
-    /// The traits worked out from the parents when this one came out of an egg.
-    /// Null for anything that swam in from outside, which gets a fresh roll.
+    /// What the parents handed on when this one came out of an egg: traits, and a
+    /// head start on what its mother had learned. Null for anything that swam in
+    /// from outside, which gets a fresh roll and no opinions at all.
     /// </param>
-    public void Spawn(Point? at, bool hatchling = false, Genome? inherit = null)
+    public void Spawn(Point? at, bool hatchling = false, Heritage? inherit = null)
     {
         var wa = System.Windows.Forms.Screen.PrimaryScreen!.WorkingArea; // physical px
         var pet = new Pet
@@ -218,7 +219,9 @@ public sealed class PetManager
         pet.GrowUpSeconds = pet.Lifespan * (hatchling ? 0.40 : 0.12);
         pet.Scale = pet.BirthScale;
         pet.Id = ++_nextId;
-        pet.Genome = inherit ?? Genome.Random(_rng);
+        pet.Genome = inherit?.Genome ?? Genome.Random(_rng);
+        if (inherit != null)
+            foreach (var (behavior, worth) in inherit.Lore) pet.Memory.Relearn(behavior, worth);
         // Colour and pattern are inherited rather than rolled fresh every so often,
         // so a brood looks like its parents and you can follow one animal around.
         pet.HomePalette = pet.Genome.Chroma;
@@ -233,7 +236,7 @@ public sealed class PetManager
         _pets.Add(pet);
 
         var g = pet.Genome;
-        Log($"#{pet.Id} {(inherit is null ? "nieuw" : "uit ei")} " +
+        Log($"#{pet.Id} {(inherit is null ? "nieuw" : $"uit ei (erft {inherit.Lore.Count} inzichten)")} " +
             $"{Palettes.All[g.Chroma].Name}/{g.Pattern} " +
             $"lef={g.Boldness:F2} sociaal={g.Sociability:F2} nieuwsgierig={g.Curiosity:F2} " +
             $"stofwisseling={g.Metabolism:F2} onrustig={g.Restlessness:F2}");
