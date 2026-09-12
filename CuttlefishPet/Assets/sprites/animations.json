@@ -421,6 +421,52 @@
       7.5
     ]
   },
+  "sleep": {
+    "file": "sleep.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 6,
+    "fps": 3,
+    "loop": true,
+    "anchor": [
+      30,
+      55
+    ]
+  },
+  "threat": {
+    "file": "threat.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 4,
+    "fps": 6,
+    "loop": false,
+    "anchor": [
+      30,
+      55
+    ],
+    "eye": [
+      40.0,
+      39.52,
+      7.5
+    ]
+  },
+  "miss": {
+    "file": "miss.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 6,
+    "fps": 9,
+    "loop": false,
+    "anchor": [
+      30,
+      55
+    ],
+    "eye": [
+      40.14,
+      39.82,
+      7.5
+    ]
+  },
   "court": {
     "file": "court.png",
     "frameW": 64,

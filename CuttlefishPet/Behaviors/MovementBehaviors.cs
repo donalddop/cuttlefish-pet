@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using CuttlefishPet.Core;
 
 namespace CuttlefishPet.Behaviors;
@@ -140,6 +140,49 @@ public sealed class ClimbBehavior : BehaviorBase
 }
 
 /// <summary>Startled jet-blast away from a fast approaching cursor.</summary>
+/// <summary>
+/// The deimatic display: instead of running, turn broadside, blanch, throw the
+/// arms wide and stare back with two false eyes on the mantle. It is a bluff --
+/// there is nothing behind it -- and it is the one thing in the repertoire that
+/// only a bold cuttlefish will try. A timid one runs, as it always did.
+/// </summary>
+public sealed class ThreatBehavior : BehaviorBase
+{
+    public override string Name => "threat";
+    public override bool Interruptible => false;
+    public override bool OverridesPhysics => true;
+    public override bool NeedsPerch => false;
+
+    private double _t;
+
+    /// <summary>Bluffing takes nerve, and not every animal has it.</summary>
+    public static bool Possible(BehaviorContext c) => c.Pet.Genome.Boldness > 0.55;
+
+    public override void Enter(BehaviorContext c)
+    {
+        c.Pet.Anim.Play("threat", restart: true);
+        c.Pet.ShiftTo(Rendering.Palettes.IndexOf("pearl"), 5);   // blanched, and meaning it
+        c.Sound.Play("bubble", 0.45);
+    }
+
+    public override void Tick(BehaviorContext c, double dt)
+    {
+        var pet = c.Pet;
+        _t += dt;
+        // Standing its ground is the whole point: no retreat, no drift.
+        pet.Vel *= Math.Max(0, 1 - dt * 5);
+        pet.Pos += pet.Vel * dt;
+        Core.PhysicsEngine.ClampToTank(pet, c.World);
+        pet.FacingRight = c.World.Cursor.X > pet.Pos.X;
+        pet.PupilTarget = c.World.Cursor;
+        pet.VisualBob = Math.Sin(_t * 11) * 2.2;       // the held, quivering pose
+
+        if (_t > 2.4) Done = true;
+    }
+
+    public override void Exit(BehaviorContext c) => c.Pet.PupilTarget = null;
+}
+
 public sealed class FleeBehavior : BehaviorBase
 {
     public override string Name => "flee";

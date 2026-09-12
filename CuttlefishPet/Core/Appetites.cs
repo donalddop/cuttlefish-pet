@@ -33,6 +33,7 @@ public static class Appetites
         // rest
         ["settle"]    = new(Fatigue: 1.0, Fear: 0.5),
         ["sit"]       = new(Fatigue: 0.9),
+        ["sleep"]     = new(Fatigue: 1.4, Boldness: -0.2),
         ["idle"]      = new(Fatigue: 0.6),
         ["hover"]     = new(Fatigue: 0.4),
         // keeping out of the way

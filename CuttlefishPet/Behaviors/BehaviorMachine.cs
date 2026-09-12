@@ -13,7 +13,7 @@ public sealed class BehaviorMachine
         ["swimFree"] = 40, ["hover"] = 14, ["dart"] = 9, ["chase"] = 8,
         ["hunt"] = 12, ["settle"] = 34, ["huntTreat"] = 34, ["stalk"] = 26,
         // perched on something
-        ["patrol"] = 20, ["idle"] = 14, ["sit"] = 12,
+        ["patrol"] = 20, ["idle"] = 14, ["sit"] = 12, ["sleep"] = 16,
         ["camouflage"] = 26, ["peek"] = 8, ["hang"] = 8, ["swing"] = 6,
         ["climb"] = 8, ["climbDown"] = 5, ["slide"] = 5, ["leave"] = 12,
         // rare set pieces — kept low so they stay surprises
@@ -144,7 +144,12 @@ public sealed class BehaviorMachine
             System.Windows.Vector.Multiply(world.CursorVelocity, toPet) > 0)
         {
             _fleeCooldown = 4;
-            Force(new FleeBehavior());
+            // A bold animal would rather bluff than bolt. It is the same fright
+            // either way; what differs is what this particular cuttlefish does
+            // with it, which is the point of having temperament at all.
+            Force(ThreatBehavior.Possible(_ctx) && _ctx.Rng.NextDouble() < 0.6
+                ? new ThreatBehavior()
+                : new FleeBehavior());
             return;
         }
 
@@ -253,6 +258,7 @@ public sealed class BehaviorMachine
             Add("patrol", () => new SwimBehavior());
             Add("idle", () => new IdleBehavior());
             Add("sit", () => new SitBehavior());
+            Add("sleep", () => new SleepBehavior());
             Add("camouflage", () => new CamouflageBehavior());
             Add("leave", () => new LeavePerchBehavior());
             if (PeekBehavior.Possible(_ctx)) Add("peek", () => new PeekBehavior());

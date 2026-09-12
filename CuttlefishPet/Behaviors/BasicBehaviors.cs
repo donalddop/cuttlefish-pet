@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using CuttlefishPet.Core;
 
 namespace CuttlefishPet.Behaviors;
@@ -79,6 +79,42 @@ public sealed class SitBehavior : BehaviorBase
     {
         _remaining -= dt;
         if (_remaining <= 0) Done = true;
+    }
+}
+
+/// <summary>
+/// Properly asleep, which is not the same as sitting still. The eye is shut and
+/// the animal is off duty; meanwhile the skin goes on firing off colour changes it
+/// has no use for, which is the closest an invertebrate gets to dreaming.
+///
+/// Worth several times more than sitting, in the only currency that matters here:
+/// tiredness actually goes away.
+/// </summary>
+public sealed class SleepBehavior : BehaviorBase
+{
+    public override string Name => "sleep";
+    private double _remaining;
+    private double _t;
+
+    public override void Enter(BehaviorContext c)
+    {
+        c.Pet.Anim.Play("sleep");
+        _remaining = 22 + c.Rng.NextDouble() * 38;
+    }
+
+    public override void Tick(BehaviorContext c, double dt)
+    {
+        var pet = c.Pet;
+        _t += dt;
+        _remaining -= dt;
+        pet.VisualBob = Math.Sin(_t * 0.9) * 1.6;      // the slow swell of breathing
+        // Resting on a perch already pays fatigue back; sleeping pays it back
+        // properly, which is what makes it worth going to sleep rather than just
+        // sitting down.
+        pet.Drives.Fatigue = Math.Max(0, pet.Drives.Fatigue - dt / 26);
+
+        // Anything frightening ends it. A sleeping cuttlefish is not a deaf one.
+        if (_remaining <= 0 || pet.Drives.Fear > 0.45) Done = true;
     }
 }
 

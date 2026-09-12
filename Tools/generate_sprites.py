@@ -20,6 +20,7 @@ plus Tools/preview.png as a contact sheet for review.
 import json
 import math
 import os
+import random
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 OUT = os.path.join(os.path.dirname(__file__), "..", "CuttlefishPet", "Assets", "sprites")
@@ -132,7 +133,8 @@ def draw_cuttlefish(
     fin_phase=0.0, arm_sway=0.0, arm_splay=0.0, arms_up=False, arms_dangle=False,
     arms_tucked=False, arms_to_mouth=False, squash=0.0, stretch_x=1.0,
     baked_eye=None, tilt=0.0, fin_amp=7.0, puff=False, wide_eye=False,
-    cloud=None, zebra=False, flush=False, tentacles=0.0,
+    cloud=None, zebra=False, blanch=False, dream=None, eyespots=0.0,
+    flush=False, tentacles=0.0,
     grip=0, canopy=False, scuff=False,
     sink=0.0, balloon=False, shock=False, ghost=False, display_arms=0.0,
 ):
@@ -145,7 +147,7 @@ def draw_cuttlefish(
     d = ImageDraw.Draw(img)
 
     base, base_dark, belly = MANTLE, MANTLE_DARK, BELLY
-    if zebra:
+    if zebra or blanch:
         base, base_dark, belly = PALE, PALE_DARK, (250, 244, 236, 255)
     elif flush:
         base, base_dark, belly = FLUSH, FLUSH_DARK, (250, 216, 216, 255)
@@ -245,6 +247,32 @@ def draw_cuttlefish(
                 bx = body[0] + 14 + k * (w - 28) / 4
                 ld.rounded_rectangle([bx - 11, body[1] - 20, bx + 11, body[3] + 20],
                                      radius=10, fill=STRIPE)
+        masked_overlay(img, paint, body)
+
+    if dream is not None:
+        # Asleep: chromatophores firing with nothing to say. Blotches rather than
+        # bands, in no order, because the point is that it is not a display.
+        def paint(ld):
+            for fx, fy, r, a in dream:
+                px, py = body[0] + fx * w, body[1] + fy * h
+                ld.ellipse([px - r, py - r, px + r, py + r],
+                           fill=(CLOUD[0], CLOUD[1], CLOUD[2], a))
+        masked_overlay(img, paint, body)
+
+    if eyespots:
+        # Deimatic display: a pair of false eyes staring off the mantle, which is
+        # the whole trick -- be a bigger animal than the one about to eat you.
+        def paint(ld):
+            # Kept to the rear half: the real eye sits at about 0.76 along the
+            # mantle, and a false eye beside it just makes the animal look
+            # three-eyed instead of frightening.
+            r = 13 + 11 * eyespots
+            for sx in (0.19, 0.43):
+                px, py = body[0] + sx * w, body[1] + h * 0.44
+                ld.ellipse([px - r, py - r, px + r, py + r],
+                           fill=(32, 22, 24, int(238 * eyespots)))
+                ld.ellipse([px - r * 0.42, py - r * 0.42, px + r * 0.42, py + r * 0.42],
+                           fill=(248, 240, 226, int(215 * eyespots)))
         masked_overlay(img, paint, body)
 
     if scuff:  # friction marks while sliding down a wall
@@ -470,6 +498,54 @@ def a_strike(n=4):
     ext = (0.15, 0.75, 1.0, 0.5)
     return [draw_cuttlefish(fin_phase=i * 1.6, arm_splay=-0.8, stretch_x=1.12, squash=-0.05,
                             fin_amp=6, wide_eye=True, tentacles=ext[i]) for i in range(n)]
+
+
+def a_sleep(n=6):
+    """Asleep, with the skin still going.
+
+    A resting cuttlefish runs through colour changes it has no use for: twitches
+    of the chromatophores that are the nearest thing an invertebrate has to
+    dreaming. This is the stillest body in the repertoire -- only the skin moves.
+    """
+    rng = random.Random(7)      # one fixed dream, so a looping sprite does not boil
+    out = []
+    for i in range(n):
+        spots = [(0.15 + rng.random() * 0.7, 0.2 + rng.random() * 0.6,
+                  13 + rng.random() * 21, 55 + int(rng.random() * 95))
+                 for _ in range(3 + i % 3)]
+        out.append(draw_cuttlefish(
+            fin_phase=i * 0.45, arms_tucked=True, squash=0.12, stretch_x=1.03,
+            fin_amp=2.2, baked_eye="closed", dream=spots))
+    return out
+
+
+def a_threat(n=4):
+    """The deimatic display: everything at once, to look like something worse.
+
+    Turned broadside, mantle flattened wide and blanched pale, arms thrown out,
+    and a pair of false eyes on the back. Cuttlefish put this on for things that
+    are about to eat them, and it is the loudest thing they do.
+    """
+    rise = (0.45, 0.92, 1.0, 0.96)
+    return [draw_cuttlefish(
+        fin_phase=i * 1.1, arm_splay=1.8 + rise[i] * 1.9, arm_sway=i * 0.7,
+        stretch_x=1.0 + rise[i] * 0.26, squash=-0.20 * rise[i],
+        fin_amp=12, wide_eye=True, blanch=True, eyespots=rise[i]) for i in range(n)]
+
+
+def a_miss(n=6):
+    """A strike that catches nothing: tentacles out, tentacles back, and a sag.
+
+    The hit already had an animation. The miss is the one worth watching, because
+    it is the one the animal learns from.
+    """
+    ext = (0.2, 1.0, 0.85, 0.35, 0.0, 0.0)
+    slump = (0.0, 0.0, 0.02, 0.08, 0.18, 0.11)
+    return [draw_cuttlefish(
+        fin_phase=i * 1.4, arm_splay=-0.7 + slump[i] * 2.4,
+        stretch_x=1.12 - slump[i] * 0.20, squash=-0.05 + slump[i],
+        fin_amp=6 - slump[i] * 3, wide_eye=i < 3, tentacles=ext[i],
+        arms_dangle=i >= 4) for i in range(n)]
 
 
 def a_zebra(n=4):
@@ -810,6 +886,9 @@ ACTIONS = {
     "ghost":      (a_ghost,       3,   True),
     "balloon":    (a_balloon,     2.5, True),
     "shock":      (a_shock,      10,   True),
+    "sleep":      (a_sleep,       3,   True),
+    "threat":     (a_threat,      6,   False),
+    "miss":       (a_miss,        9,   False),
     "court":      (a_court,       4,   True),
 }
 
