@@ -134,7 +134,7 @@ def draw_cuttlefish(
     arms_tucked=False, arms_to_mouth=False, squash=0.0, stretch_x=1.0,
     baked_eye=None, tilt=0.0, fin_amp=7.0, puff=False, wide_eye=False,
     cloud=None, zebra=False, blanch=False, dream=None, eyespots=0.0,
-    tail=0.0, antennae=0.0,
+    tail=0.0, antennae=0.0, papillae=0.0,
     flush=False, tentacles=0.0,
     grip=0, canopy=False, scuff=False,
     sink=0.0, balloon=False, shock=False, ghost=False, display_arms=0.0,
@@ -218,6 +218,20 @@ def draw_cuttlefish(
         fin_pts.append((cx + (w / 2 + 12 + wave) * math.cos(th),
                         cy + (h / 2 + 10 + wave * 0.7) * math.sin(th)))
     d.polygon(fin_pts, fill=fin_col, outline=fin_edge_col, width=5)
+
+    if papillae:
+        # Going to ground: the skin lifts into irregular points that break the
+        # outline. This is the part of cuttlefish camouflage people miss -- it
+        # matters more than the colour does -- and since these frames are the alpha
+        # mask for the captured desktop, the ragged edge IS the effect.
+        bumps = random.Random(11)
+        for k in range(16):
+            th = k / 16 * 2 * math.pi
+            r = (0.45 + bumps.random()) * 15 * papillae
+            px = cx + (w / 2 - 5) * math.cos(th)
+            py = cy + (h / 2 - 5) * math.sin(th)
+            d.ellipse([px - r, py - r, px + r, py + r], fill=base_dark,
+                      outline=OUTLINE, width=5)
 
     # mantle
     d.ellipse(body, fill=base_dark, outline=OUTLINE, width=7)
@@ -464,13 +478,21 @@ def a_sleep(n=4):
     return out
 
 
-def a_flatten(n=6):
+def a_conceal(n=6):
+    """Going to ground: settle, draw the arms in, and put the skin up in points.
+
+    Replaces the old flatten pose, which squashed the animal into a smooth oval --
+    a flatfish shape, and a poor account of what a hiding cuttlefish does. Papillae
+    break the outline instead, which is the thing that actually works.
+    """
     out = []
     for i in range(n):
         k = i / (n - 1)
-        out.append(draw_cuttlefish(fin_phase=k * 4, squash=0.1 + k * 0.62, stretch_x=1 + k * 0.25,
-                                   arm_splay=k, baked_eye="closed" if k > 0.6 else "open",
-                                   fin_amp=7 * (1 - k) + 2))
+        out.append(draw_cuttlefish(fin_phase=k * 3, squash=0.08 + k * 0.30,
+                                   stretch_x=1 + k * 0.10, arms_tucked=True,
+                                   fin_amp=7 * (1 - k) + 1.5,
+                                   baked_eye="closed" if k > 0.75 else "open",
+                                   papillae=k))
     return out
 
 
@@ -917,7 +939,7 @@ ACTIONS = {
     "drag":       (a_drag,        4,   True),
     "climb":      (a_climb,       4.5, True),
     "sit":        (a_sit,         2,   True),
-    "flatten":    (a_flatten,     4,   False),
+    "conceal":    (a_conceal,     4,   False),
     # No sleep action: dozing off is dull to watch, so they never do it.
     "mimic_icon": (a_mimic_icon,  1,   True),
     "ink":        (a_ink,         8,   False),

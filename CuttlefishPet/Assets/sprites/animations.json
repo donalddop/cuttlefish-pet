@@ -101,8 +101,8 @@
       6.5
     ]
   },
-  "flatten": {
-    "file": "flatten.png",
+  "conceal": {
+    "file": "conceal.png",
     "frameW": 64,
     "frameH": 64,
     "frames": 6,

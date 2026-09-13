@@ -1,11 +1,11 @@
-using CuttlefishPet.Core;
+﻿using CuttlefishPet.Core;
 using CuttlefishPet.Rendering;
 
 namespace CuttlefishPet.Behaviors;
 
 /// <summary>
 /// True cuttlefish camouflage: capture the screen behind the pet, wear it as skin
-/// (alpha-masked by the flatten/mimic frames), shimmer subtly, pop back on approach.
+/// (alpha-masked by the conceal/mimic frames), shimmer subtly, pop back on approach.
 /// </summary>
 public sealed class CamouflageBehavior : BehaviorBase
 {
@@ -17,7 +17,7 @@ public sealed class CamouflageBehavior : BehaviorBase
     private double _t, _holdRemaining, _recaptureIn;
     private bool _captureBusy;
     private bool _startled;
-    private string _maskAnim = "flatten";
+    private string _maskAnim = "conceal";
 
     public override void Enter(BehaviorContext c)
     {
@@ -25,7 +25,7 @@ public sealed class CamouflageBehavior : BehaviorBase
         pet.FacingRight = true; // captured skin must not be mirrored
         _maskAnim = pet.Surface?.Kind == SurfaceKind.TaskbarTop && c.Rng.NextDouble() < 0.4
             ? "mimic_icon"   // hide among the taskbar icons
-            : "flatten";     // press flat against whatever is behind
+            : "conceal";     // skin up in points, outline broken
         pet.Anim.Play(_maskAnim, restart: true);
         _holdRemaining = 35 + c.Rng.NextDouble() * 55;   // hiding is the whole point
         StartCapture(c);
