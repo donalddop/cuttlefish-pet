@@ -28,8 +28,12 @@ Vereist .NET 8 SDK (Windows 10/11). De installer bouw je met
 
 ```bash
 dotnet publish CuttlefishPet -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish\CuttlefishPet
+copy Installer\LEES-MIJ.txt publish\LEES-MIJ.txt
 ISCC.exe Installer\CuttlefishPet.iss
 ```
+
+`publish/` is gitignored, dus de handleiding die met de release meegaat staat in
+`Installer/LEES-MIJ.txt` en wordt bij het bouwen gekopieerd.
 
 Ook aanstuurbaar vanaf de commandline — een tweede start stuurt het commando door
 naar de draaiende instantie:

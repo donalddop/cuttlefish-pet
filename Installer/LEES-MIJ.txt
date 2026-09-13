@@ -1,0 +1,143 @@
+Cuttlefish Pet — zeekatten op je bureaublad
+===========================================
+
+STARTEN
+  Pak deze map ergens uit en dubbelklik CuttlefishPet.exe.
+  (Windows toont mogelijk "Windows heeft uw pc beschermd" omdat het programma
+   niet ondertekend is -> Meer informatie -> Toch uitvoeren.)
+
+  Stoppen: klik het zeekat-icoontje bij je klok -> Exit.
+
+
+JE SCHERM IS EEN AQUARIUM
+  Ze zweven vrij door je hele beeld. De taskbar, titelbalken, schermranden en de
+  bovenkant van je scherm zijn plekken waar ze kunnen neerstrijken: ze klimmen
+  langs de rand omhoog, hangen ondersteboven aan het plafond, bungelen aan een
+  richel en katapulteren zich weg.
+
+  Zit er eentje op een venster dat je versleept? Dan rijdt hij mee.
+
+
+ZE ZIJN MEESTAL BIJNA ONZICHTBAAR
+  Elke zeekat leest om de paar seconden het stukje bureaublad om zich heen,
+  haalt daar drie kleuren uit, en draagt die als vlekkenpatroon. Boven een donker
+  venster wordt hij donker, boven iets kleurigs neemt hij die tinten over. Zijn
+  oog blijft altijd zichtbaar -- dat is het enige wat een zeekat niet kan
+  verbergen.
+
+  Kleur is een signaal, geen verfje. Ze vlammen alleen op als er iets gebeurt:
+
+     rood      jagen
+     zwart     imponeren of boos
+     magenta   blij, of net wat gegeten
+     parelwit  geschrokken
+
+
+WAT JE MET ZE KUNT
+  - Hun ogen volgen je muis; ze knipperen uit zichzelf.
+  - Laat je muis stilstaan: ze besluipen hem en slaan toe met hun vangtentakels.
+  - Vlieg je snel op ze af, dan spuiten ze inkt en schieten weg.
+  - Oppakken en gooien met de muis. Hard gooien = inktwolk, heel hard = sterretjes.
+  - Pak je er eentje te vaak op, dan wordt hij pikzwart en stampvoet hij.
+  - Dubbelklik = aaien (roze blos en belletjes).
+  - Ga typen: ze komen bij je tekstcursor kijken en wiebelen mee.
+  - Scroll: de onderstroom sleurt ze mee.
+  - Ze duwen weleens tegen een venster zodat het echt verschuift, doen alsof ze
+    de sluitknop indrukken, of zwemmen naar je klok om geeuwend te kijken hoe
+    laat het is.
+  - Blijf een paar minuten weg en ze verdwijnen in de achtergrond.
+
+
+LEVEN IN HET AQUARIUM
+  Af en toe zwemt er een visje voorbij. Een zeekat besluipt het langzaam, bevriest
+  als het schrikt, en slaat dan toe -- soms mis.
+
+  Met meerdere zeekatten wordt het pas echt leuk: ze imponeren elkaar met
+  zebrastrepen, zwemmen in formatie, houden sprintwedstrijden, en gaan elkaar het
+  hof maken.
+
+
+ZE LEVEN EN GAAN DOOD
+  Een zeekat wordt 18 tot 50 minuten oud. Gaat een balts goed, dan zoekt ze een
+  richel en legt een tros eitjes -- dat kost haar bijna al haar resterende tijd,
+  net als bij echte zeekatten. Uit de tros kruipt een klein exemplaar op een derde
+  van volwassen formaat, dat langzaam uitgroeit. Jonge dieren beheersen camouflage
+  nog niet, dus die zie je in kleur rondzwemmen.
+
+  Als het einde komt trekt de kleur weg en zinkt hij met een sliert luchtbelletjes
+  uit beeld.
+
+  Drukte versnelt ieders klok en een tros komt alleen uit als er ruimte is, dus de
+  groep regelt zijn eigen omvang. Loopt het toch vol: "Thin them out".
+
+
+MENU (klik het icoontje bij je klok)
+  Add cuttlefish      - nog een zeekat erbij
+  Remove one          - eentje weg
+  Thin them out       - terug naar eentje
+  Toss a shrimp       - garnaal gooien; ze duiken er allemaal op af
+  Mute sounds         - geluid aan/uit (staat standaard uit)
+  Start with Windows  - automatisch meestarten
+  Exit                - afsluiten
+
+  Werkt ook vanaf de commandline:
+  CuttlefishPet.exe add | remove | cull | shrimp | exit
+
+
+ZE ZIJN ELK ANDERS, EN DAT BLIJFT ZO
+  Elke zeekat komt ter wereld met een eigen aard: hoe brutaal, hoe sociaal, hoe
+  nieuwsgierig, hoe rusteloos, en met welke kleur en welk patroon. Die kleur is
+  van haar -- ze leent hem soms uit aan een buur die haar nadoet, maar ze komt er
+  altijd op terug. Daaraan herken je ze.
+
+  Een tros erft van allebei de ouders, met een beetje afwijking, en af en toe
+  zit er een buitenbeentje tussen.
+
+
+ZE HEBBEN HONGER, SLAAP EN GEZELSCHAP NODIG
+  Wat ze doen komt voort uit wat ze op dat moment nodig hebben. Honger loopt op,
+  zwemmen maakt moe, alleen zijn gaat knagen, en te lang hetzelfde doen verveelt.
+  Een moe dier zoekt een richel op en gaat echt slapen -- oog dicht, en de huid
+  flikkert door met kleuren waar het niets aan heeft. Dat is zo ongeveer wat een
+  zeekat voor dromen heeft.
+
+  Schrikken doen ze allemaal, maar niet hetzelfde. Een schuw dier vlucht. Een
+  brutaal dier draait zich breed, trekt wit weg, spreidt zijn armen en staart je
+  aan met twee valse ogen op zijn rug. Dat is bluf, en er zit niets achter.
+
+
+ZE LEREN, EN HUN KINDEREN BEGINNEN WAAR ZIJ OPHIELDEN
+  Ze onthouden of iets hen echt geholpen heeft -- of jagen wat oplevert, of een
+  richel rust geeft, of gezelschap te vinden was. Wat werkt doen ze vaker. Waar ze
+  net mee bezig waren even niet, want ze krijgen er genoeg van.
+
+  Een jong dier begint met de helft van wat haar moeder had uitgevogeld. Over
+  generaties zakt weg wat nergens toe leidt en zet door wat blijft kloppen. Je
+  ziet het aan ze: een dier zonder mening draagt zijn tekening vaag en blijft
+  glazig, een dier dat weet wat het doet draagt hem vol en durft kleur te tonen.
+  Een aquarium dat een tijd meedraait wordt zichtbaar scherper.
+
+
+ZE KENNEN ELKAAR, EN JOU
+  Naast elkaar rondhangen maakt bekend, meer niet. Een geslaagde balts maakt
+  vrienden, een afwijzing bekoelt, en een gevecht kost meer dan de kennismaking
+  waard was -- de verliezer het meest. Wie bevriend is troost elkaar sneller uit
+  eenzaamheid.
+
+  Jij tel je mee. Houd je muis stil bij een hongerig dier en het komt uit zichzelf
+  eten uit je hand; daarna denkt het beter over je. Dubbelklikken is aaien. Maar
+  ratel op het lege glas naast ze en ze schrikken, en dat houden ze je aan. Hoe
+  dichtbij je mag komen voor er eentje wegschiet hangt af van zijn aard en van wat
+  hij van je gemaakt heeft.
+
+
+HET AQUARIUM BLIJFT STAAN
+  Alles hierboven wordt elke minuut bewaard. Sluit je af en start je morgen weer
+  op, dan zwemmen dezelfde dieren er nog, even oud als je ze achterliet, met wat
+  ze wisten en wat ze van elkaar en van jou vonden. Terwijl de app dicht is worden
+  ze niet ouder: het zijn de uren dat hij draait die de groep vormen.
+
+
+Windows 10/11, 64-bit. Geen installatie. Schrijft niets naar je systeem behalve
+een logbestandje in je tijdelijke map en het aquarium zelf in
+%LocalAppData%\CuttlefishPet.
