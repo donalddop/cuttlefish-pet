@@ -1,4 +1,4 @@
-; Installer for Cuttlefish Pet.
+﻿; Installer for Cuttlefish Pet.
 ;
 ; Installs per-user into LocalAppData so Windows never raises a UAC prompt —
 ; one of the two friction points for a small unsigned app. (The other is
@@ -8,7 +8,7 @@
 ; Expects the self-contained publish output in publish\CuttlefishPet\.
 
 #define AppName "Cuttlefish Pet"
-#define AppVersion "2.4"
+#define AppVersion "2.5"
 #define AppPublisher "donalddop"
 #define AppUrl "https://github.com/donalddop/cuttlefish-pet"
 #define AppExe "CuttlefishPet.exe"
