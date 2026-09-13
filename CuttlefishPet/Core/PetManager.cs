@@ -170,7 +170,7 @@ public sealed class PetManager
             pet.SkinPattern = pet.Genome.Pattern;
             pet.Palette = pet.FromPalette = Palettes.Glass;
             pet.PaletteChangeIn = 20 + _rng.NextDouble() * 40;
-            pet.SkinStrength = 0.45 + _rng.NextDouble() * 0.30;
+            pet.SkinBase = pet.SkinStrength = 0.45 + _rng.NextDouble() * 0.30;
 
             var d = pet.Drives;
             d.Hunger = saved.Hunger; d.Fatigue = saved.Fatigue;
@@ -229,7 +229,7 @@ public sealed class PetManager
         pet.Drives.Stagger(_rng);
         pet.Palette = pet.FromPalette = Palettes.Glass;   // arrives near-invisible
         pet.PaletteChangeIn = 20 + _rng.NextDouble() * 40;
-        pet.SkinStrength = 0.45 + _rng.NextDouble() * 0.30;
+        pet.SkinBase = pet.SkinStrength = 0.45 + _rng.NextDouble() * 0.30;
         pet.SheenStrength = 0.10 + _rng.NextDouble() * 0.14;
         pet.Visual = _renderer.CreateVisual();
         pet.Machine = new BehaviorMachine(NewContext(pet));
@@ -737,12 +737,24 @@ public sealed class PetManager
         if (youth > 0.25 && display == "glass") display = null;
         vivid = Math.Max(vivid, youth * 0.7);
 
+        // And nerve decides how much it bothers hiding at all. A timid, unsure
+        // animal spends its life as glass; a bold one that knows what it is doing
+        // just wears its colour. The tank gets brighter as it settles in.
+        vivid = Math.Max(vivid, (pet.Genome.Boldness * 0.4 + pet.Memory.Conviction * 0.6) * 0.42);
+
         // Flaring up is sudden — that is the point of a display. Settling back into
         // hiding is not: the colour drains away over a few seconds.
         double ease = vivid > pet.Vividness ? 2.4 : 0.45;
         pet.Vividness += (vivid - pet.Vividness) * Math.Min(1, dt * ease);
         pet.BodyOpacity = 0.52 + 0.48 * pet.Vividness;
         pet.SheenStrength = 0.10 + 0.14 * (1 - pet.Vividness);   // glassier = more shimmer
+
+        // Experience shows on the body. An animal with no opinions yet wears its
+        // markings faintly; one that has worked this desktop out wears them
+        // plainly. Convictions are inherited, so what you are watching over a week
+        // is not one animal ageing but a line of them getting surer of itself.
+        double settled = pet.Memory.Conviction;
+        pet.SkinStrength = pet.SkinBase * (0.55 + 0.75 * settled);
 
         // A borrowed colour is given back. The personal colour itself is inherited
         // and never re-rolled: it is the only thing that says this is the same

@@ -84,6 +84,12 @@ public sealed class Pet
     // Skin: a pattern of spots/bands over the colour, plus a drifting pearl sheen.
     public int SkinPattern;
     public double SkinStrength = 0.5;
+
+    /// <summary>
+    /// This individual's own patterning, before experience is taken into account.
+    /// Kept separate so the wearing-in below never erases what it was born with.
+    /// </summary>
+    public double SkinBase = 0.5;
     public double SheenStrength = 0.25;
     public double SheenPhase;
     /// <summary>Drives the speckle pattern crawling across the skin.</summary>

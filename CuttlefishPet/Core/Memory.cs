@@ -70,6 +70,25 @@ public sealed class Memory
     public double Appeal(string behavior) =>
         Math.Clamp(1 + Worth(behavior) * 0.85, 0.30, 2.0) / (1 + Lately(behavior) * 0.7);
 
+    /// <summary>
+    /// How settled this animal's mind is, 0..1. The weight of the opinions it
+    /// holds, counting the things it has ruled out as much as the things it swears
+    /// by -- what matters is that it has made up its mind at all.
+    ///
+    /// A hatchling scores nothing. An animal that has lived a while, or one whose
+    /// mother handed it firm views, scores high. This is the number the body wears.
+    /// </summary>
+    public double Conviction
+    {
+        get
+        {
+            if (_worth.Count == 0) return 0;
+            double sum = 0;
+            foreach (var worth in _worth.Values) sum += Math.Abs(worth);
+            return Math.Clamp(sum / 5, 0, 1);     // five firm views is a full mind
+        }
+    }
+
     public double Worth(string behavior) => _worth.GetValueOrDefault(behavior);
     public double Lately(string behavior) => _lately.GetValueOrDefault(behavior);
 

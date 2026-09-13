@@ -264,6 +264,33 @@ for (int gen = 0; gen < 8; gen++)
 Check("and one nothing confirms washes out", !fading.ContainsKey("hunt") || fading["hunt"] < 0.05,
       fading.ContainsKey("hunt") ? $"{fading["hunt"]:F3}" : "gone");
 
+// ---------- what the body wears ----------
+Check("a hatchling has made up its mind about nothing", new Memory().Conviction == 0);
+
+var sure = new Memory();
+foreach (var key in new[] { "hunt", "pile", "settle", "play", "icon" }) sure.Relearn(key, 0.9);
+Check("five firm views is a full mind", sure.Conviction > 0.85, $"{sure.Conviction:F2}");
+
+var ruledOut = new Memory();
+foreach (var key in new[] { "hunt", "pile", "settle", "play", "icon" }) ruledOut.Relearn(key, -0.9);
+Check("having ruled things out counts just as much", ruledOut.Conviction > 0.85, $"{ruledOut.Conviction:F2}");
+Check("conviction is bounded", ((Func<bool>)(() => {
+    var m = new Memory();
+    foreach (var key in Appetites.Known) m.Relearn(key, 1);
+    return m.Conviction <= 1.0 + 1e-9; }))());
+
+var half = new Memory();
+half.Relearn("hunt", 0.5); half.Relearn("pile", 0.5);
+Check("a half-formed mind lands in between", half.Conviction is > 0.1 and < 0.35, $"{half.Conviction:F2}");
+
+// The inherited head start should show on the body straight away, which is the
+// whole point of passing it on.
+var born = new Memory();
+foreach (var (key, w) in Memory.PassedOn(new Dictionary<string, double> {
+    ["hunt"] = 0.9, ["settle"] = 0.8, ["pile"] = -0.7 }, rng)) born.Relearn(key, w);
+Check("a hatchling of experienced stock is born partly sure", born.Conviction > 0.15, $"{born.Conviction:F2}");
+Check("and still less sure than its mother", born.Conviction < sure.Conviction);
+
 Console.WriteLine(failed == 0 ? "\nALL PASS" : $"\n{failed} FAILED");
 return failed;
 
