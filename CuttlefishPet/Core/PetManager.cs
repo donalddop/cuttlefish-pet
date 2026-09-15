@@ -12,6 +12,12 @@ namespace CuttlefishPet.Core;
 /// </summary>
 public sealed class PetManager
 {
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern short GetAsyncKeyState(int vKey);
+
+    /// <summary>Ctrl down right now, whether or not this app has focus (it never does).</summary>
+    private static bool CtrlHeld => (GetAsyncKeyState(0x11) & 0x8000) != 0;
+
     private const double DoubleClickSeconds = 0.4;
     private const double RivalDistance = 110;
 
@@ -40,6 +46,8 @@ public sealed class PetManager
     private double _saveIn = 60;
 
     /// <summary>So a failing save says so once, not once a minute forever.</summary>
+    /// <summary>Whoever is being looked at, so the log says it once and not every frame.</summary>
+    private int _inspecting = -1;
     private bool _saveFailing;
     private bool _saveConfirmed;
     private double _sampleMs, _binCheckIn;
@@ -263,6 +271,79 @@ public sealed class PetManager
 
         double fright = pet.Alarmed ? 1 : Math.Min(0.6, pet.Pestered / 4);
         pet.Drives.Tick(dt, pet.Genome, pet.Surface != null, pet.Vel.Length, company, fright);
+
+        // How it carries itself: nerve and settled experience lift it, being liked
+        // lifts it a little more, and fear folds it down faster than anything else
+        // raises it. Eased so a scare reads as the animal shrinking.
+        double upright = Math.Clamp(
+            (pet.Genome.Boldness - 0.5) * 1.2
+            + pet.Memory.Conviction * 0.8
+            + pet.Relations.With(Relations.You) * 0.3
+            - pet.Drives.Fear * 1.5, -1, 1);
+        pet.Carriage += (upright - pet.Carriage) * Math.Min(1, dt * 1.6);
+    }
+
+    /// <summary>
+    /// The animal under the cursor, laid out plainly. Everything here is a number
+    /// the tank is already running on -- nothing is computed for the display.
+    /// </summary>
+    private static string Describe(Pet pet)
+    {
+        static string Bar(string label, double v) =>
+            $"{label,-9}{new string('\u2588', (int)Math.Round(Math.Clamp(v, 0, 1) * 10)).PadRight(10, '\u2591')} {v:F2}";
+
+        var d = pet.Drives;
+        var g = pet.Genome;
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"#{pet.Id}  {Palettes.All[pet.HomePalette].Name}/{pet.SkinPattern}  " +
+                      $"{pet.Age / 60:F0}m van {pet.Lifespan / 60:F0}m");
+        sb.AppendLine($"nu: {pet.Machine.Current.Name}");
+        sb.AppendLine();
+        sb.AppendLine(Bar("honger", d.Hunger));
+        sb.AppendLine(Bar("moe", d.Fatigue));
+        sb.AppendLine(Bar("alleen", d.Loneliness));
+        sb.AppendLine(Bar("verveeld", d.Boredom));
+        sb.AppendLine(Bar("bang", d.Fear));
+        sb.AppendLine();
+        sb.AppendLine($"lef {g.Boldness:F2}  sociaal {g.Sociability:F2}  " +
+                      $"nieuwsgierig {g.Curiosity:F2}");
+        sb.AppendLine($"rusteloos {g.Restlessness:F2}  stofwisseling {g.Metabolism:F2}");
+        sb.AppendLine($"overtuiging {pet.Memory.Conviction:F2}  houding {pet.Carriage:+0.00;-0.00; 0.00}");
+
+        var views = pet.Memory.Learned.Where(kv => Math.Abs(kv.Value) > 0.05)
+                       .OrderByDescending(kv => Math.Abs(kv.Value)).Take(3).ToList();
+        sb.AppendLine();
+        sb.AppendLine(views.Count == 0
+            ? "weet nog niets"
+            : "weet: " + string.Join("  ", views.Select(kv => $"{kv.Key} {kv.Value:+0.00;-0.00}")));
+
+        var known = pet.Relations.Everyone.Where(kv => Math.Abs(kv.Value) > 0.05)
+                       .OrderByDescending(kv => Math.Abs(kv.Value)).Take(3).ToList();
+        sb.Append(known.Count == 0
+            ? "kent niemand"
+            : "kent: " + string.Join("  ", known.Select(kv =>
+                $"{(kv.Key == Relations.You ? "jou" : "#" + kv.Key)} {kv.Value:+0.00;-0.00}")));
+        return sb.ToString();
+    }
+
+    private void UpdateInspector()
+    {
+        // Held down, not switched on. Everything below is the honest view of an
+        // animal and it breaks the illusion on purpose, so it belongs to whoever
+        // goes looking for it rather than being pushed at everyone.
+        if (!CtrlHeld) { _renderer.HideInspector(); _inspecting = -1; return; }
+
+        Pet? under = null;
+        for (int i = _pets.Count - 1; i >= 0; i--)
+            if (_pets[i].Bounds.Contains(_world.Cursor)) { under = _pets[i]; break; }
+
+        if (under == null) { _renderer.HideInspector(); return; }
+        _renderer.ShowInspector(under, Describe(under));
+        if (_inspecting != under.Id)
+        {
+            _inspecting = under.Id;
+            Log($"bekeken: #{under.Id}");
+        }
     }
 
     /// <summary>Send everyone but a handful drifting off — the panic button.</summary>
@@ -463,6 +544,8 @@ public sealed class PetManager
         PopulationTick(dt);
         MaybeRitual(dt);
         _renderer.TickEffects(dt);
+
+        UpdateInspector();
 
         _overlay.SetClickThrough(!wantClicks);
         if (++_tick % 120 == 0)
@@ -1184,7 +1267,7 @@ public sealed class PetManager
         try
         {
             var lines = _pets.Select((p, i) =>
-                $"{DateTime.Now:HH:mm:ss} pet#{p.Id} pos=({p.Pos.X:F0},{p.Pos.Y:F0}) vel=({p.Vel.X:F0},{p.Vel.Y:F0}) " +
+                $"{DateTime.Now:HH:mm:ss} pet#{p.Id} pos=({p.Pos.X:F0},{p.Pos.Y:F0}) muis=({_world.Cursor.X:F0},{_world.Cursor.Y:F0}) vel=({p.Vel.X:F0},{p.Vel.Y:F0}) " +
                 $"behavior={p.Machine.Current.Name} anim={p.Anim.Current.Name} surface={p.Surface?.Kind.ToString() ?? "none"} " +
                 $"colour={Palettes.All[p.Palette].Name} vivid={p.Vividness:F2} " +
                 $"age={p.Age:F0}/{p.Lifespan:F0}s scale={p.Scale:F2}");

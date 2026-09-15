@@ -31,6 +31,13 @@ public sealed class Pet
     /// <summary>Who it knows, and how that went.</summary>
     public readonly Relations Relations = new();
 
+    /// <summary>
+    /// How it holds itself, -1 hunkered to 1 up and forward. Nerve and experience
+    /// push it up, a fright folds it down. Eased, so a scare reads as the animal
+    /// shrinking rather than as a flicker.
+    /// </summary>
+    public double Carriage;
+
     /// <summary>Anchor (foot/contact) point.</summary>
     public Point Pos;
     public Vector Vel;

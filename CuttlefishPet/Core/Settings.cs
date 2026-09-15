@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Text.Json;
 
 namespace CuttlefishPet.Core;
@@ -20,6 +20,7 @@ public sealed class Settings
     /// still swings well above and below it.
     /// </summary>
     public int TargetPopulation { get; set; } = 5;
+
 
     private static string Path =>
         System.IO.Path.Combine(

@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using CuttlefishPet.Core;
@@ -67,7 +67,60 @@ public sealed class SpriteRenderer
         _overlay = overlay;
         _library = library;
         _skins = skins;
+
+        _inspectorText = new TextBlock
+        {
+            FontFamily = new FontFamily("Consolas, Courier New"),
+            FontSize = 11.5,
+            Foreground = new SolidColorBrush(Color.FromRgb(236, 230, 220)),
+        };
+        _inspector = new Border
+        {
+            Background = new SolidColorBrush(Color.FromArgb(222, 22, 20, 26)),
+            BorderBrush = new SolidColorBrush(Color.FromArgb(120, 170, 158, 144)),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(6),
+            Padding = new Thickness(9, 7, 9, 7),
+            Child = _inspectorText,
+            IsHitTestVisible = false,
+            Visibility = Visibility.Collapsed,
+        };
+        Panel.SetZIndex(_inspector, 10_000);   // over every animal, whatever the order
+        _overlay.PetCanvas.Children.Add(_inspector);
     }
+
+    private readonly Border _inspector;
+    private readonly TextBlock _inspectorText;
+
+    /// <summary>
+    /// Put one animal's insides on screen beside it. Deliberately plain monospaced
+    /// text: this is the honest view of a creature, and dressing it up would only
+    /// make it harder to read the numbers against what the animal is doing.
+    /// </summary>
+    public void ShowInspector(Pet pet, string text)
+    {
+        _inspectorText.Text = text;
+        _inspector.Visibility = Visibility.Visible;
+        _inspector.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+
+        var b = pet.Bounds;
+        double width = _inspector.DesiredSize.Width;
+        var right = _overlay.PhysToDiu(new Point(b.Right + 14, b.Top));
+        var left = _overlay.PhysToDiu(new Point(b.Left - 14, b.Top));
+
+        // Beside the animal, flipping to its other side rather than running off the
+        // screen. The canvas has not necessarily been measured yet, so an unmeasured
+        // width must mean "plenty of room" and not "no room at all" -- which would
+        // park the panel against the left edge of the screen for ever.
+        double room = _overlay.PetCanvas.ActualWidth > 0
+            ? _overlay.PetCanvas.ActualWidth
+            : _overlay.ActualWidth;
+        double x = room > 0 && right.X + width > room - 6 ? left.X - width : right.X;
+        Canvas.SetLeft(_inspector, Math.Max(2, x));
+        Canvas.SetTop(_inspector, Math.Max(2, right.Y));
+    }
+
+    public void HideInspector() => _inspector.Visibility = Visibility.Collapsed;
 
     private static Image NewImage()
     {
@@ -212,8 +265,15 @@ public sealed class SpriteRenderer
         Canvas.SetLeft(v.Root, tl.X);
         Canvas.SetTop(v.Root, tl.Y + pet.VisualBob * k);
 
-        v.Flip.ScaleX = pet.FacingRight ? 1 : -1;
+        // Carriage. A settled, bold animal stands up out of its own footprint and
+        // narrows; an unsure or frightened one hunkers down and spreads. Scaled
+        // about the contact point, so it grows from where it stands rather than
+        // sinking through the surface it is on.
+        double carriage = pet.Carriage;
+        v.Flip.ScaleX = (pet.FacingRight ? 1 : -1) * (1 - carriage * 0.05);
+        v.Flip.ScaleY = 1 + carriage * 0.09;
         v.Flip.CenterX = w / 2;
+        v.Flip.CenterY = anim.Anchor.Y / anim.FrameH * h;
 
         // Swing/tilt pivots on the contact point, and follows the mirrored body.
         v.Swing.Angle = pet.FacingRight ? pet.Rotation : -pet.Rotation;

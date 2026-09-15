@@ -46,6 +46,8 @@ WAT JE MET ZE KUNT
     de sluitknop indrukken, of zwemmen naar je klok om geeuwend te kijken hoe
     laat het is.
   - Blijf een paar minuten weg en ze verdwijnen in de achtergrond.
+  - Houd Ctrl ingedrukt en wijs er eentje aan: dan zie je wat hij wil, wat hij
+    geleerd heeft en wat hij van de anderen en van jou vindt.
 
 
 LEVEN IN HET AQUARIUM
