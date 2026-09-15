@@ -8,7 +8,7 @@
 ; Expects the self-contained publish output in publish\CuttlefishPet\.
 
 #define AppName "Cuttlefish Pet"
-#define AppVersion "2.5"
+#define AppVersion "2.6"
 #define AppPublisher "donalddop"
 #define AppUrl "https://github.com/donalddop/cuttlefish-pet"
 #define AppExe "CuttlefishPet.exe"
@@ -78,3 +78,4 @@ begin
     RegDeleteValue(HKEY_CURRENT_USER,
       'Software\Microsoft\Windows\CurrentVersion\Run', 'CuttlefishPet');
 end;
+
