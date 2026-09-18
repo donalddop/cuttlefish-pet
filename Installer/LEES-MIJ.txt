@@ -47,7 +47,8 @@ WAT JE MET ZE KUNT
     laat het is.
   - Blijf een paar minuten weg en ze verdwijnen in de achtergrond.
   - Houd Ctrl ingedrukt en wijs er eentje aan: dan zie je wat hij wil, wat hij
-    geleerd heeft en wat hij van de anderen en van jou vindt.
+    geleerd heeft en wat hij van de anderen en van jou vindt. Zolang je Ctrl
+    vasthoudt schrikt er niemand van je cursor weg, zodat je rustig kunt kijken.
 
 
 LEVEN IN HET AQUARIUM
@@ -84,6 +85,23 @@ MENU (klik het icoontje bij je klok)
 
   Werkt ook vanaf de commandline:
   CuttlefishPet.exe add | remove | cull | shrimp | exit
+
+
+ZE HEBBEN EEN NAAM
+  Harry, Miep, Klaas, Bep. Droge namen, want "Harry ligt te slapen op je taskbar"
+  is een zin die je kunt uitspreken en "#73 ligt te slapen op je taskbar" niet.
+  Twee dieren in de tank heten nooit hetzelfde.
+
+
+ER IS EEN KERKHOF
+  Van elke zeekat die de tank verlaat wordt vastgelegd wat ze meekreeg, hoe lang
+  ze het volhield, hoe vaak ze at, hoeveel eieren ze naliet en waar ze het
+  uiteindelijk over eens was. Dat staat in
+  %LocalAppData%\CuttlefishPet\graveyard.jsonl, een regel per dier.
+
+  Een levende tank laat je alleen de overlevenden zien, dus daar is niet aan af
+  te lezen welke eigenschappen het winnen -- de dieren die het slecht deden zijn
+  juist degene die er niet meer zijn. Het kerkhof is de andere helft.
 
 
 ZE ZIJN ELK ANDERS, EN DAT BLIJFT ZO

@@ -122,6 +122,7 @@ regelt zijn eigen omvang. Loopt het toch vol: **Thin them out** in het tray-menu
 - `CuttlefishPet/Rendering` — klikdoorlatend overlay-venster, sprite-renderer met oog-, huid- en glanslagen, kleurpaletten, screen sampler
 - `Tools/` — generatoren voor sprites, huidtexturen, geluid en het tray-icoon, plus previewscripts (`uv run`)
 - `Tools/DriveTests/` — controles op het genoom, de drijfveren en de gedragsweging (`dotnet run --project Tools/DriveTests`)
+- `Tools/graveyard.py` — leest het kerkhof uit en laat zien welke eigenschappen bovendrijven (`uv run Tools/graveyard.py`)
 
 De tank zelf staat in `%LocalAppData%\CuttlefishPet\tank.json`: genen, leeftijden, wat elk dier
 geleerd heeft en wat ze van elkaar vinden. Hij wordt elke minuut weggeschreven en bij het

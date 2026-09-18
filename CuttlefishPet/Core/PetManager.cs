@@ -12,12 +12,6 @@ namespace CuttlefishPet.Core;
 /// </summary>
 public sealed class PetManager
 {
-    [System.Runtime.InteropServices.DllImport("user32.dll")]
-    private static extern short GetAsyncKeyState(int vKey);
-
-    /// <summary>Ctrl down right now, whether or not this app has focus (it never does).</summary>
-    private static bool CtrlHeld => (GetAsyncKeyState(0x11) & 0x8000) != 0;
-
     private const double DoubleClickSeconds = 0.4;
     private const double RivalDistance = 110;
 
@@ -100,6 +94,51 @@ public sealed class PetManager
         while (_pets.Count < _settings.TargetPopulation) Spawn();
     }
 
+    /// <summary>
+    /// Put one in the ground. A living tank only ever shows you the survivors, so
+    /// the animals that did badly are exactly the ones you cannot see -- this is
+    /// where they go, and it is the only place selection is legible.
+    /// </summary>
+    private void Bury(Pet pet)
+    {
+        var stone = new Epitaph
+        {
+            Name = pet.Name,
+            Id = pet.Id,
+            Genome = pet.Genome,
+            Fate = pet.Fate,
+            Born = pet.BornAt.ToString("o"),
+            Died = DateTime.Now.ToString("o"),
+            Age = Math.Round(pet.Age, 1),
+            Lifespan = Math.Round(pet.Lifespan, 1),
+            Size = Math.Round(pet.GrownScale, 3),
+            Meals = pet.Meals,
+            Offspring = pet.Offspring,
+        };
+        foreach (var (behavior, worth) in pet.Memory.Learned)
+            stone.Learned[behavior] = Math.Round(worth, 3);
+
+        if (Graveyard.Record(stone) is string why)
+        {
+            if (!_graveFailing) Log($"graveyard schrijven MISLUKT: {why}");
+            _graveFailing = true;
+            return;
+        }
+        _graveFailing = false;
+        Log($"#{pet.Id} {pet.Name} {pet.Fate} na {pet.Age / 60:F0}m, " +
+            $"{pet.Meals} maaltijden, {pet.Offspring} eieren");
+
+        // A canary, written after an edit once left the old-age check with an empty
+        // body and the dying itself outside it, so every animal in the tank died on
+        // every tick. Nothing in the app noticed; the graveyard was the only reason
+        // it surfaced at all. Old age cannot arrive early, so if it does, say so.
+        if (pet.Fate == "ouderdom" && pet.Age < pet.Lifespan * 0.9)
+            Log($"!! #{pet.Id} {pet.Name} ging aan ouderdom op {pet.Age / 60:F1}m " +
+                $"van {pet.Lifespan / 60:F1}m -- dat hoort niet te kunnen");
+    }
+
+    private bool _graveFailing;
+
     /// <summary>Write the tank out as it stands.</summary>
     public void SaveTank()
     {
@@ -110,7 +149,11 @@ public sealed class PetManager
             var saved = new SavedPet
             {
                 Id = pet.Id,
+                Name = pet.Name,
                 Genome = pet.Genome,
+                Born = pet.BornAt.ToString("o"),
+                Offspring = pet.Offspring,
+                Meals = pet.Meals,
                 Age = pet.Age,
                 Lifespan = pet.Lifespan,
                 BirthScale = pet.BirthScale,
@@ -167,6 +210,12 @@ public sealed class PetManager
             var pet = new Pet { Anim = new AnimationPlayer(_library), Pos = pos };
             pet.Id = saved.Id;
             pet.Genome = saved.Genome;
+            pet.Name = string.IsNullOrEmpty(saved.Name)
+                ? Names.Pick(_rng, _pets.ConvertAll(p => p.Name))
+                : saved.Name;
+            if (DateTime.TryParse(saved.Born, out var born)) pet.BornAt = born;
+            pet.Offspring = saved.Offspring;
+            pet.Meals = saved.Meals;
             pet.Age = saved.Age;
             pet.Lifespan = saved.Lifespan;
             pet.BirthScale = saved.BirthScale;
@@ -227,6 +276,7 @@ public sealed class PetManager
         pet.GrowUpSeconds = pet.Lifespan * (hatchling ? 0.40 : 0.12);
         pet.Scale = pet.BirthScale;
         pet.Id = ++_nextId;
+        pet.Name = Names.Pick(_rng, _pets.ConvertAll(p => p.Name));
         pet.Genome = inherit?.Genome ?? Genome.Random(_rng);
         if (inherit != null)
             foreach (var (behavior, worth) in inherit.Lore) pet.Memory.Relearn(behavior, worth);
@@ -244,7 +294,7 @@ public sealed class PetManager
         _pets.Add(pet);
 
         var g = pet.Genome;
-        Log($"#{pet.Id} {(inherit is null ? "nieuw" : $"uit ei (erft {inherit.Lore.Count} inzichten)")} " +
+        Log($"#{pet.Id} {pet.Name} {(inherit is null ? "nieuw" : $"uit ei (erft {inherit.Lore.Count} inzichten)")} " +
             $"{Palettes.All[g.Chroma].Name}/{g.Pattern} " +
             $"lef={g.Boldness:F2} sociaal={g.Sociability:F2} nieuwsgierig={g.Curiosity:F2} " +
             $"stofwisseling={g.Metabolism:F2} onrustig={g.Restlessness:F2}");
@@ -295,8 +345,9 @@ public sealed class PetManager
         var d = pet.Drives;
         var g = pet.Genome;
         var sb = new System.Text.StringBuilder();
-        sb.AppendLine($"#{pet.Id}  {Palettes.All[pet.HomePalette].Name}/{pet.SkinPattern}  " +
-                      $"{pet.Age / 60:F0}m van {pet.Lifespan / 60:F0}m");
+        sb.AppendLine($"{pet.Name}  #{pet.Id}  {Palettes.All[pet.HomePalette].Name}/{pet.SkinPattern}");
+        sb.AppendLine($"{pet.Age / 60:F0}m van {pet.Lifespan / 60:F0}m  " +
+                      $"{pet.Meals} maaltijden  {pet.Offspring} eieren");
         sb.AppendLine($"nu: {pet.Machine.Current.Name}");
         sb.AppendLine();
         sb.AppendLine(Bar("honger", d.Hunger));
@@ -331,7 +382,7 @@ public sealed class PetManager
         // Held down, not switched on. Everything below is the honest view of an
         // animal and it breaks the illusion on purpose, so it belongs to whoever
         // goes looking for it rather than being pushed at everyone.
-        if (!CtrlHeld) { _renderer.HideInspector(); _inspecting = -1; return; }
+        if (!Keys.Inspecting) { _renderer.HideInspector(); _inspecting = -1; return; }
 
         Pet? under = null;
         for (int i = _pets.Count - 1; i >= 0; i--)
@@ -358,6 +409,8 @@ public sealed class PetManager
         var pet = _pets[^1];
         _pets.RemoveAt(_pets.Count - 1);
         _renderer.RemoveVisual(pet.Visual);
+        pet.Fate = "weggehaald";
+        Bury(pet);
     }
 
     /// <summary>
@@ -766,7 +819,10 @@ public sealed class PetManager
         pet.Scale += (pet.ScaleTarget - pet.Scale) * Math.Min(1, dt * 1.9);
 
         if (pet.Age >= pet.Lifespan && pet.Machine.Current.Interruptible)
+        {
+            pet.Fate = "ouderdom";
             pet.Machine.Force(new DyingBehavior());
+        }
     }
 
     private void UpdateExploration(Pet pet, double dt)
@@ -1135,6 +1191,7 @@ public sealed class PetManager
             if (!_pets.Remove(pet)) continue;
             _renderer.RemoveVisual(pet.Visual);
             foreach (var survivor in _pets) survivor.Relations.Forget(pet.Id);
+            Bury(pet);
         }
         _leaving.Clear();
 

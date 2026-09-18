@@ -13,6 +13,21 @@ public sealed class Pet
     /// <summary>Stable for life. Without it nobody can remember anybody.</summary>
     public int Id;
 
+    /// <summary>What you call it. A handle, not an identity -- the genome is that.</summary>
+    public string Name = "";
+
+    /// <summary>When it turned up, for the record it leaves behind.</summary>
+    public DateTime BornAt = DateTime.Now;
+
+    /// <summary>How it left. Set at the moment of leaving, read by the graveyard.</summary>
+    public string Fate = "onbekend";
+
+    /// <summary>Eggs it has laid. The one number selection actually reads.</summary>
+    public int Offspring;
+
+    /// <summary>Meals taken, which is most of how big it got.</summary>
+    public int Meals;
+
     /// <summary>What it was born with; never changes while it lives.</summary>
     public Genome Genome;
 
@@ -194,6 +209,7 @@ public sealed class Pet
     {
         Nourishment += amount;   // GrownScale is what clamps it, at MaxScale
         Swell = 0.18;
+        Meals++;
         Drives.Fed(amount);
     }
 

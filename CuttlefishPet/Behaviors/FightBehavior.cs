@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using CuttlefishPet.Core;
 using CuttlefishPet.Rendering;
 
@@ -103,7 +103,8 @@ public sealed class FightBehavior : BehaviorBase
                 // Beaten badly enough that it does not recover.
                 c.Renderer.SpawnInk(pet.Pos);
                 c.Sound.Play("squirt", 0.4);
-                Next = new DyingBehavior();
+                c.Pet.Fate = "gevecht";
+            Next = new DyingBehavior();
                 Done = true;
                 return;
             }

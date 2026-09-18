@@ -120,6 +120,10 @@ public sealed class LayEggsBehavior : BehaviorBase
             // traits but not his opinions, and copying a whole second mind onto
             // every egg to pass on a handful of numbers is not worth the weight.
             var taught = new Dictionary<string, double>(pet.Memory.Learned);
+            // What the next generation is made of, and the only number in the
+            // graveyard that selection actually reads.
+            pet.Offspring += clutch;
+
             for (int i = 0; i < clutch; i++)
             {
                 var spot = new Point(pet.Pos.X + (pet.FacingRight ? -34 : 34) + (i - (clutch - 1) / 2.0) * 19,
@@ -265,6 +269,7 @@ public sealed class GhostBehavior : BehaviorBase
         if (_t > 4.5)
         {
             pet.Fade = 1;
+            pet.Fate = "weggezwommen";
             var t = c.World.VirtualScreen;
             c.SpawnPet(new Point(t.Left + 140 + c.Rng.NextDouble() * (t.Width - 280),
                                  t.Bottom - 200), hatchling: false);

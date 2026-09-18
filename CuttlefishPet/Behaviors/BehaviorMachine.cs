@@ -139,6 +139,12 @@ public sealed class BehaviorMachine
         }
 
         // Cursor rushing at the pet → startled dash.
+        // Holding Ctrl means you are trying to look at one. Nothing bolts while you
+        // are: an animal that flees the instant you point at it is one you can never
+        // actually get a look at, which makes the inspector useless exactly when you
+        // want it.
+        if (Core.Keys.Inspecting) return;
+
         var toPet = pet.Pos - world.Cursor;
         // How close it lets the cursor come before bolting is a matter of nerve:
         // what it was born with, plus whatever it has come to make of you. A timid

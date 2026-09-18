@@ -7,7 +7,11 @@ namespace CuttlefishPet.Core;
 public sealed class SavedPet
 {
     public int Id { get; set; }
+    public string Name { get; set; } = "";
     public Genome Genome { get; set; }
+    public string Born { get; set; } = "";
+    public int Offspring { get; set; }
+    public int Meals { get; set; }
     public double Age { get; set; }
     public double Lifespan { get; set; }
     public double BirthScale { get; set; }
