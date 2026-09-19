@@ -591,6 +591,7 @@ public sealed class PetManager
         ApplyArrivalsAndDepartures();
         TickPrey(dt);
         TickShrimp(dt);
+        TickPredator(dt);
         TickBones(dt);
         TickTreats(dt);
         TickProps(dt);
@@ -1245,6 +1246,159 @@ public sealed class PetManager
             }
             f.Tick(dt, _world, _rng);
             _renderer.UpdateProp(f.Visual, "fish", f.Pos, f.Age, f.FacingRight);
+        }
+    }
+
+    /// <summary>Bring the next visit forward to now. For the command line, and for
+    /// anyone who would rather not wait a quarter of an hour to see one.</summary>
+    public void SummonHunter()
+    {
+        if (_world.Hunter == null) _hunterIn = 0;
+    }
+
+    /// <summary>Seconds to the next visit, and which of the two comes next.</summary>
+    private double _hunterIn = 240 + 420 * 0.5;
+    private bool _dolphinNext;
+
+    /// <summary>
+    /// A hunter passes through now and then, notices whatever is making itself
+    /// obvious, and has a go at it. It usually misses. What it is for is not the
+    /// kill -- it is that hiding finally beats not hiding.
+    /// </summary>
+    private void TickPredator(double dt)
+    {
+        var hunter = _world.Hunter;
+        if (hunter == null)
+        {
+            _hunterIn -= dt;
+            if (_hunterIn > 0 || _pets.Count < 3) return;
+
+            // Eight to twenty minutes apart. Often enough to matter over a day,
+            // rare enough that it is an event rather than weather.
+            _hunterIn = 480 + _rng.NextDouble() * 720;
+            _dolphinNext = !_dolphinNext;
+
+            var tank = _world.VirtualScreen;
+            bool fromLeft = _rng.NextDouble() < 0.5;
+            string kind = _dolphinNext ? "dolphin" : "shark";
+            hunter = new Predator
+            {
+                Kind = kind,
+                Pos = new Point(fromLeft ? tank.Left - 120 : tank.Right + 120,
+                                tank.Top + 160 + _rng.NextDouble() * (tank.Height - 420)),
+                Vel = new Vector(fromLeft ? Predator.Cruise : -Predator.Cruise, 0),
+                FacingRight = fromLeft,
+                Visual = _renderer.CreateProp(kind),
+            };
+            _world.Hunter = hunter;
+            _sound.Play("squirt", 0.5);
+            Log($"{kind} komt langs bij {_pets.Count} zeekatten op ({hunter.Pos.X:F0},{hunter.Pos.Y:F0})");
+            return;
+        }
+
+        hunter.Age += dt;
+        hunter.LookIn -= dt;
+
+        // Pick something to go for. Conspicuousness decides, which is the point:
+        // a pet flaring at a rival is advertising, and one sitting still wearing
+        // the desktop is very nearly invisible.
+        if (!hunter.Leaving && hunter.LookIn <= 0)
+        {
+            hunter.LookIn = 0.5;
+            Pet? best = null;
+            double bestScore = 0.55;          // below this it simply does not register
+            foreach (var pet in _pets)
+            {
+                if (pet.Dying) continue;
+                double d = (pet.Pos - hunter.Pos).Length;
+                if (d > 520) continue;
+                double score = Predator.Conspicuousness(pet) * (1 - d / 900);
+                if (score > bestScore) { bestScore = score; best = pet; }
+            }
+            hunter.Target = best;
+        }
+
+        var tankRect = _world.VirtualScreen;
+        if (hunter.Target is { } quarry && !quarry.Dying && !hunter.Leaving)
+        {
+            var to = quarry.Pos - hunter.Pos;
+            double gap = to.Length;
+            var want = gap < 1 ? hunter.Vel : to / gap * Predator.Lunge;
+            hunter.Vel += (want - hunter.Vel) * Math.Min(1, dt * 1.8);
+
+            if (gap < 58)
+            {
+                // Mostly it comes away with nothing, and a visit ends at one kill
+                // either way. Roughly one in seven for something still making itself
+                // obvious, one in twenty-five for something that took cover -- which
+                // is the ratio the whole thing exists to express.
+                double slip = 0.86 + (1 - Math.Min(1, Predator.Conspicuousness(quarry))) * 0.1;
+                if (_rng.NextDouble() < slip)
+                {
+                    hunter.Target = null;
+                    hunter.LookIn = 3.5;
+                }
+                else
+                {
+                    quarry.Fate = "opgegeten";
+                    quarry.Machine.Force(new DyingBehavior());
+                    hunter.Leaving = true;
+                    _sound.Play("splat", 0.6);
+                    Log($"{hunter.Kind} pakt #{quarry.Id} {quarry.Name}");
+                }
+            }
+        }
+        else
+        {
+            // Nothing worth chasing: level out and carry on across.
+            double straight = hunter.FacingRight ? Predator.Cruise : -Predator.Cruise;
+            hunter.Vel += (new Vector(straight, Math.Sin(hunter.Age * 0.7) * 26) - hunter.Vel)
+                          * Math.Min(1, dt * 1.2);
+        }
+
+        hunter.Pos += hunter.Vel * dt;
+        if (Math.Abs(hunter.Vel.X) > 12) hunter.FacingRight = hunter.Vel.X > 0;
+
+        // Everything close by knows it is there, and each reacts in its own way.
+        AlarmAt(hunter);
+
+        bool offScreen = hunter.Pos.X < tankRect.Left - 240 || hunter.Pos.X > tankRect.Right + 240;
+        if (hunter.Expired || (offScreen && hunter.Age > 6))
+        {
+            _renderer.RemoveProp(hunter.Visual);
+            _world.Hunter = null;
+            return;
+        }
+        _renderer.UpdateProp(hunter.Visual, hunter.Kind, hunter.Pos, hunter.Age, hunter.FacingRight);
+    }
+
+    /// <summary>
+    /// What a cuttlefish does about a hunter is not one thing. Wikipedia again: they
+    /// "use the flamboyant display towards larger, more dangerous fish" -- so the
+    /// bold ones make themselves enormous and flash their false eyes, and the rest
+    /// do the sensible thing and leave, ink first.
+    /// </summary>
+    private void AlarmAt(Predator hunter)
+    {
+        foreach (var pet in _pets)
+        {
+            if (pet.Dying || !pet.Machine.Current.Interruptible) continue;
+            double d = (pet.Pos - hunter.Pos).Length;
+            if (d > 300) continue;
+
+            pet.Drives.Fear = 1;
+            pet.Alarmed = true;
+
+            // Already hidden and holding still? Then holding still is the answer.
+            if (pet.CamoOpacity > 0.5) continue;
+            if (pet.Machine.Current is ThreatBehavior or FleeBehavior or InkBombBehavior) continue;
+
+            if (ThreatBehavior.Possible(NewContext(pet)) && _rng.NextDouble() < 0.5)
+                pet.Machine.Force(new ThreatBehavior());
+            else if (_rng.NextDouble() < 0.4)
+                pet.Machine.Force(new InkBombBehavior());
+            else
+                pet.Machine.Force(new FleeBehavior());
         }
     }
 

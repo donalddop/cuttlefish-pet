@@ -828,6 +828,113 @@ def prop_blot(n=3):
     return out, small
 
 
+def prop_shark(n=4):
+    """Something that eats cuttlefish, seen from the side, swimming right.
+
+    Drawn for a silhouette rather than for detail: at this size nobody reads a
+    gill slit, but everyone reads a dorsal fin and a pointed snout. Counter-shaded
+    dark over pale, which is what actually makes a shark hard to look at.
+    """
+    big, small = 256, 80
+    back, belly = (92, 104, 116, 255), (206, 212, 216, 255)
+    edge = (54, 62, 72, 255)
+    out = []
+    for i in range(n):
+        img = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+        d = ImageDraw.Draw(img)
+        beat = math.sin(i / n * 6.28)
+        cx, cy = 132, 128
+
+        # tail: a crescent, swinging with the beat
+        ty = cy + beat * 14
+        d.polygon([(cx - 74, cy), (cx - 116, ty - 40), (cx - 100, ty), (cx - 116, ty + 34)],
+                  fill=back, outline=edge, width=3)
+        # pectoral fin, low and swept back
+        d.polygon([(cx + 6, cy + 14), (cx - 26, cy + 52 + beat * 5), (cx + 20, cy + 24)],
+                  fill=back, outline=edge, width=3)
+        # body: blunt at the shoulder, tapering to the tail, snout out front
+        d.polygon([(cx + 88, cy + 2), (cx + 54, cy - 26), (cx + 4, cy - 34),
+                   (cx - 48, cy - 22), (cx - 74, cy - 6), (cx - 74, cy + 8),
+                   (cx - 44, cy + 24), (cx + 6, cy + 32), (cx + 56, cy + 22)],
+                  fill=back, outline=edge, width=4)
+        # counter-shading: pale underside
+        d.polygon([(cx + 80, cy + 4), (cx + 50, cy + 20), (cx + 4, cy + 30),
+                   (cx - 44, cy + 22), (cx - 70, cy + 7), (cx - 40, cy + 12),
+                   (cx + 6, cy + 18), (cx + 52, cy + 12)],
+                  fill=belly)
+        # dorsal fin: the part that does the work
+        d.polygon([(cx - 4, cy - 32), (cx + 14, cy - 82), (cx + 32, cy - 24)],
+                  fill=back, outline=edge, width=4)
+        # mouth and eye
+        d.line([(cx + 84, cy + 8), (cx + 48, cy + 16)], fill=edge, width=4)
+        d.ellipse([cx + 44, cy - 16, cx + 58, cy - 2], fill=(248, 248, 244, 255),
+                  outline=edge, width=3)
+        d.ellipse([cx + 48, cy - 13, cx + 55, cy - 6], fill=(22, 22, 26, 255))
+        out.append(img.resize((small, small), Image.LANCZOS))
+    return out, small
+
+
+def prop_dolphin(n=4):
+    """The other one, and the better documented of the two: bottlenose dolphins
+    work cuttlefish over thoroughly before eating them.
+
+    Deliberately not a shark with a nose on it. Three things separate the
+    silhouettes at this size: a melon -- the rounded forehead over a short thick
+    beak -- a dorsal fin swept back into a sickle rather than a triangle, and a
+    fluke that lies flat instead of standing up.
+    """
+    big, small = 256, 80
+    back, belly = (122, 134, 152, 255), (232, 234, 236, 255)
+    edge = (68, 78, 94, 255)
+    out = []
+    for i in range(n):
+        img = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+        d = ImageDraw.Draw(img)
+        beat = math.sin(i / n * 6.28)
+        cx, cy = 128, 128
+
+        # fluke: broad and flat, lying across the tail stock
+        ty = cy + 6 + beat * 13
+        d.polygon([(cx - 62, cy + 2), (cx - 96, ty - 12), (cx - 118, ty - 6),
+                   (cx - 96, ty + 4), (cx - 118, ty + 16), (cx - 90, ty + 14),
+                   (cx - 62, cy + 12)],
+                  fill=back, outline=edge, width=3)
+        # flipper, set well forward and swept back
+        d.polygon([(cx + 22, cy + 20), (cx - 14, cy + 54 + beat * 4), (cx + 36, cy + 26)],
+                  fill=back, outline=edge, width=3)
+
+        # The beak first, so the head is laid over where it joins.
+        d.polygon([(cx + 84, cy + 1), (cx + 122, cy + 10), (cx + 120, cy + 19),
+                   (cx + 82, cy + 17)], fill=back, outline=edge, width=3)
+
+        # Body, with the forehead built into the outline rather than stuck on as a
+        # ball: one continuous silhouette is the whole difference between a dolphin
+        # and a fish wearing a head.
+        d.polygon([(cx + 94, cy + 10), (cx + 90, cy - 6), (cx + 76, cy - 20),
+                   (cx + 52, cy - 30), (cx + 18, cy - 33), (cx - 18, cy - 28),
+                   (cx - 46, cy - 14), (cx - 62, cy - 2),
+                   (cx - 62, cy + 12), (cx - 40, cy + 22), (cx + 4, cy + 34),
+                   (cx + 48, cy + 28), (cx + 80, cy + 20)],
+                  fill=back, outline=edge, width=4)
+        d.polygon([(cx + 84, cy + 18), (cx + 46, cy + 26), (cx + 4, cy + 31),
+                   (cx - 40, cy + 20), (cx - 58, cy + 10), (cx - 34, cy + 13),
+                   (cx + 6, cy + 20), (cx + 50, cy + 18)], fill=belly)
+
+        # the mouth line, over everything so it reads along the beak
+        d.line([(cx + 119, cy + 15), (cx + 88, cy + 14)], fill=edge, width=3)
+
+        # dorsal fin: swept back into a sickle
+        d.polygon([(cx - 2, cy - 28), (cx + 2, cy - 58), (cx - 8, cy - 76),
+                   (cx + 12, cy - 62), (cx + 30, cy - 22)],
+                  fill=back, outline=edge, width=4)
+
+        d.ellipse([cx + 66, cy - 6, cx + 78, cy + 6], fill=(250, 250, 246, 255),
+                  outline=edge, width=3)
+        d.ellipse([cx + 69, cy - 3, cx + 76, cy + 4], fill=(22, 22, 26, 255))
+        out.append(img.resize((small, small), Image.LANCZOS))
+    return out, small
+
+
 def prop_fish(n=4):
     """A little silvery fish to hunt: swims facing right, tail flicking."""
     big, small = 128, 32
@@ -1035,6 +1142,8 @@ PROP_SCALE = {
     "blot": 1.6,
     "shrimp": 1.4,
     "fish": 1.0,
+    "shark": 1.45,
+    "dolphin": 1.45,
     "bubble": 1.0,
     "eye": 1.0,
 }
@@ -1066,6 +1175,8 @@ def main():
         ("eye", prop_eye(), 1, False),
         ("shrimp", prop_shrimp(), 4, True),
         ("fish", prop_fish(), 6, True),
+        ("shark", prop_shark(), 7, True),
+        ("dolphin", prop_dolphin(), 7, True),
         ("bubble", prop_bubble(), 6, False),
         ("egg", prop_egg(), 3, True),
         ("blot", prop_blot(), 2, True),

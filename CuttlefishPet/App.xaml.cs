@@ -85,6 +85,7 @@ public partial class App : Application
             case "cull": _manager.CullTo(1); break;
             case "population": ShowPopulationWindow(); break;
             case "shrimp": _manager.TossTreat(); break;
+            case "hunter": _manager.SummonHunter(); break;
             case "mute": if (_muteItem != null) _muteItem.Checked = !_muteItem.Checked; break;
             case "exit": Shutdown(); break;
         }

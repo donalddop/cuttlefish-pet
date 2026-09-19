@@ -574,6 +574,32 @@
     ],
     "scale": 1.0
   },
+  "shark": {
+    "file": "shark.png",
+    "frameW": 80,
+    "frameH": 80,
+    "frames": 4,
+    "fps": 7,
+    "loop": true,
+    "anchor": [
+      40.0,
+      40.0
+    ],
+    "scale": 1.45
+  },
+  "dolphin": {
+    "file": "dolphin.png",
+    "frameW": 80,
+    "frameH": 80,
+    "frames": 4,
+    "fps": 7,
+    "loop": true,
+    "anchor": [
+      40.0,
+      40.0
+    ],
+    "scale": 1.45
+  },
   "bubble": {
     "file": "bubble.png",
     "frameW": 16,

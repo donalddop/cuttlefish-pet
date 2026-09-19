@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 
 namespace CuttlefishPet.Core;
 
@@ -9,6 +9,9 @@ public sealed class WorldState
     public List<Treat> Treats { get; } = new();
     /// <summary>Live fish drifting through the tank, there to be hunted.</summary>
     public List<Prey> Prey { get; } = new();
+
+    /// <summary>Something passing through that eats cuttlefish, or null. Rarely set.</summary>
+    public Predator? Hunter { get; set; }
     public Rect VirtualScreen { get; set; }
     public Point Cursor { get; set; }
     public Vector CursorVelocity { get; set; }
