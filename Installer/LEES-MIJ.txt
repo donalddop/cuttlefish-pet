@@ -1,4 +1,4 @@
-Cuttlefish Pet — zeekatten op je bureaublad
+﻿Cuttlefish Pet — zeekatten op je bureaublad
 ===========================================
 
 STARTEN
@@ -65,6 +65,21 @@ LEVEN IN HET AQUARIUM
   hof maken.
 
 
+ER KOMT WELEENS IETS GROTERS LANGS
+  Om de acht tot twintig minuten steekt er een haai of een dolfijn over -- om de
+  beurt, zodat geen van beide behang wordt. Hij zoekt het dier dat het meest
+  opvalt: felle kleur, snelheid en formaat verraden je, camouflage en stilzitten
+  verbergen je. Dan schiet hij toe.
+
+  Meestal grijpt hij mis, en na een vangst is het bezoek voorbij. Wie in de buurt
+  is reageert naar eigen aard: de brutale dieren draaien zich breed en imponeren,
+  de rest inkt of vlucht, en wie al gecamoufleerd zit blijft doodstil -- wat
+  meteen de beste keus is.
+
+  Dit is het enige in het aquarium dat onderscheid maakt. Wie opvalt betaalt
+  ervoor, en over generaties is dat aan het kerkhof af te lezen.
+
+
 ZE LEVEN EN GAAN DOOD
   Een zeekat wordt 18 tot 50 minuten oud. Gaat een balts goed, dan zoekt ze een
   richel en legt een tros eitjes -- dat kost haar bijna al haar resterende tijd,
@@ -94,7 +109,7 @@ MENU (klik het icoontje bij je klok)
   Exit                - afsluiten
 
   Werkt ook vanaf de commandline:
-  CuttlefishPet.exe add | remove | cull | shrimp | exit
+  CuttlefishPet.exe add | remove | cull | shrimp | hunter | exit
 
 
 ZE HEBBEN EEN NAAM

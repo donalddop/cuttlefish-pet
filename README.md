@@ -1,4 +1,4 @@
-# Cuttlefish Pet 🦑
+﻿# Cuttlefish Pet 🦑
 
 Desktop pets voor Windows, maar dan **zeekatten**. Je scherm is hun aquarium: ze
 zweven er vrij doorheen, strijken neer op je taskbar en vensterranden, klimmen langs
@@ -104,7 +104,8 @@ sprintwedstrijd over het scherm, of kruipen ze tegen elkaar aan.
 
 **Levenscyclus**
 
-Ze leven 14 tot 30 minuten. Gaat een balts goed, dan zoekt ze een richel en legt een
+Wie komt aanzwemmen krijgt 26 tot 50 minuten, wie uit een tros kruipt 18 tot 28 --
+en drukte laat die klok sneller lopen. Gaat een balts goed, dan zoekt ze een richel en legt een
 eitros; dat kost haar bijna al haar resterende tijd, precies zoals bij echte zeekatten.
 Uit de tros kruipt na een halve minuut een klein exemplaar op een derde van
 volwassen formaat, dat langzaam uitgroeit — jonge dieren beheersen camouflage nog niet,
@@ -114,9 +115,23 @@ met een sliert luchtbelletjes uit beeld.
 Drukte versnelt ieders klok en een tros komt alleen uit als er ruimte is, dus de groep
 regelt zijn eigen omvang. Loopt het toch vol: **Thin them out** in het tray-menu.
 
+**Er komt weleens iets groters langs**
+
+Om de acht tot twintig minuten steekt er een haai of een dolfijn over -- om de beurt,
+zodat geen van beide behang wordt. Hij kijkt twee keer per seconde rond en kiest het
+dier dat het meest opvalt: felle huid, snelheid en formaat maken je zichtbaar,
+camouflage en stilzitten op een richel verbergen je. Dan schiet hij toe.
+
+Meestal komt hij van een koude kermis thuis, en na een vangst is het bezoek voorbij.
+Wie in de buurt is reageert naar eigen aard: de brutale dieren draaien zich breed en
+imponeren, de rest inkt of vlucht, en wie al gecamoufleerd zit blijft simpelweg
+doodstil -- wat meteen het meest werkt. Dit is de enige selectiedruk in de tank:
+tot nu toe ging iedereen dood aan ouderdom, en dan valt er aan het kerkhof niets af
+te lezen.
+
 ## Structuur
 
-- `CuttlefishPet/Core` — Pet, aquarium-physics, PetManager, WorldState, garnalen, props, commandoserver
+- `CuttlefishPet/Core` — Pet, aquarium-physics, PetManager, WorldState, garnalen, props, roofdieren, commandoserver
 - `CuttlefishPet/Behaviors` — statemachine plus alle gedragingen, gegroepeerd per thema
 - `CuttlefishPet/Interop` — Win32 P/Invoke: vensters, taskbar, klok, tekstcursor, globale muis/toetsenbord-hooks
 - `CuttlefishPet/Rendering` — klikdoorlatend overlay-venster, sprite-renderer met oog-, huid- en glanslagen, kleurpaletten, screen sampler
