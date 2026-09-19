@@ -1328,15 +1328,18 @@ public sealed class PetManager
 
             if (gap < 58)
             {
-                // Mostly it comes away with nothing, and a visit ends at one kill
-                // either way. Roughly one in seven for something still making itself
-                // obvious, one in twenty-five for something that took cover -- which
-                // is the ratio the whole thing exists to express.
-                double slip = 0.86 + (1 - Math.Min(1, Predator.Conspicuousness(quarry))) * 0.1;
+                // One in ten for something still making itself obvious, one in a
+                // hundred for something that took cover -- and at two lunges a visit
+                // that comes to roughly one visit in five ending badly for somebody,
+                // nearly always somebody who was easy to see. That ratio is the
+                // entire point of the animal.
+                double slip = 0.90 + (1 - Math.Min(1, Predator.Conspicuousness(quarry))) * 0.09;
+                hunter.Tries++;
                 if (_rng.NextDouble() < slip)
                 {
                     hunter.Target = null;
                     hunter.LookIn = 3.5;
+                    if (hunter.Tries >= 2) hunter.Leaving = true;
                 }
                 else
                 {

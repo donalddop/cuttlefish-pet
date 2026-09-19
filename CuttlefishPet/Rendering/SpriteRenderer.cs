@@ -54,6 +54,11 @@ public sealed class SpriteRenderer
         public Point Pos;
         public double Rise;
         public bool FadeOut;
+        /// <summary>Seconds on screen. 0 means "as long as the frames last".</summary>
+        public double Life;
+        /// <summary>Sideways sway amplitude in pixels, and where in the weave it starts.</summary>
+        public double Wobble;
+        public double Phase;
     }
 
     private readonly OverlayWindow _overlay;
@@ -477,10 +482,25 @@ public sealed class SpriteRenderer
 
     public void SpawnInk(Point physPos) => Spawn("ink", physPos, Pet.RenderScale, rise: 0);
 
-    // The bubble frame is small; drawn at source size it is a speck beside a pet.
-    public void SpawnBubble(Point physPos) => Spawn("bubble", physPos, 2.6, rise: 55, fade: true);
+    /// <summary>
+    /// A bubble leaving a pet. Not a balloon on a string: it breaks away fast,
+    /// it weaves on the way up because it keeps tipping out of its own wake,
+    /// and a fat one overtakes a thin one. Randomising size, climb and sway
+    /// buys all three, and buys a cluster that spreads instead of a row of
+    /// identical dots moving in lockstep -- which is what made the old one
+    /// look mechanical. The frame is small; drawn at source size it is a
+    /// speck beside a pet, hence the scale.
+    /// </summary>
+    public void SpawnBubble(Point physPos)
+    {
+        double size = 1.9 + Random.Shared.NextDouble() * 1.5;
+        Spawn("bubble", physPos, size, rise: 92 + size * 38, fade: true,
+              life: 1.4 + Random.Shared.NextDouble() * 0.7,
+              wobble: 4 + Random.Shared.NextDouble() * 8);
+    }
 
-    private void Spawn(string animName, Point physPos, double scale, double rise, bool fade = false)
+    private void Spawn(string animName, Point physPos, double scale, double rise,
+                       bool fade = false, double life = 0, double wobble = 0)
     {
         var anim = _library[animName];
         var img = NewImage();
@@ -488,7 +508,12 @@ public sealed class SpriteRenderer
         img.Width = anim.FrameW * scale * _overlay.DeviceToDiu;
         img.Height = anim.FrameH * scale * _overlay.DeviceToDiu;
         _overlay.PetCanvas.Children.Add(img);
-        _effects.Add(new Effect { Img = img, Anim = anim, Pos = physPos, Rise = rise, FadeOut = fade });
+        _effects.Add(new Effect
+        {
+            Img = img, Anim = anim, Pos = physPos, Rise = rise, FadeOut = fade,
+            Life = life, Wobble = wobble,
+            Phase = Random.Shared.NextDouble() * Math.PI * 2,
+        });
     }
 
     public void TickEffects(double dt)
@@ -498,20 +523,37 @@ public sealed class SpriteRenderer
         {
             var e = _effects[i];
             e.T += dt;
-            int frame = (int)(e.T * e.Anim.Fps);
-            double life = e.Anim.Frames.Length / e.Anim.Fps;
+            double life = e.Life > 0 ? e.Life : e.Anim.Frames.Length / e.Anim.Fps;
 
-            if (frame >= e.Anim.Frames.Length)
+            if (e.T >= life)
             {
                 _overlay.PetCanvas.Children.Remove(e.Img);
                 _effects.RemoveAt(i);
                 continue;
             }
 
+            // Given a lifetime of its own, the frames stretch over the whole
+            // climb instead of running out a third of the way up. The bubble
+            // sprite is drawn as four sizes, so that stretch reads as a bubble
+            // swelling on the way up, which is what dropping pressure does.
+            int frame = e.Life > 0
+                ? Math.Min(e.Anim.Frames.Length - 1,
+                           (int)(e.T / life * e.Anim.Frames.Length))
+                : (int)(e.T * e.Anim.Fps);
             e.Img.Source = e.Anim.Frames[frame];
-            if (e.FadeOut) e.Img.Opacity = Math.Max(0, 1 - e.T / life);
+            // Hold, then go in the last third, rather than fading from the off.
+            if (e.FadeOut) e.Img.Opacity = Math.Min(1, (1 - e.T / life) * 3.2);
 
-            var pos = new Point(e.Pos.X, e.Pos.Y - e.Rise * e.T);
+            // Buoyancy wins almost at once, so the climb is a brief ease-in and
+            // then a straight run at full speed -- the old one crept up at a
+            // flat 55 px/s and was gone after 37 pixels, which is why it looked
+            // like it was being winched.
+            const double tau = 0.10;
+            double climb = e.Rise * (e.T - tau * (1 - Math.Exp(-e.T / tau)));
+            double sway = e.Wobble * Math.Sin(e.T * 6.0 + e.Phase)
+                          * Math.Min(1, e.T * 4);
+
+            var pos = new Point(e.Pos.X + sway, e.Pos.Y - climb);
             var tl = _overlay.PhysToDiu(new Point(
                 pos.X - e.Img.Width / k / 2, pos.Y - e.Img.Height / k / 2));
             Canvas.SetLeft(e.Img, tl.X);

@@ -36,11 +36,25 @@ public sealed class Predator
     /// <summary>It leaves after a kill, and leaves anyway if the hunting is poor.</summary>
     public bool Leaving;
 
+    /// <summary>
+    /// Lunges taken this visit. A visit is worth two, hit or miss: by the time
+    /// the first one has gone wrong the whole neighbourhood is ink and scatter,
+    /// and a hunter that could keep trying would clear a crowded tank -- the
+    /// odds per lunge stop meaning anything once it gets thirty of them.
+    /// </summary>
+    public int Tries;
+
     public bool Expired => Age > 75;
 
     /// <summary>Cruising speed, and the speed of a committed run at something.</summary>
-    public const double Cruise = 165;
-    public const double Lunge = 330;
+    /// <summary>
+    /// Crossing speed. Fast enough that the whole visit is over in about seven
+    /// seconds: long enough to see what it is and get a fright, short enough
+    /// that it never becomes something living on your desktop. A slow one is
+    /// far more unpleasant than a quick one.
+    /// </summary>
+    public const double Cruise = 305;
+    public const double Lunge = 470;
 
     /// <summary>
     /// How much this animal stands out to something hunting it. Colour is most of

@@ -232,7 +232,7 @@ public sealed class BigBubbleBehavior : BehaviorBase
     public override bool Interruptible => false;
     public override bool OverridesPhysics => true;
 
-    private const double PopAt = 1.7;      // matches the burst frames of the prop
+    private const double PopAt = 0.83;     // matches the burst frames of the prop
     private double _t;
     private bool _popped;
     private Point _where;
@@ -243,7 +243,7 @@ public sealed class BigBubbleBehavior : BehaviorBase
         pet.Anim.Play("hunt", restart: true);
         pet.Surface = null;
         _where = pet.Pos + new Vector(pet.FacingRight ? 74 : -74, -18);
-        c.AddProp(new Prop { Anim = "bigbubble", Pos = _where, Life = 2.7 });
+        c.AddProp(new Prop { Anim = "bigbubble", Pos = _where, Life = 1.17 });
         c.Sound.Play("bubble", 0.3);
     }
 
@@ -258,7 +258,7 @@ public sealed class BigBubbleBehavior : BehaviorBase
         if (!_popped)
         {
             // Straining harder the bigger it gets.
-            pet.VisualBob = Math.Sin(_t * 11) * (1 + _t * 1.6);
+            pet.VisualBob = Math.Sin(_t * 14) * (1 + _t * 4.2);
             if (_t < PopAt) return;
 
             _popped = true;
@@ -279,7 +279,7 @@ public sealed class BigBubbleBehavior : BehaviorBase
         }
 
         pet.VisualBob = Math.Sin(_t * 8) * 4;
-        if (_t > PopAt + 1.6)
+        if (_t > PopAt + 1.0)
         {
             Next = new SwimFreeBehavior();
             Done = true;

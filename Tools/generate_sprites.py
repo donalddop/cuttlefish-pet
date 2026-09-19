@@ -828,112 +828,263 @@ def prop_blot(n=3):
     return out, small
 
 
-def prop_shark(n=4):
-    """Something that eats cuttlefish, seen from the side, swimming right.
+def _swimmer(cx, cy, length, depth, tailw=0.10, nose=0.22, bulge=1.25,
+             tilt=0.92, keel=1.08, steps=36):
+    """A smooth tapered swimmer's body, nose pointing right.
 
-    Drawn for a silhouette rather than for detail: at this size nobody reads a
-    gill slit, but everyone reads a dorsal fin and a pointed snout. Counter-shaded
-    dark over pale, which is what actually makes a shark hard to look at.
+    Sampled rather than hand-plotted, because the thing that made the first
+    shark read as a cardboard cutout was its straight edges. Every silhouette
+    in this app is round -- the cuttlefish has no corner anywhere on it -- and
+    a predator drawn out of triangles simply does not look like it belongs in
+    the same aquarium.
     """
-    big, small = 256, 80
-    back, belly = (92, 104, 116, 255), (206, 212, 216, 255)
-    edge = (54, 62, 72, 255)
+    x0, x1 = cx - length * 0.5, cx + length * 0.5
+    top, bot = [], []
+    for k in range(steps + 1):
+        t = k / steps
+        h = depth * (tailw + (nose - tailw) * t
+                     + (1 - max(nose, tailw)) * math.sin(math.pi * t ** bulge))
+        x = x0 + (x1 - x0) * t
+        top.append((x, cy - h * tilt))
+        bot.append((x, cy + h * keel))
+    hn = depth * nose
+    cap = [(x1 + math.cos(-math.pi / 2 + math.pi * k / 9) * hn * 0.98,
+            cy + math.sin(-math.pi / 2 + math.pi * k / 9) * hn * 1.02)
+           for k in range(1, 9)]
+    return top + cap + bot[::-1]
+
+
+def _fin(d, pts, fill, edge, w=5):
+    d.polygon(pts, fill=fill, outline=edge, width=w)
+
+
+def _inside(img, shape, paint):
+    """Paint something and clip it to a silhouette.
+
+    Counter-shading, gills and a blushed cheek all want to be sloppy strokes
+    that stop exactly at the body outline. Masking is the only way to get that
+    without hand-fitting every point to a curve that changes whenever the
+    body does.
+    """
+    lay = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    paint(ImageDraw.Draw(lay))
+    mask = Image.new("L", img.size, 0)
+    ImageDraw.Draw(mask).polygon(shape, fill=255)
+    lay.putalpha(ImageChops.multiply(lay.split()[3], mask))
+    img.alpha_composite(lay)
+
+
+def _friendly_eye(d, cx, cy, r, edge, look=0.0):
+    """The same eye the cuttlefish has, minus the W pupil -- a round pupil is
+    the single cheapest way to keep a big fish off the nightmare shelf."""
+    d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=EYE_WHITE, outline=edge,
+              width=max(3, int(r * 0.26)))
+    pr = r * 0.56
+    px, py = cx + look * r * 0.22, cy + r * 0.06
+    d.ellipse([px - pr, py - pr, px + pr, py + pr], fill=PUPIL)
+    hr = r * 0.26
+    d.ellipse([px - pr * 0.55 - hr, py - pr * 0.5 - hr,
+               px - pr * 0.55 + hr, py - pr * 0.5 + hr], fill=(255, 255, 255, 240))
+    sr = r * 0.12
+    d.ellipse([px + pr * 0.35 - sr, py + pr * 0.4 - sr,
+               px + pr * 0.35 + sr, py + pr * 0.4 + sr], fill=(255, 255, 255, 190))
+
+
+def _spline(pts, closed=True, steps=14):
+    """Catmull-Rom through the given points.
+
+    Hand-placed control points give a silhouette its character; the spline is
+    what stops it looking like it was cut out with scissors. Everything else in
+    this app is drawn from smooth curves, so anything drawn from raw polygons
+    sits in the tank looking like a different piece of software.
+    """
+    pts = list(pts)
+    if not closed:
+        # An open run needs a phantom point at each end, or the first and last
+        # segments have no neighbour to take their direction from -- and a
+        # three-point curve produces no segments at all.
+        pts = [pts[0]] + pts + [pts[-1]]
+    n = len(pts)
+    out = []
+    span = n if closed else n - 3
+    for i in range(span):
+        if closed:
+            p0, p1, p2, p3 = (pts[(i - 1) % n], pts[i], pts[(i + 1) % n],
+                              pts[(i + 2) % n])
+        else:
+            p0, p1, p2, p3 = pts[i], pts[i + 1], pts[i + 2], pts[i + 3]
+        for s in range(steps):
+            t = s / steps
+            t2, t3 = t * t, t * t * t
+            out.append((
+                0.5 * (2 * p1[0] + (-p0[0] + p2[0]) * t
+                       + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2
+                       + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3),
+                0.5 * (2 * p1[1] + (-p0[1] + p2[1]) * t
+                       + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2
+                       + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3)))
+    if not closed:
+        out.append(tuple(pts[-2]))
+    return out
+
+
+def prop_shark(n=4):
+    """A shark that actually reads as a shark, and still could not frighten a
+    six-year-old.
+
+    The first two attempts were a fat oval with a fin on it, which is a fish.
+    What says shark is a specific set of things, and not one of them is teeth:
+    a torpedo tapering to a thin tail wrist, a pointed snout, a tall first
+    dorsal set well forward, a small second one near the tail, wing-like
+    pectorals, five slanted gill slits, a tail whose upper lobe is far the
+    longer, and -- the one that does most of the work -- a mouth slung
+    underneath an overhanging snout. Get those right and the face is free: one
+    big round eye and a closed mouth keep it on the friendly side of the line.
+
+    The outline is a closely spaced polyline run through a spline: spaced any
+    wider, the curve smooths off the snout and the tail wrist and hands back
+    an ellipse. The fins stay plain polygons, because a closed spline pinches
+    a thin triangle into a splinter. Both of those were learned the hard way.
+    """
+    big, small = 512, 240
+    back = (114, 138, 166, 255)
+    deep = (92, 114, 142, 255)
+    flank = (150, 170, 192, 255)
+    belly = (240, 242, 238, 255)
+    edge = OUTLINE
     out = []
     for i in range(n):
         img = Image.new("RGBA", (big, big), (0, 0, 0, 0))
         d = ImageDraw.Draw(img)
-        beat = math.sin(i / n * 6.28)
-        cx, cy = 132, 128
+        beat = math.sin(i / n * 6.283)
+        cx, cy = 250, 252
 
-        # tail: a crescent, swinging with the beat
-        ty = cy + beat * 14
-        d.polygon([(cx - 74, cy), (cx - 116, ty - 40), (cx - 100, ty), (cx - 116, ty + 34)],
-                  fill=back, outline=edge, width=3)
-        # pectoral fin, low and swept back
-        d.polygon([(cx + 6, cy + 14), (cx - 26, cy + 52 + beat * 5), (cx + 20, cy + 24)],
-                  fill=back, outline=edge, width=3)
-        # body: blunt at the shoulder, tapering to the tail, snout out front
-        d.polygon([(cx + 88, cy + 2), (cx + 54, cy - 26), (cx + 4, cy - 34),
-                   (cx - 48, cy - 22), (cx - 74, cy - 6), (cx - 74, cy + 8),
-                   (cx - 44, cy + 24), (cx + 6, cy + 32), (cx + 56, cy + 22)],
-                  fill=back, outline=edge, width=4)
-        # counter-shading: pale underside
-        d.polygon([(cx + 80, cy + 4), (cx + 50, cy + 20), (cx + 4, cy + 30),
-                   (cx - 44, cy + 22), (cx - 70, cy + 7), (cx - 40, cy + 12),
-                   (cx + 6, cy + 18), (cx + 52, cy + 12)],
-                  fill=belly)
-        # dorsal fin: the part that does the work
-        d.polygon([(cx - 4, cy - 32), (cx + 14, cy - 82), (cx + 32, cy - 24)],
-                  fill=back, outline=edge, width=4)
-        # mouth and eye
-        d.line([(cx + 84, cy + 8), (cx + 48, cy + 16)], fill=edge, width=4)
-        d.ellipse([cx + 44, cy - 16, cx + 58, cy - 2], fill=(248, 248, 244, 255),
-                  outline=edge, width=3)
-        d.ellipse([cx + 48, cy - 13, cx + 55, cy - 6], fill=(22, 22, 26, 255))
+        def A(pts, amp=18.0):
+            """Bend toward the tail by the beat, then place on the canvas.
+            The whole animal flexes; a shark that only waggles one fin looks
+            like a fish on a stick."""
+            res = []
+            for x, y in pts:
+                u = max(0.0, min(1.0, (-x - 20) / 160.0))
+                res.append((cx + x, cy + y + beat * amp * u * u))
+            return res
+
+        body = [(222, 8), (214, -8), (200, -26), (180, -40), (152, -52),
+                (120, -60), (86, -66), (50, -70), (10, -70), (-30, -64),
+                (-70, -54), (-104, -42), (-132, -30), (-152, -22), (-164, -14),
+                (-166, 4), (-156, 14), (-138, 22), (-110, 32), (-76, 42),
+                (-40, 52), (-2, 58), (36, 62), (74, 62), (110, 54), (144, 42),
+                (174, 30), (198, 20), (214, 14)]
+        # One shape for the tail, so there is no seam down the middle of it.
+        # The upper lobe is much the longer, which is the half of a shark's
+        # outline people can draw from memory.
+        tail = [(-140, -16), (-206, -58), (-262, -112), (-236, -50),
+                (-196, -14), (-224, 20), (-240, 58), (-208, 26), (-166, 6),
+                (-140, 12)]
+        dors1 = [(56, -62), (28, -112), (-6, -176), (-36, -100), (-58, -50)]
+        dors2 = [(-84, -44), (-96, -84), (-118, -52), (-134, -36)]
+        # A wing, not a blade: the trailing edge has to swing well clear of the
+        # line from the leading root to the tip, or the three corners end up
+        # near enough collinear that the whole fin renders as a sliver.
+        pect = [(108, 22), (54, 58), (-20, 108), (-6, 66), (10, 30)]
+        pectf = [(92, 16), (48, 44), (-2, 82), (4, 52), (18, 24)]
+        pelv = [(-40, 52), (-60, 92), (-86, 50)]
+        anal = [(-92, 42), (-112, 74), (-130, 40)]
+
+        # far side first, in the darker tone -- cheap depth, and it stops the
+        # near pectoral from looking like the only limb it has
+        d.polygon(A(pectf), fill=deep, outline=edge, width=5)
+        d.polygon(A(tail, 30), fill=back, outline=edge, width=7)
+        d.polygon(A(dors1), fill=back, outline=edge, width=7)
+        d.polygon(A(dors2), fill=back, outline=edge, width=6)
+        d.polygon(A(pelv), fill=deep, outline=edge, width=6)
+        d.polygon(A(anal), fill=deep, outline=edge, width=6)
+
+        shape = _spline(A(body))
+        d.polygon(shape, fill=back, outline=edge, width=8)
+
+        def paint(dd):
+            # counter-shading in two steps, both cut off by the outline rather
+            # than hand-fitted to a curve that moves with the beat
+            dd.polygon(_spline(A([(214, 10), (150, 20), (60, 32), (-40, 20),
+                                  (-166, -2), (-166, 90), (40, 110), (180, 46)])),
+                       fill=flank)
+            dd.polygon(_spline(A([(206, 20), (140, 34), (50, 48), (-50, 34),
+                                  (-166, 8), (-166, 100), (40, 124), (170, 52)])),
+                       fill=belly)
+            for k in range(5):
+                gx = 104 - k * 17
+                dd.line(_spline(A([(gx + 8, -42), (gx + 1, -18), (gx - 7, 8)]),
+                                closed=False, steps=8),
+                        fill=(92, 114, 140, 215), width=5, joint="curve")
+        _inside(img, shape, paint)
+        d = ImageDraw.Draw(img)
+
+        d.polygon(A(pect), fill=flank, outline=edge, width=6)
+
+        # the mouth sits under an overhanging snout, which is the whole trick
+        d.line(_spline(A([(206, 16), (172, 34), (134, 44), (110, 40), (100, 28)]),
+                       closed=False, steps=10),
+               fill=edge, width=7, joint="curve")
+        d.line(_spline(A([(196, -14), (186, -8), (180, -12)]), closed=False,
+                       steps=6), fill=edge, width=4, joint="curve")
+
+        _friendly_eye(d, *A([(142, -34)])[0], 27, edge, look=0.7)
         out.append(img.resize((small, small), Image.LANCZOS))
     return out, small
-
 
 def prop_dolphin(n=4):
     """The other one, and the better documented of the two: bottlenose dolphins
     work cuttlefish over thoroughly before eating them.
 
-    Deliberately not a shark with a nose on it. Three things separate the
-    silhouettes at this size: a melon -- the rounded forehead over a short thick
-    beak -- a dorsal fin swept back into a sickle rather than a triangle, and a
-    fluke that lies flat instead of standing up.
+    Deliberately not a shark with a nose on it. Four things separate them at a
+    glance: a beak that sticks well clear of a high rounded melon, a dorsal
+    swept back into a sickle, a fluke that lies flat in two lobes instead of
+    standing up, and no gills. It smiles because dolphins do, which saves work.
     """
-    big, small = 256, 80
-    back, belly = (122, 134, 152, 255), (232, 234, 236, 255)
-    edge = (68, 78, 94, 255)
+    big, small = 512, 240
+    back = (146, 162, 190, 255)
+    shade = (118, 136, 166, 255)
+    belly = (245, 245, 243, 255)
+    edge = OUTLINE
     out = []
     for i in range(n):
         img = Image.new("RGBA", (big, big), (0, 0, 0, 0))
         d = ImageDraw.Draw(img)
-        beat = math.sin(i / n * 6.28)
-        cx, cy = 128, 128
+        beat = math.sin(i / n * 6.283)
+        cx, cy = 236, 256
 
-        # fluke: broad and flat, lying across the tail stock
-        ty = cy + 6 + beat * 13
-        d.polygon([(cx - 62, cy + 2), (cx - 96, ty - 12), (cx - 118, ty - 6),
-                   (cx - 96, ty + 4), (cx - 118, ty + 16), (cx - 90, ty + 14),
-                   (cx - 62, cy + 12)],
-                  fill=back, outline=edge, width=3)
-        # flipper, set well forward and swept back
-        d.polygon([(cx + 22, cy + 20), (cx - 14, cy + 54 + beat * 4), (cx + 36, cy + 26)],
-                  fill=back, outline=edge, width=3)
+        # fluke: horizontal, two lobes, riding the beat
+        fy = cy + beat * 26
+        _fin(d, [(cx - 128, cy - 8), (cx - 130, cy + 14),
+                 (cx - 178, fy + 30), (cx - 226, fy + 34), (cx - 190, fy + 6),
+                 (cx - 226, fy - 22), (cx - 178, fy - 18)], back, edge, 6)
+        _fin(d, [(cx + 8, cy + 44), (cx - 66, cy + 100 + beat * 9),
+                 (cx - 22, cy + 60), (cx + 32, cy + 54)], shade, edge, 6)
+        _fin(d, [(cx - 30, cy - 56), (cx - 62, cy - 128), (cx - 2, cy - 118),
+                 (cx + 24, cy - 46)], back, edge, 6)
 
-        # The beak first, so the head is laid over where it joins.
-        d.polygon([(cx + 84, cy + 1), (cx + 122, cy + 10), (cx + 120, cy + 19),
-                   (cx + 82, cy + 17)], fill=back, outline=edge, width=3)
+        # beak first, then the melon over its root: one continuous silhouette
+        d.polygon([(cx + 86, cy - 2), (cx + 188, cy + 18), (cx + 196, cy + 24),
+                   (cx + 198, cy + 34), (cx + 190, cy + 40), (cx + 84, cy + 46)],
+                  fill=back, outline=edge, width=6)
+        body = _swimmer(cx - 14, cy, 246, 102, tailw=0.12, nose=0.36, bulge=0.92)
+        d.polygon(body, fill=back, outline=edge, width=7)
 
-        # Body, with the forehead built into the outline rather than stuck on as a
-        # ball: one continuous silhouette is the whole difference between a dolphin
-        # and a fish wearing a head.
-        d.polygon([(cx + 94, cy + 10), (cx + 90, cy - 6), (cx + 76, cy - 20),
-                   (cx + 52, cy - 30), (cx + 18, cy - 33), (cx - 18, cy - 28),
-                   (cx - 46, cy - 14), (cx - 62, cy - 2),
-                   (cx - 62, cy + 12), (cx - 40, cy + 22), (cx + 4, cy + 34),
-                   (cx + 48, cy + 28), (cx + 80, cy + 20)],
-                  fill=back, outline=edge, width=4)
-        d.polygon([(cx + 84, cy + 18), (cx + 46, cy + 26), (cx + 4, cy + 31),
-                   (cx - 40, cy + 20), (cx - 58, cy + 10), (cx - 34, cy + 13),
-                   (cx + 6, cy + 20), (cx + 50, cy + 18)], fill=belly)
+        def paint(dd, cx=cx, cy=cy):
+            dd.polygon(_swimmer(cx - 20, cy + 50, 250, 72, tailw=0.16, nose=0.36,
+                                bulge=1.0, tilt=1.0, keel=1.0), fill=belly)
+        _inside(img, body, paint)
+        d = ImageDraw.Draw(img)
 
-        # the mouth line, over everything so it reads along the beak
-        d.line([(cx + 119, cy + 15), (cx + 88, cy + 14)], fill=edge, width=3)
+        # the smile runs the length of the beak and lifts where it meets the head
+        d.line([(cx + 192, cy + 30), (cx + 130, cy + 36), (cx + 86, cy + 28),
+                (cx + 70, cy + 12)], fill=edge, width=6, joint="curve")
 
-        # dorsal fin: swept back into a sickle
-        d.polygon([(cx - 2, cy - 28), (cx + 2, cy - 58), (cx - 8, cy - 76),
-                   (cx + 12, cy - 62), (cx + 30, cy - 22)],
-                  fill=back, outline=edge, width=4)
-
-        d.ellipse([cx + 66, cy - 6, cx + 78, cy + 6], fill=(250, 250, 246, 255),
-                  outline=edge, width=3)
-        d.ellipse([cx + 69, cy - 3, cx + 76, cy + 4], fill=(22, 22, 26, 255))
+        _friendly_eye(d, cx + 56, cy - 20, 29, edge, look=0.6)
+        d.ellipse([cx - 26, cy - 74, cx - 10, cy - 62], fill=shade)
         out.append(img.resize((small, small), Image.LANCZOS))
     return out, small
-
 
 def prop_fish(n=4):
     """A little silvery fish to hunt: swims facing right, tail flicking."""
@@ -993,42 +1144,50 @@ def prop_bone(n=4):
     return out, small
 
 
-def prop_bigbubble(n=8):
-    """One big bubble swelling until it bursts — the last frames are the pop."""
+def prop_bigbubble(n=14):
+    """One big bubble swelling until it bursts.
+
+    The first version was eight frames at three a second: five visible steps to
+    inflate, then a pop that took a full second. A pop that takes a second is
+    not a pop. Ten frames of swelling at twelve a second reads as one smooth
+    stretch lasting under a second, and the burst is over in a third of one --
+    which is roughly how long a real one lasts, and short enough that the
+    fright it gives the neighbours lands at the same moment as the bang.
+    """
     big, small = 128, 64
+    inflate = n - 4
     out = []
     for i in range(n):
         img = Image.new("RGBA", (big, big), (0, 0, 0, 0))
         d = ImageDraw.Draw(img)
         c = big / 2
-        if i < n - 3:
-            # Inflating, with a wobble that grows as the skin stretches.
-            t = i / (n - 4)
-            r = 14 + t * 44
-            wob = math.sin(i * 2.1) * (2 + t * 5)
+        if i < inflate:
+            # Fast at first, then straining: the skin fights back as it stretches.
+            t = i / (inflate - 1)
+            r = 12 + 46 * t ** 0.68
+            wob = math.sin(i * 1.45) * (1.5 + t * 6)
             d.ellipse([c - r - wob, c - r + wob, c + r + wob, c + r - wob],
                       outline=(232, 246, 252, 235), width=5,
-                      fill=(206, 232, 246, int(45 + t * 35)))
+                      fill=(206, 232, 246, int(42 + t * 40)))
             d.ellipse([c - r * 0.55, c - r * 0.62, c - r * 0.16, c - r * 0.22],
                       fill=(255, 255, 255, 210))
         else:
-            # Burst: a shock ring plus fragments flying out, kept inside the frame
-            # so the pop actually reads.
-            k = (i - (n - 3)) / 2
+            # Burst: a shock ring plus fragments flying out, kept inside the
+            # frame so the pop actually reads instead of leaving the canvas.
+            k = (i - inflate) / 3
             ring = 30 + k * 30
-            alpha = int(235 * (1 - k * 0.65))
+            alpha = int(235 * (1 - k * 0.8))
             d.ellipse([c - ring, c - ring, c + ring, c + ring],
-                      outline=(245, 252, 255, alpha), width=int(7 - k * 4))
+                      outline=(245, 252, 255, alpha), width=max(1, int(7 - k * 5)))
             for a in range(12):
                 ang = a / 12 * 2 * math.pi + k
-                fs = 34 + k * 24
-                fr = 9 - k * 4
+                fs = 34 + k * 26
+                fr = max(1, 9 - k * 6)
                 fx, fy = c + math.cos(ang) * fs, c + math.sin(ang) * fs
                 d.ellipse([fx - fr, fy - fr, fx + fr, fy + fr],
                           fill=(228, 245, 253, alpha))
         out.append(img.resize((small, small), Image.LANCZOS))
     return out, small
-
 
 def prop_label(n=1):
     """A blurred two-line filename to sit under a cuttlefish posing as a shortcut."""
@@ -1142,8 +1301,8 @@ PROP_SCALE = {
     "blot": 1.6,
     "shrimp": 1.4,
     "fish": 1.0,
-    "shark": 1.45,
-    "dolphin": 1.45,
+    "shark": 1.0,
+    "dolphin": 1.0,
     "bubble": 1.0,
     "eye": 1.0,
 }
@@ -1181,7 +1340,7 @@ def main():
         ("egg", prop_egg(), 3, True),
         ("blot", prop_blot(), 2, True),
         ("label", prop_label(), 1, True),
-        ("bigbubble", prop_bigbubble(), 3, False),
+        ("bigbubble", prop_bigbubble(), 12, False),
         ("bone", prop_bone(), 2, True),
     ):
         sheets.append((name, save_strip(name, frames, size)))

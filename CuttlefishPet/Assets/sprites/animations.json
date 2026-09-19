@@ -576,29 +576,29 @@
   },
   "shark": {
     "file": "shark.png",
-    "frameW": 80,
-    "frameH": 80,
+    "frameW": 240,
+    "frameH": 240,
     "frames": 4,
     "fps": 7,
     "loop": true,
     "anchor": [
-      40.0,
-      40.0
+      120.0,
+      120.0
     ],
-    "scale": 1.45
+    "scale": 1.0
   },
   "dolphin": {
     "file": "dolphin.png",
-    "frameW": 80,
-    "frameH": 80,
+    "frameW": 240,
+    "frameH": 240,
     "frames": 4,
     "fps": 7,
     "loop": true,
     "anchor": [
-      40.0,
-      40.0
+      120.0,
+      120.0
     ],
-    "scale": 1.45
+    "scale": 1.0
   },
   "bubble": {
     "file": "bubble.png",
@@ -656,8 +656,8 @@
     "file": "bigbubble.png",
     "frameW": 64,
     "frameH": 64,
-    "frames": 8,
-    "fps": 3,
+    "frames": 14,
+    "fps": 12,
     "loop": false,
     "anchor": [
       32.0,
