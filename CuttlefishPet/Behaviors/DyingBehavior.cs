@@ -9,6 +9,88 @@ namespace CuttlefishPet.Behaviors;
 /// sinks slowly out of the tank. Cuttlefish live about a year and die soon after
 /// breeding, so a crowded screen thins itself out without anyone intervening.
 /// </summary>
+/// <summary>
+/// Swallowed whole.
+///
+/// The hunter used to kill at arm's length: the pet simply started dying where
+/// it floated while the hunter carried on past, which reads as being struck by
+/// lightning rather than eaten. Here it is dragged to the back of the jaw,
+/// shrinking and turning as it goes, and gone in under half a second. The
+/// mouth is re-read every tick, so if the hunter is already turning away the
+/// pet is carried off with it.
+///
+/// The cuttlebone is spat back out. That is not a flourish: it is why
+/// cuttlebones wash up on beaches at all -- the shell is no use to a predator,
+/// and dolphins in particular are known to work the mantle off and leave it.
+/// </summary>
+public sealed class EatenBehavior : BehaviorBase
+{
+    public override string Name => "eaten";
+    public override bool Interruptible => false;
+    public override bool OverridesPhysics => true;
+
+    /// <summary>
+    /// Long enough to follow. At four tenths it was over between two frames of
+    /// a screen recording -- you saw a cuttlefish, then you saw a cuttlebone.
+    /// </summary>
+    private const double Duration = 0.55;
+    private double _t;
+    private Point _from;
+    private Point _mouth;
+    private double _scale0;
+
+    public override void Enter(BehaviorContext c)
+    {
+        var pet = c.Pet;
+        pet.Dying = true;
+        pet.Surface = null;
+        pet.Anim.Play("startle", restart: true);
+        pet.ShiftTo(Palettes.IndexOf("pearl"), 0.3);
+        _from = pet.Pos;
+        _mouth = c.World.Hunter?.Mouth ?? pet.Pos;
+        _scale0 = pet.Scale;
+        c.Renderer.SpawnInk(pet.Pos);
+        c.Sound.Play("squirt", 0.5);
+    }
+
+    public override void Tick(BehaviorContext c, double dt)
+    {
+        var pet = c.Pet;
+        if (c.World.Hunter is { } h) _mouth = h.Mouth;
+        _t += dt;
+
+        double k = Math.Min(1, _t / Duration);
+        double e = k * k * (3 - 2 * k);          // snatched, not slid
+        pet.Pos = new Point(_from.X + (_mouth.X - _from.X) * e,
+                            _from.Y + (_mouth.Y - _from.Y) * e);
+        pet.Vel = new Vector(0, 0);
+        pet.Scale = _scale0 * (1 - 0.94 * e);
+        pet.Rotation = e * 55;
+        // Stays solid nearly all the way in: fading early would read as
+        // dissolving in mid-water rather than going down a throat.
+        pet.Fade = Math.Max(0, Math.Min(1, (1 - e) * 4));
+
+        if (k >= 1)
+        {
+            // Out past the lip and clear of the flank, or the shell appears to
+            // surface from somewhere inside the animal that just swallowed it.
+            var drift = c.World.Hunter is { } hh && hh.Vel.Length > 1
+                ? hh.Vel / hh.Vel.Length
+                : new Vector(0, 0);
+            c.AddBone(_mouth + drift * 46 + new Vector(0, -34),
+                      Math.Clamp(pet.GrownScale, 0.4, 1.3));
+            c.RemovePet(pet);
+            Done = true;
+        }
+    }
+
+    public override void Exit(BehaviorContext c)
+    {
+        c.Pet.Rotation = 0;
+        c.Pet.Fade = 1;
+    }
+}
+
 public sealed class DyingBehavior : BehaviorBase
 {
     public override string Name => "dying";

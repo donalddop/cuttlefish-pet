@@ -87,6 +87,7 @@ public partial class App : Application
             case "shrimp": _manager.TossTreat(); break;
             case "hunter": _manager.SummonHunter(); break;
             case "bones": _manager.DropTestBones(); break;
+            case "strike": _manager.SummonHunter(sure: true); break;
             case "mute": if (_muteItem != null) _muteItem.Checked = !_muteItem.Checked; break;
             case "exit": Shutdown(); break;
         }

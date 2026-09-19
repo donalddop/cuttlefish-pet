@@ -44,6 +44,36 @@ public sealed class Predator
     /// </summary>
     public int Tries;
 
+    /// <summary>
+    /// Seconds locked on to the current quarry. A strike cannot resolve before
+    /// this passes a threshold, which is the whole difference between a chase
+    /// and a teleport: the hunter used to go from cruising to top speed the
+    /// instant something caught its eye, so the hunt was over in the time it
+    /// takes to cross fifty pixels and there was nothing to watch.
+    /// </summary>
+    public double Lock;
+
+    /// <summary>Seconds into the bite, or -1 when the mouth is shut.</summary>
+    public double BiteT = -1;
+
+    /// <summary>
+    /// Half a second, jaw wide for barely a tenth of it. Long enough to see,
+    /// short enough to be a snap rather than a yawn.
+    /// </summary>
+    public const double BiteLen = 0.5;
+
+    public bool Biting => BiteT >= 0 && BiteT < BiteLen;
+
+    /// <summary>The sprite it is drawn with right now, jaw open or shut.</summary>
+    public string Anim => Biting ? Kind + "bite" : Kind;
+
+    /// <summary>
+    /// Where prey goes: the back of the open jaw, not the tip of the snout.
+    /// Anything being swallowed heads for this point, so it has to sit inside
+    /// the mouth or a cuttlefish would vanish into thin water just short of it.
+    /// </summary>
+    public Point Mouth => new(Pos.X + (FacingRight ? 74 : -74), Pos.Y + 12);
+
     public bool Expired => Age > 75;
 
     /// <summary>Cruising speed, and the speed of a committed run at something.</summary>

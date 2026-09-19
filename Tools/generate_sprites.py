@@ -928,23 +928,48 @@ def _spline(pts, closed=True, steps=14):
     return out
 
 
-def prop_shark(n=4):
-    """A shark that actually reads as a shark, and still could not frighten a
-    six-year-old.
+MOUTH_IN = (168, 104, 110, 255)     # soft mauve, not a red cave
+MOUTH_DEEP = (128, 74, 84, 255)
+TOOTH = (250, 248, 242, 255)
 
-    The first two attempts were a fat oval with a fin on it, which is a fish.
-    What says shark is a specific set of things, and not one of them is teeth:
-    a torpedo tapering to a thin tail wrist, a pointed snout, a tall first
-    dorsal set well forward, a small second one near the tail, wing-like
-    pectorals, five slanted gill slits, a tail whose upper lobe is far the
-    longer, and -- the one that does most of the work -- a mouth slung
-    underneath an overhanging snout. Get those right and the face is free: one
-    big round eye and a closed mouth keep it on the friendly side of the line.
 
-    The outline is a closely spaced polyline run through a spline: spaced any
-    wider, the curve smooths off the snout and the tail wrist and hands back
-    an ellipse. The fins stay plain polygons, because a closed spline pinches
-    a thin triangle into a splinter. Both of those were learned the hard way.
+def _hinge(pivot, deg):
+    """Return a function that swings a point about a pivot -- a jaw opening."""
+    a = math.radians(deg)
+    ca, sa = math.cos(a), math.sin(a)
+
+    def f(p):
+        dx, dy = p[0] - pivot[0], p[1] - pivot[1]
+        return (pivot[0] + dx * ca - dy * sa, pivot[1] + dx * sa + dy * ca)
+    return f
+
+
+def _teeth(d, line, swing, count, size, up):
+    """Small rounded pegs along a jaw line.
+
+    Deliberately stubby. A bite needs teeth to read as a bite, but the moment
+    they become triangles with points on them the whole animal changes species
+    and stops being something you would show a child.
+    """
+    pts = [swing(q) for q in line] if swing else list(line)
+    for k in range(count):
+        t = (k + 0.5) / count
+        i = min(len(pts) - 2, int(t * (len(pts) - 1)))
+        f = t * (len(pts) - 1) - i
+        x = pts[i][0] + (pts[i + 1][0] - pts[i][0]) * f
+        y = pts[i][1] + (pts[i + 1][1] - pts[i][1]) * f
+        h = size * (0.75 + 0.5 * math.sin(math.pi * t))
+        dy = h if up else -h
+        d.polygon([(x - size * 0.6, y), (x, y + dy), (x + size * 0.6, y)],
+                  fill=TOOTH)
+
+
+def _shark_frames(n, gapes=None):
+    """Every shark frame, swimming or biting, comes out of here.
+
+    A bite is the same animal with its lower jaw swung down about the corner of
+    its mouth, so the two sprite strips have to be built from one body -- draw
+    them separately and the hunter visibly changes shape the moment it strikes.
     """
     big, small = 512, 240
     back = (114, 138, 166, 255)
@@ -954,6 +979,7 @@ def prop_shark(n=4):
     edge = OUTLINE
     out = []
     for i in range(n):
+        gape = 0.0 if gapes is None else gapes[i]
         img = Image.new("RGBA", (big, big), (0, 0, 0, 0))
         d = ImageDraw.Draw(img)
         beat = math.sin(i / n * 6.283)
@@ -969,39 +995,45 @@ def prop_shark(n=4):
                 res.append((cx + x, cy + y + beat * amp * u * u))
             return res
 
-        body = [(222, 8), (214, -8), (200, -26), (180, -40), (152, -52),
-                (120, -60), (86, -66), (50, -70), (10, -70), (-30, -64),
-                (-70, -54), (-104, -42), (-132, -30), (-152, -22), (-164, -14),
-                (-166, 4), (-156, 14), (-138, 22), (-110, 32), (-76, 42),
-                (-40, 52), (-2, 58), (36, 62), (74, 62), (110, 54), (144, 42),
-                (174, 30), (198, 20), (214, 14)]
-        # One shape for the tail, so there is no seam down the middle of it.
-        # The upper lobe is much the longer, which is the half of a shark's
-        # outline people can draw from memory.
+        top = [(222, 8), (214, -8), (200, -26), (180, -40), (152, -52),
+               (120, -60), (86, -66), (50, -70), (10, -70), (-30, -64),
+               (-70, -54), (-104, -42), (-132, -30), (-152, -22), (-164, -14),
+               (-166, 4)]
+        bot = [(-156, 14), (-138, 22), (-110, 32), (-76, 42), (-40, 52),
+               (-2, 58), (36, 62), (74, 62)]
+        jaw = [(110, 54), (144, 42), (174, 30), (198, 20), (214, 14)]
+        # the mouth line, corner first: the boundary between the two jaws
+        line = [(100, 28), (110, 40), (134, 44), (172, 34), (206, 16)]
+        pivot = (100, 28)
+
         tail = [(-140, -16), (-206, -58), (-262, -112), (-236, -50),
                 (-196, -14), (-224, 20), (-240, 58), (-208, 26), (-166, 6),
                 (-140, 12)]
         dors1 = [(56, -62), (28, -112), (-6, -176), (-36, -100), (-58, -50)]
         dors2 = [(-84, -44), (-96, -84), (-118, -52), (-134, -36)]
-        # A wing, not a blade: the trailing edge has to swing well clear of the
-        # line from the leading root to the tip, or the three corners end up
-        # near enough collinear that the whole fin renders as a sliver.
         pect = [(108, 22), (54, 58), (-20, 108), (-6, 66), (10, 30)]
         pectf = [(92, 16), (48, 44), (-2, 82), (4, 52), (18, 24)]
-        pelv = [(-40, 52), (-60, 92), (-86, 50)]
-        anal = [(-92, 42), (-112, 74), (-130, 40)]
 
-        # far side first, in the darker tone -- cheap depth, and it stops the
-        # near pectoral from looking like the only limb it has
         d.polygon(A(pectf), fill=deep, outline=edge, width=5)
         d.polygon(A(tail, 30), fill=back, outline=edge, width=7)
         d.polygon(A(dors1), fill=back, outline=edge, width=7)
         d.polygon(A(dors2), fill=back, outline=edge, width=6)
-        d.polygon(A(pelv), fill=deep, outline=edge, width=6)
-        d.polygon(A(anal), fill=deep, outline=edge, width=6)
 
-        shape = _spline(A(body))
-        d.polygon(shape, fill=back, outline=edge, width=8)
+        if gape <= 0.001:
+            shape = _spline(A(top + bot + jaw))
+            d.polygon(shape, fill=back, outline=edge, width=8)
+        else:
+            swing = _hinge(pivot, 46 * gape)
+            chin = [pivot] + line[1:] + jaw[::-1]
+            lens = line + [swing(q) for q in reversed(line)]
+            d.polygon(A(lens), fill=MOUTH_IN)
+            d.polygon(A([swing(q) for q in chin]), fill=belly, outline=edge,
+                      width=7)
+            _teeth(ImageDraw.Draw(img), A([swing(q) for q in line]), None, 4,
+                   9, up=False)
+            shape = _spline(A(top + bot + line))
+            d.polygon(shape, fill=back, outline=edge, width=8)
+            _teeth(ImageDraw.Draw(img), A(line), None, 5, 10, up=True)
 
         def paint(dd):
             # counter-shading in two steps, both cut off by the outline rather
@@ -1022,10 +1054,12 @@ def prop_shark(n=4):
 
         d.polygon(A(pect), fill=flank, outline=edge, width=6)
 
-        # the mouth sits under an overhanging snout, which is the whole trick
-        d.line(_spline(A([(206, 16), (172, 34), (134, 44), (110, 40), (100, 28)]),
-                       closed=False, steps=10),
-               fill=edge, width=7, joint="curve")
+        if gape <= 0.001:
+            # closed: the mouth is a line under an overhanging snout, which is
+            # the whole trick of making a fish read as a shark
+            d.line(_spline(A([(206, 16), (172, 34), (134, 44), (110, 40),
+                              (100, 28)]), closed=False, steps=10),
+                   fill=edge, width=7, joint="curve")
         d.line(_spline(A([(196, -14), (186, -8), (180, -12)]), closed=False,
                        steps=6), fill=edge, width=4, joint="curve")
 
@@ -1033,20 +1067,39 @@ def prop_shark(n=4):
         out.append(img.resize((small, small), Image.LANCZOS))
     return out, small
 
-def prop_dolphin(n=4):
-    """The other one, and the better documented of the two: bottlenose dolphins
-    work cuttlefish over thoroughly before eating them.
 
-    Built the same way as the shark and deliberately nothing like it. Where the
-    shark has a pointed snout this has a long beak with a melon stepping up
-    behind it -- drawn as one outline, because a forehead added as a separate
-    circle reads as a ball bolted to a fish, which is how the first three
-    attempts went. Where the shark has a straight triangular dorsal this has a
-    swept sickle; where the shark's tail stands up with a long upper lobe, this
-    one lies flat in two level lobes; and there are no gills, because it
-    breathes through the hole on top of its head. It smiles because bottlenose
-    dolphins do, which saves having to draw one.
+def prop_shark(n=4):
+    """A shark that actually reads as a shark, and still could not frighten a
+    six-year-old.
+
+    The first two attempts were a fat oval with a fin on it, which is a fish.
+    What says shark is a specific set of things, and not one of them is teeth:
+    a torpedo tapering to a thin tail wrist, a pointed snout, a tall first
+    dorsal set well forward, a small second one near the tail, wing-like
+    pectorals, five slanted gill slits, a tail whose upper lobe is far the
+    longer, and -- the one that does most of the work -- a mouth slung
+    underneath an overhanging snout. Get those right and the face is free: one
+    big round eye and a closed mouth keep it on the friendly side of the line.
+
+    The outline is a closely spaced polyline run through a spline: spaced any
+    wider, the curve smooths off the snout and the tail wrist and hands back
+    an ellipse. The fins stay plain polygons, because a closed spline pinches
+    a thin triangle into a splinter. Both were learned the hard way.
     """
+    return _shark_frames(n)
+
+
+def prop_sharkbite(n=8):
+    """The strike: open, hold, snap. Eight frames at sixteen a second, so the
+    whole thing is half a second -- the jaw is wide for barely a tenth of it,
+    which is what makes it read as a snap rather than a yawn. The last frame
+    is the closed mouth exactly as it swims, so it lands back on the swimming
+    sprite without a jump."""
+    return _shark_frames(n, [0.12, 0.55, 0.90, 1.0, 0.92, 0.48, 0.15, 0.0])
+
+def _dolphin_frames(n, gapes=None):
+    """Every dolphin frame, swimming or biting. Same split as the shark: one
+    body, with the lower beak swung about the corner of the mouth."""
     big, small = 512, 240
     back = (132, 146, 172, 255)
     deep = (106, 120, 146, 255)
@@ -1055,6 +1108,7 @@ def prop_dolphin(n=4):
     edge = OUTLINE
     out = []
     for i in range(n):
+        gape = 0.0 if gapes is None else gapes[i]
         img = Image.new("RGBA", (big, big), (0, 0, 0, 0))
         d = ImageDraw.Draw(img)
         beat = math.sin(i / n * 6.283)
@@ -1067,19 +1121,21 @@ def prop_dolphin(n=4):
                 res.append((cx + x, cy + y + beat * amp * u * u))
             return res
 
-        body = [(258, 15), (244, 8), (226, 3), (208, 0), (194, -2),
-                (186, -18), (176, -34), (162, -48), (142, -59), (114, -67),
-                (82, -72), (44, -74), (2, -72), (-40, -65), (-80, -55),
-                (-116, -41), (-142, -27), (-158, -15), (-164, 0), (-160, 12),
-                (-146, 22), (-122, 32), (-90, 44), (-52, 55), (-12, 61),
-                (28, 62), (68, 58), (104, 50), (134, 41), (158, 35),
-                (176, 32), (192, 31), (210, 27), (230, 24), (246, 20)]
+        top = [(258, 15), (244, 8), (226, 3), (208, 0), (194, -2), (186, -18),
+               (176, -34), (162, -48), (142, -59), (114, -67), (82, -72),
+               (44, -74), (2, -72), (-40, -65), (-80, -55), (-116, -41),
+               (-142, -27), (-158, -15), (-164, 0)]
+        bot = [(-160, 12), (-146, 22), (-122, 32), (-90, 44), (-52, 55),
+               (-12, 61), (28, 62), (68, 58), (104, 50), (134, 41)]
+        jaw = [(158, 35), (176, 32), (192, 31), (210, 27), (230, 24), (246, 20)]
+        # through the middle of the beak, not along its underside: a lower jaw
+        # with no thickness has nothing to open with
+        line = [(146, 26), (172, 22), (200, 17), (228, 15), (252, 16)]
+        pivot = (146, 26)
+
         fluke = [(-148, -10), (-200, -26), (-240, -42), (-206, -10), (-186, 4),
                  (-208, 16), (-240, 44), (-200, 28), (-148, 12)]
         dors = [(34, -70), (-2, -106), (-40, -148), (-32, -96), (-64, -56)]
-        # short and broad rather than long and narrow: a flipper whose three
-        # corners fall near a straight line renders as a splinter once the
-        # outline has eaten a few pixels off each side
         pect = [(106, 28), (66, 64), (24, 104), (34, 70), (44, 34)]
         pectf = [(90, 20), (58, 48), (26, 80), (32, 56), (38, 26)]
 
@@ -1087,8 +1143,21 @@ def prop_dolphin(n=4):
         d.polygon(A(fluke, 30), fill=back, outline=edge, width=7)
         d.polygon(A(dors), fill=back, outline=edge, width=7)
 
-        shape = _spline(A(body))
-        d.polygon(shape, fill=back, outline=edge, width=8)
+        if gape <= 0.001:
+            shape = _spline(A(top + bot + jaw))
+            d.polygon(shape, fill=back, outline=edge, width=8)
+        else:
+            swing = _hinge(pivot, 30 * gape)
+            chin = [pivot] + line[1:] + jaw[::-1]
+            lens = line + [swing(q) for q in reversed(line)]
+            d.polygon(A(lens), fill=MOUTH_IN)
+            d.polygon(A([swing(q) for q in chin]), fill=belly, outline=edge,
+                      width=6)
+            _teeth(ImageDraw.Draw(img), A([swing(q) for q in line]), None, 7,
+                   7, up=False)
+            shape = _spline(A(top + bot + line))
+            d.polygon(shape, fill=back, outline=edge, width=8)
+            _teeth(ImageDraw.Draw(img), A(line), None, 7, 7, up=True)
 
         def paint(dd):
             dd.polygon(_spline(A([(250, 14), (150, 30), (60, 38), (-40, 24),
@@ -1106,17 +1175,39 @@ def prop_dolphin(n=4):
 
         d.polygon(A(pect), fill=flank, outline=edge, width=6)
 
-        # the smile runs the length of the beak and lifts where it meets the head
-        d.line(_spline(A([(250, 19), (216, 26), (186, 30), (166, 26), (156, 16)]),
-                       closed=False, steps=10),
-               fill=edge, width=7, joint="curve")
-        # blowhole, on top where it belongs
+        if gape <= 0.001:
+            d.line(_spline(A([(250, 19), (216, 26), (186, 30), (166, 26),
+                              (156, 16)]), closed=False, steps=10),
+                   fill=edge, width=7, joint="curve")
         d.ellipse([A([(56, -76)])[0][0] - 9, A([(56, -76)])[0][1] - 6,
                    A([(56, -76)])[0][0] + 9, A([(56, -76)])[0][1] + 6], fill=deep)
 
         _friendly_eye(d, *A([(160, -26)])[0], 26, edge, look=0.7)
         out.append(img.resize((small, small), Image.LANCZOS))
     return out, small
+
+
+def prop_dolphin(n=4):
+    """The other one, and the better documented of the two: bottlenose dolphins
+    work cuttlefish over thoroughly before eating them.
+
+    Built the same way as the shark and deliberately nothing like it. Where the
+    shark has a pointed snout this has a long beak with a melon stepping up
+    behind it -- drawn as one outline, because a forehead added as a separate
+    circle reads as a ball bolted to a fish, which is how the first three
+    attempts went. Where the shark has a straight triangular dorsal this has a
+    swept sickle; where the shark's tail stands up with a long upper lobe, this
+    one lies flat in two level lobes; and there are no gills, because it
+    breathes through the hole on top of its head. It smiles because bottlenose
+    dolphins do, which saves having to draw one.
+    """
+    return _dolphin_frames(n)
+
+
+def prop_dolphinbite(n=8):
+    """The strike. Shallower gape than the shark and a row of little pegs
+    rather than four blunt ones, which is what a dolphin actually has."""
+    return _dolphin_frames(n, [0.14, 0.58, 0.92, 1.0, 0.90, 0.46, 0.14, 0.0])
 
 def prop_fish(n=4):
     """A little silvery fish to hunt: swims facing right, tail flicking."""
@@ -1335,6 +1426,8 @@ PROP_SCALE = {
     "fish": 1.0,
     "shark": 1.0,
     "dolphin": 1.0,
+    "sharkbite": 1.0,
+    "dolphinbite": 1.0,
     "bubble": 1.0,
     "eye": 1.0,
 }
@@ -1373,6 +1466,8 @@ def main():
         ("blot", prop_blot(), 2, True),
         ("label", prop_label(), 1, True),
         ("bigbubble", prop_bigbubble(), 12, False),
+    ("sharkbite", prop_sharkbite(), 16, False),
+    ("dolphinbite", prop_dolphinbite(), 16, False),
         ("bone", prop_bone(), 2, True),
     ):
         sheets.append((name, save_strip(name, frames, size)))

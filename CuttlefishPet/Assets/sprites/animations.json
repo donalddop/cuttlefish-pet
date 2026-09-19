@@ -665,6 +665,32 @@
     ],
     "scale": 2.2
   },
+  "sharkbite": {
+    "file": "sharkbite.png",
+    "frameW": 240,
+    "frameH": 240,
+    "frames": 8,
+    "fps": 16,
+    "loop": false,
+    "anchor": [
+      120.0,
+      120.0
+    ],
+    "scale": 1.0
+  },
+  "dolphinbite": {
+    "file": "dolphinbite.png",
+    "frameW": 240,
+    "frameH": 240,
+    "frames": 8,
+    "fps": 16,
+    "loop": false,
+    "anchor": [
+      120.0,
+      120.0
+    ],
+    "scale": 1.0
+  },
   "bone": {
     "file": "bone.png",
     "frameW": 48,

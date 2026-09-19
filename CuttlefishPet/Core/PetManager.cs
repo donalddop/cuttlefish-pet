@@ -1275,10 +1275,28 @@ public sealed class PetManager
         Log($"drie testschelpen neergelegd op y={y:F0}");
     }
 
-    public void SummonHunter()
+    /// <summary>
+    /// Debug: bring the next visit forward. It also aims -- the summoned one
+    /// arrives at the height of an actual cuttlefish instead of a random band,
+    /// because a hunter that crosses an empty stretch of screen shows you
+    /// nothing, and that is most of them.
+    /// </summary>
+    /// <param name="sure">
+    /// Debug: the next strike cannot miss. A catch is meant to be rare, which
+    /// is right for the tank and hopeless for checking the swallow animation --
+    /// fifteen summoned strikes in a row came away empty, which is exactly the
+    /// odds working as designed and no help at all.
+    /// </param>
+    public void SummonHunter(bool sure = false)
     {
-        if (_world.Hunter == null) _hunterIn = 0;
+        if (_world.Hunter != null) return;
+        _hunterIn = 0;
+        _summonAimed = true;
+        _summonSure = sure;
     }
+
+    private bool _summonAimed;
+    private bool _summonSure;
 
     /// <summary>Seconds to the next visit, and which of the two comes next.</summary>
     private double _hunterIn = 240 + 420 * 0.5;
@@ -1305,11 +1323,15 @@ public sealed class PetManager
             var tank = _world.VirtualScreen;
             bool fromLeft = _rng.NextDouble() < 0.5;
             string kind = _dolphinNext ? "dolphin" : "shark";
+            double entryY = _summonAimed && _pets.Count > 0
+                ? _pets[_rng.Next(_pets.Count)].Pos.Y
+                : tank.Top + 160 + _rng.NextDouble() * (tank.Height - 420);
+            entryY = Math.Clamp(entryY, tank.Top + 120, tank.Bottom - 160);
+            _summonAimed = false;
             hunter = new Predator
             {
                 Kind = kind,
-                Pos = new Point(fromLeft ? tank.Left - 120 : tank.Right + 120,
-                                tank.Top + 160 + _rng.NextDouble() * (tank.Height - 420)),
+                Pos = new Point(fromLeft ? tank.Left - 120 : tank.Right + 120, entryY),
                 Vel = new Vector(fromLeft ? Predator.Cruise : -Predator.Cruise, 0),
                 FacingRight = fromLeft,
                 Visual = _renderer.CreateProp(kind),
@@ -1322,6 +1344,11 @@ public sealed class PetManager
 
         hunter.Age += dt;
         hunter.LookIn -= dt;
+        if (hunter.BiteT >= 0)
+        {
+            hunter.BiteT += dt;
+            if (hunter.BiteT >= Predator.BiteLen) hunter.BiteT = -1;
+        }
 
         // Pick something to go for. Conspicuousness decides, which is the point:
         // a pet flaring at a rival is advertising, and one sitting still wearing
@@ -1339,25 +1366,52 @@ public sealed class PetManager
                 double score = Predator.Conspicuousness(pet) * (1 - d / 900);
                 if (score > bestScore) { bestScore = score; best = pet; }
             }
-            hunter.Target = best;
+            if (!ReferenceEquals(best, hunter.Target))
+            {
+                hunter.Target = best;
+                hunter.Lock = 0;
+                // A chase only reads as a chase if the quarry runs. Everything
+                // nearby is already alarmed; the one actually being aimed at is
+                // told outright, so the two of them move across the screen as a
+                // pair instead of the hunter closing on something oblivious.
+                if (best != null && best.Machine.Current.Interruptible
+                    && best.CamoOpacity <= 0.5
+                    && best.Machine.Current is not (ThreatBehavior or FleeBehavior))
+                    best.Machine.Force(new FleeBehavior());
+            }
         }
 
         var tankRect = _world.VirtualScreen;
         if (hunter.Target is { } quarry && !quarry.Dying && !hunter.Leaving)
         {
+            hunter.Lock += dt;
             var to = quarry.Pos - hunter.Pos;
             double gap = to.Length;
-            var want = gap < 1 ? hunter.Vel : to / gap * Predator.Lunge;
+
+            // A run-up, then the burst. Coming straight in at full speed meant
+            // the strike landed the moment anything was noticed, which is not
+            // a hunt -- it is a result. The first second is a pursuit you can
+            // follow, and only then does it commit.
+            double speed = hunter.Lock < 0.8 ? Predator.Cruise * 1.15 : Predator.Lunge;
+            var want = gap < 1 ? hunter.Vel : to / gap * speed;
             hunter.Vel += (want - hunter.Vel) * Math.Min(1, dt * 1.8);
 
-            if (gap < 58)
+            if (gap < 62 && hunter.Lock > 0.6 && hunter.BiteT < 0)
             {
+                // The jaw opens whatever happens next. A snap at empty water
+                // is worth as much to watch as a hit, and it is most of what
+                // you will ever see one do.
+                hunter.BiteT = 0;
+                _sound.Play("splat", 0.55);
+                Log($"{hunter.Kind} hapt naar #{quarry.Id} {quarry.Name}");
                 // One in ten for something still making itself obvious, one in a
                 // hundred for something that took cover -- and at two lunges a visit
                 // that comes to roughly one visit in five ending badly for somebody,
                 // nearly always somebody who was easy to see. That ratio is the
                 // entire point of the animal.
-                double slip = 0.90 + (1 - Math.Min(1, Predator.Conspicuousness(quarry))) * 0.09;
+                double slip = _summonSure
+                    ? -1
+                    : 0.90 + (1 - Math.Min(1, Predator.Conspicuousness(quarry))) * 0.09;
                 hunter.Tries++;
                 if (_rng.NextDouble() < slip)
                 {
@@ -1367,11 +1421,11 @@ public sealed class PetManager
                 }
                 else
                 {
+                    _summonSure = false;
                     quarry.Fate = "opgegeten";
-                    quarry.Machine.Force(new DyingBehavior());
+                    quarry.Machine.Force(new EatenBehavior());
                     hunter.Leaving = true;
-                    _sound.Play("splat", 0.6);
-                    Log($"{hunter.Kind} pakt #{quarry.Id} {quarry.Name}");
+                    Log($"{hunter.Kind} pakt #{quarry.Id} {quarry.Name} na {hunter.Lock:F1}s jacht");
                 }
             }
         }
@@ -1396,7 +1450,10 @@ public sealed class PetManager
             _world.Hunter = null;
             return;
         }
-        _renderer.UpdateProp(hunter.Visual, hunter.Kind, hunter.Pos, hunter.Age, hunter.FacingRight);
+        // The bite strip runs on its own clock so it plays once through
+        // rather than being sampled at whatever point the visit has reached.
+        _renderer.UpdateProp(hunter.Visual, hunter.Anim, hunter.Pos,
+                             hunter.Biting ? hunter.BiteT : hunter.Age, hunter.FacingRight);
     }
 
     /// <summary>

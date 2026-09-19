@@ -122,8 +122,11 @@ zodat geen van beide behang wordt. Hij kijkt twee keer per seconde rond en kiest
 dier dat het meest opvalt: felle huid, snelheid en formaat maken je zichtbaar,
 camouflage en stilzitten op een richel verbergen je. Dan schiet hij toe.
 
-Meestal komt hij van een koude kermis thuis, en na een vangst is het bezoek voorbij.
-Wie in de buurt is reageert naar eigen aard: de brutale dieren draaien zich breed en
+Eerst een korte jacht -- hij kiest er eentje uit, die vlucht, en pas als hij binnen
+bereik is gaat de bek open. Meestal klapt die op niets dicht. Lukt het wel, dan wordt
+de zeekat de bek in getrokken en verdwijnt hij erin; het schelpje wordt er daarna
+weer uitgespuugd, wat ook de reden is dat cuttlebones op stranden aanspoelen. Na een
+vangst is het bezoek voorbij. Wie in de buurt is reageert naar eigen aard: de brutale dieren draaien zich breed en
 imponeren, de rest inkt of vlucht, en wie al gecamoufleerd zit blijft simpelweg
 doodstil -- wat meteen het meest werkt. Dit is de enige selectiedruk in de tank:
 tot nu toe ging iedereen dood aan ouderdom, en dan valt er aan het kerkhof niets af
