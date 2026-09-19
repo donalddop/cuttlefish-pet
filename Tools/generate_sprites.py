@@ -1037,52 +1037,84 @@ def prop_dolphin(n=4):
     """The other one, and the better documented of the two: bottlenose dolphins
     work cuttlefish over thoroughly before eating them.
 
-    Deliberately not a shark with a nose on it. Four things separate them at a
-    glance: a beak that sticks well clear of a high rounded melon, a dorsal
-    swept back into a sickle, a fluke that lies flat in two lobes instead of
-    standing up, and no gills. It smiles because dolphins do, which saves work.
+    Built the same way as the shark and deliberately nothing like it. Where the
+    shark has a pointed snout this has a long beak with a melon stepping up
+    behind it -- drawn as one outline, because a forehead added as a separate
+    circle reads as a ball bolted to a fish, which is how the first three
+    attempts went. Where the shark has a straight triangular dorsal this has a
+    swept sickle; where the shark's tail stands up with a long upper lobe, this
+    one lies flat in two level lobes; and there are no gills, because it
+    breathes through the hole on top of its head. It smiles because bottlenose
+    dolphins do, which saves having to draw one.
     """
     big, small = 512, 240
-    back = (146, 162, 190, 255)
-    shade = (118, 136, 166, 255)
-    belly = (245, 245, 243, 255)
+    back = (132, 146, 172, 255)
+    deep = (106, 120, 146, 255)
+    flank = (172, 184, 202, 255)
+    belly = (246, 246, 244, 255)
     edge = OUTLINE
     out = []
     for i in range(n):
         img = Image.new("RGBA", (big, big), (0, 0, 0, 0))
         d = ImageDraw.Draw(img)
         beat = math.sin(i / n * 6.283)
-        cx, cy = 236, 256
+        cx, cy = 248, 250
 
-        # fluke: horizontal, two lobes, riding the beat
-        fy = cy + beat * 26
-        _fin(d, [(cx - 128, cy - 8), (cx - 130, cy + 14),
-                 (cx - 178, fy + 30), (cx - 226, fy + 34), (cx - 190, fy + 6),
-                 (cx - 226, fy - 22), (cx - 178, fy - 18)], back, edge, 6)
-        _fin(d, [(cx + 8, cy + 44), (cx - 66, cy + 100 + beat * 9),
-                 (cx - 22, cy + 60), (cx + 32, cy + 54)], shade, edge, 6)
-        _fin(d, [(cx - 30, cy - 56), (cx - 62, cy - 128), (cx - 2, cy - 118),
-                 (cx + 24, cy - 46)], back, edge, 6)
+        def A(pts, amp=18.0):
+            res = []
+            for x, y in pts:
+                u = max(0.0, min(1.0, (-x - 20) / 160.0))
+                res.append((cx + x, cy + y + beat * amp * u * u))
+            return res
 
-        # beak first, then the melon over its root: one continuous silhouette
-        d.polygon([(cx + 86, cy - 2), (cx + 188, cy + 18), (cx + 196, cy + 24),
-                   (cx + 198, cy + 34), (cx + 190, cy + 40), (cx + 84, cy + 46)],
-                  fill=back, outline=edge, width=6)
-        body = _swimmer(cx - 14, cy, 246, 102, tailw=0.12, nose=0.36, bulge=0.92)
-        d.polygon(body, fill=back, outline=edge, width=7)
+        body = [(258, 15), (244, 8), (226, 3), (208, 0), (194, -2),
+                (186, -18), (176, -34), (162, -48), (142, -59), (114, -67),
+                (82, -72), (44, -74), (2, -72), (-40, -65), (-80, -55),
+                (-116, -41), (-142, -27), (-158, -15), (-164, 0), (-160, 12),
+                (-146, 22), (-122, 32), (-90, 44), (-52, 55), (-12, 61),
+                (28, 62), (68, 58), (104, 50), (134, 41), (158, 35),
+                (176, 32), (192, 31), (210, 27), (230, 24), (246, 20)]
+        fluke = [(-148, -10), (-200, -26), (-240, -42), (-206, -10), (-186, 4),
+                 (-208, 16), (-240, 44), (-200, 28), (-148, 12)]
+        dors = [(34, -70), (-2, -106), (-40, -148), (-32, -96), (-64, -56)]
+        # short and broad rather than long and narrow: a flipper whose three
+        # corners fall near a straight line renders as a splinter once the
+        # outline has eaten a few pixels off each side
+        pect = [(106, 28), (66, 64), (24, 104), (34, 70), (44, 34)]
+        pectf = [(90, 20), (58, 48), (26, 80), (32, 56), (38, 26)]
 
-        def paint(dd, cx=cx, cy=cy):
-            dd.polygon(_swimmer(cx - 20, cy + 50, 250, 72, tailw=0.16, nose=0.36,
-                                bulge=1.0, tilt=1.0, keel=1.0), fill=belly)
-        _inside(img, body, paint)
+        d.polygon(A(pectf), fill=deep, outline=edge, width=5)
+        d.polygon(A(fluke, 30), fill=back, outline=edge, width=7)
+        d.polygon(A(dors), fill=back, outline=edge, width=7)
+
+        shape = _spline(A(body))
+        d.polygon(shape, fill=back, outline=edge, width=8)
+
+        def paint(dd):
+            dd.polygon(_spline(A([(250, 14), (150, 30), (60, 38), (-40, 24),
+                                  (-164, 0), (-164, 92), (40, 112), (200, 40)])),
+                       fill=flank)
+            dd.polygon(_spline(A([(238, 22), (140, 40), (50, 52), (-50, 38),
+                                  (-164, 10), (-164, 102), (40, 126), (180, 46)])),
+                       fill=belly)
+            # the dark band from eye to flipper that every bottlenose wears
+            dd.line(_spline(A([(150, -18), (120, 4), (86, 24), (60, 34)]),
+                            closed=False, steps=10),
+                    fill=deep, width=13, joint="curve")
+        _inside(img, shape, paint)
         d = ImageDraw.Draw(img)
 
-        # the smile runs the length of the beak and lifts where it meets the head
-        d.line([(cx + 192, cy + 30), (cx + 130, cy + 36), (cx + 86, cy + 28),
-                (cx + 70, cy + 12)], fill=edge, width=6, joint="curve")
+        d.polygon(A(pect), fill=flank, outline=edge, width=6)
 
-        _friendly_eye(d, cx + 56, cy - 20, 29, edge, look=0.6)
-        d.ellipse([cx - 26, cy - 74, cx - 10, cy - 62], fill=shade)
+        # the smile runs the length of the beak and lifts where it meets the head
+        d.line(_spline(A([(250, 19), (216, 26), (186, 30), (166, 26), (156, 16)]),
+                       closed=False, steps=10),
+               fill=edge, width=7, joint="curve")
+        # blowhole, on top where it belongs
+        d.ellipse([A([(56, -76)])[0][0] - 9, A([(56, -76)])[0][1] - 6,
+                   A([(56, -76)])[0][0] + 9, A([(56, -76)])[0][1] + 6], fill=deep)
+
+        _friendly_eye(d, *A([(160, -26)])[0], 26, edge, look=0.7)
         out.append(img.resize((small, small), Image.LANCZOS))
     return out, small
 

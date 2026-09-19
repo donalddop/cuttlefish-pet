@@ -24,8 +24,8 @@ public sealed class BehaviorContext
     public required SpawnPet SpawnPet { get; init; }
     /// <summary>Leave something behind: ink blots, egg clutches.</summary>
     public required Action<Prop> AddProp { get; init; }
-    /// <summary>Leave a cuttlebone where a life ended.</summary>
-    public required Action<System.Windows.Point> AddBone { get; init; }
+    /// <summary>Leave a cuttlebone where a life ended, sized like its owner.</summary>
+    public required Action<System.Windows.Point, double> AddBone { get; init; }
     /// <summary>Take this pet out of the tank (the ghost swims off for good).</summary>
     public required Action<Pet> RemovePet { get; init; }
 }

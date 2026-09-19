@@ -458,22 +458,27 @@ public sealed class SpriteRenderer
 
     public void RemoveProp(Image img) => _overlay.PetCanvas.Children.Remove(img);
 
+    /// <param name="scale">
+    /// Multiplied onto the animation's own scale. A cuttlebone uses it to come
+    /// out the size of the animal that left it; everything else leaves it at 1.
+    /// </param>
     public void UpdateProp(Image img, string animName, Point physPos, double t,
-        bool facingRight = true)
+        bool facingRight = true, double scale = 1)
     {
         var anim = _library[animName];
         double k = _overlay.DeviceToDiu;
+        double s = anim.Scale * scale;
         int i = (int)(t * anim.Fps);
         i = anim.Loop ? i % anim.Frames.Length : Math.Min(i, anim.Frames.Length - 1);
 
         img.Source = anim.Frames[i];
-        img.Width = anim.FrameW * anim.Scale * k;
-        img.Height = anim.FrameH * anim.Scale * k;
+        img.Width = anim.FrameW * s * k;
+        img.Height = anim.FrameH * s * k;
         img.RenderTransform = facingRight
             ? null
-            : new ScaleTransform(-1, 1, anim.FrameW * anim.Scale * k / 2, 0);
-        var tl = _overlay.PhysToDiu(new Point(physPos.X - anim.Anchor.X * anim.Scale,
-                                              physPos.Y - anim.Anchor.Y * anim.Scale));
+            : new ScaleTransform(-1, 1, anim.FrameW * s * k / 2, 0);
+        var tl = _overlay.PhysToDiu(new Point(physPos.X - anim.Anchor.X * s,
+                                              physPos.Y - anim.Anchor.Y * s));
         Canvas.SetLeft(img, tl.X);
         Canvas.SetTop(img, tl.Y);
     }

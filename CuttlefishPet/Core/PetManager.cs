@@ -543,7 +543,8 @@ public sealed class PetManager
         // Queued, never applied mid-tick: the pet list is being iterated.
         SpawnPet = (p, hatchling, inherit) => _hatching.Add((p, hatchling, inherit)),
         AddProp = prop => { prop.Visual = _renderer.CreateProp(prop.Anim); _props.Add(prop); },
-        AddBone = at => _world.Bones.Add(new Bone { Pos = at, Visual = _renderer.CreateProp("bone") }),
+        AddBone = (at, size) => _world.Bones.Add(
+            new Bone { Pos = at, Size = size, Visual = _renderer.CreateProp("bone") }),
         RemovePet = p => _leaving.Add(p),
     };
 
@@ -1251,6 +1252,29 @@ public sealed class PetManager
 
     /// <summary>Bring the next visit forward to now. For the command line, and for
     /// anyone who would rather not wait a quarter of an hour to see one.</summary>
+    /// <summary>
+    /// Debug: three cuttlebones side by side at the smallest, middling and
+    /// largest size a life can leave behind. There is no other way to see the
+    /// three together -- in the tank they arrive minutes apart.
+    /// </summary>
+    public void DropTestBones()
+    {
+        var tank = _world.VirtualScreen;
+        double y = tank.Top + tank.Height * 0.55;
+        double x = tank.Left + tank.Width * 0.32;
+        foreach (double size in new[] { 0.4, 0.85, 1.3 })
+        {
+            _world.Bones.Add(new Bone
+            {
+                Pos = new Point(x, y),
+                Size = size,
+                Visual = _renderer.CreateProp("bone"),
+            });
+            x += 190;
+        }
+        Log($"drie testschelpen neergelegd op y={y:F0}");
+    }
+
     public void SummonHunter()
     {
         if (_world.Hunter == null) _hunterIn = 0;
@@ -1438,7 +1462,7 @@ public sealed class PetManager
                 _world.Bones.RemoveAt(i);
                 continue;
             }
-            _renderer.UpdateProp(b.Visual, "bone", b.Pos, b.Age);
+            _renderer.UpdateProp(b.Visual, "bone", b.Pos, b.Age, scale: b.Size);
         }
     }
 

@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using CuttlefishPet.Core;
 using CuttlefishPet.Rendering;
 
@@ -52,7 +52,7 @@ public sealed class DyingBehavior : BehaviorBase
         if (!_boneLeft && k > 0.62)
         {
             _boneLeft = true;
-            c.AddBone(pet.Pos + new Vector(0, -12));
+            c.AddBone(pet.Pos + new Vector(0, -12), Math.Clamp(pet.GrownScale, 0.4, 1.3));
             c.Sound.Play("bubble", 0.18);
         }
 
