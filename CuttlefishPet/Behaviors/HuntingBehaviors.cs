@@ -14,13 +14,17 @@ public sealed class StalkPreyBehavior : BehaviorBase
     public override string Name => "stalk";
     public override bool OverridesPhysics => true;
 
-    private enum Phase { Creep, Strike, Feed }
+    private enum Phase { Creep, Hypnotise, Strike, Feed }
     private Phase _phase = Phase.Creep;
     private readonly Prey _prey;
     private readonly TentacleStrike _strike = new();
     private Vector _grab;
     private bool _caught;
+    private bool _triedHypnosis;
     private double _t, _phaseT;
+
+    /// <summary>How long the display is held on the fish before closing in.</summary>
+    private const double Mesmerising = 3.2;
 
     public StalkPreyBehavior(Prey prey) => _prey = prey;
 
@@ -60,6 +64,23 @@ public sealed class StalkPreyBehavior : BehaviorBase
                 pet.Pos += pet.Vel * dt;
                 PhysicsEngine.ClampToTank(pet, c.World);
 
+                // Close enough to work on it. A curious animal will sometimes stop
+                // and put the display on properly instead of just closing the gap --
+                // which is the version worth watching, so it is worth not doing
+                // every single time.
+                if (!_triedHypnosis && to.Length is > 150 and < 290 && !_prey.Panicking)
+                {
+                    _triedHypnosis = true;
+                    if (c.Rng.NextDouble() < 0.25 + pet.Genome.Curiosity * 0.4)
+                    {
+                        _phase = Phase.Hypnotise;
+                        _phaseT = 0;
+                        pet.Anim.Play("hypnose", restart: true);
+                        pet.ShiftTo(Rendering.Palettes.IndexOf("ink"), 6);
+                        break;
+                    }
+                }
+
                 // Striking range, not biting range: the tentacles cover the last stretch.
                 if (to.Length < 150)
                 {
@@ -73,6 +94,26 @@ public sealed class StalkPreyBehavior : BehaviorBase
                 {
                     Next = new SwimFreeBehavior();   // lost it
                     Done = true;
+                }
+                break;
+
+            case Phase.Hypnotise:
+                // Hold station and run the bands over the mantle. The fish stops
+                // bolting while this is on it, so the last stretch becomes a walk
+                // rather than a dash -- which is what the display is actually for.
+                pet.FacingRight = to.X > 0;
+                pet.Vel *= Math.Max(0, 1 - dt * 3);
+                pet.Pos += pet.Vel * dt;
+                PhysicsEngine.ClampToTank(pet, c.World);
+                pet.VisualBob = Math.Sin(_t * 4.5) * 2.2;
+                _prey.Mesmerised = Math.Max(_prey.Mesmerised, 1.0);
+
+                if (_phaseT > Mesmerising)
+                {
+                    _prey.Mesmerised = 2.5;
+                    _phase = Phase.Creep;
+                    _phaseT = 0;
+                    pet.Anim.Play("hunt", restart: true);
                 }
                 break;
 

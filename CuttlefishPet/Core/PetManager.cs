@@ -590,6 +590,7 @@ public sealed class PetManager
         ChimeOnTheHour();
         ApplyArrivalsAndDepartures();
         TickPrey(dt);
+        TickShrimp(dt);
         TickBones(dt);
         TickTreats(dt);
         TickProps(dt);
@@ -762,9 +763,13 @@ public sealed class PetManager
         // has taken a liking to — which is how a pet ends up carrying a whole icon
         // around on its back for a minute.
         pet.CamoHolding = _rng.NextDouble() < 0.3;
-        pet.CamoResampleIn = pet.CamoHolding
+        // Each animal reads the desktop behind it on its own clock. At a dozen that
+        // is a few grabs a minute; at a hundred it would be a steady stream of them,
+        // so the interval stretches with the crowd and the total rate stays put.
+        double crowding = Math.Max(1, _pets.Count / 12.0);
+        pet.CamoResampleIn = (pet.CamoHolding
             ? 45 + _rng.NextDouble() * 45
-            : 14 + _rng.NextDouble() * 12;
+            : 14 + _rng.NextDouble() * 12) * crowding;
         pet.LastSampleAt = pet.Pos;
 
         var b = pet.Bounds;
@@ -1211,7 +1216,10 @@ public sealed class PetManager
     private void TickPrey(double dt)
     {
         _preySpawnIn -= dt;
-        if (_preySpawnIn <= 0 && _world.Prey.Count < 2 && _pets.Count > 0)
+        // A tank of a hundred cannot live off two fish. Everything edible scales
+        // with how full the tank is meant to be, or the slider just makes a famine.
+        int fishRoom = Math.Clamp(1 + _settings.TargetPopulation / 4, 2, 26);
+        if (_preySpawnIn <= 0 && _world.Prey.Count < fishRoom && _pets.Count > 0)
         {
             _preySpawnIn = (35 + _rng.NextDouble() * 65) * 5.0 / _settings.TargetPopulation;
             var t = _world.VirtualScreen;
@@ -1239,6 +1247,27 @@ public sealed class PetManager
             _renderer.UpdateProp(f.Visual, "fish", f.Pos, f.Age, f.FacingRight);
         }
     }
+
+    /// <summary>
+    /// Shrimp turn up by themselves, at a rate the tank's size sets. Before this the
+    /// only ones were the ones you threw in by hand, which was fine for five animals
+    /// and starvation for fifty.
+    /// </summary>
+    private void TickShrimp(double dt)
+    {
+        _shrimpIn -= dt;
+        if (_shrimpIn > 0 || _pets.Count == 0) return;
+
+        int room = Math.Clamp(_settings.TargetPopulation / 6, 1, 14);
+        _shrimpIn = (26 + _rng.NextDouble() * 34) * 6.0 / _settings.TargetPopulation;
+        if (_world.Treats.Count >= room) return;
+
+        var t = _world.VirtualScreen;
+        AddTreat(new Point(t.Left + 120 + _rng.NextDouble() * (t.Width - 240),
+                           t.Top + 90 + _rng.NextDouble() * (t.Height * 0.4)));
+    }
+
+    private double _shrimpIn = 12;
 
     private void TickBones(double dt)
     {

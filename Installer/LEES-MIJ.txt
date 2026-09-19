@@ -55,6 +55,11 @@ LEVEN IN HET AQUARIUM
   Af en toe zwemt er een visje voorbij. Een zeekat besluipt het langzaam, bevriest
   als het schrikt, en slaat dan toe -- soms mis.
 
+  Let op de nieuwsgierige exemplaren: die blijven soms halverwege hangen en laten
+  donkere banden over hun lijf naar voren golven. De vis stopt dan met vluchten en
+  blijft bedwelmd hangen. Echte zeekatten doen dit, en niemand weet precies waarom
+  het werkt.
+
   Met meerdere zeekatten wordt het pas echt leuk: ze imponeren elkaar met
   zebrastrepen, zwemmen in formatie, houden sprintwedstrijden, en gaan elkaar het
   hof maken.
@@ -75,6 +80,11 @@ ZE LEVEN EN GAAN DOOD
 
 
 MENU (klik het icoontje bij je klok)
+  Schuifregelaar      - hoe vol de tank moet zijn, 1 tot 30. Het is een rustpeil
+                        en geen quotum: het bepaalt wat druk is, hoe groot een
+                        tros wordt en hoeveel er te eten valt, dus de groep
+                        schommelt er zelf omheen. Garnalen en visjes komen
+                        vaker langs naarmate je hem hoger zet.
   Add cuttlefish      - nog een zeekat erbij
   Remove one          - eentje weg
   Thin them out       - terug naar eentje

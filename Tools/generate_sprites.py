@@ -48,6 +48,7 @@ FLUSH_DARK = (212, 118, 122, 255)
 PALE = (238, 228, 214, 255)         # zebra display base
 PALE_DARK = (214, 200, 184, 255)
 CLOUD = (108, 68, 48, 165)          # passing-cloud band
+CLOUD_BOLD = (74, 42, 30, 225)      # the same bands at full strength, for hypnosis
 STRIPE = (58, 42, 38, 225)          # zebra stripe
 
 
@@ -133,7 +134,7 @@ def draw_cuttlefish(
     fin_phase=0.0, arm_sway=0.0, arm_splay=0.0, arms_up=False, arms_dangle=False,
     arms_tucked=False, arms_to_mouth=False, squash=0.0, stretch_x=1.0,
     baked_eye=None, tilt=0.0, fin_amp=7.0, puff=False, wide_eye=False,
-    cloud=None, zebra=False, blanch=False, dream=None, eyespots=0.0,
+    cloud=None, cloud_bold=False, zebra=False, blanch=False, dream=None, eyespots=0.0,
     tail=0.0, antennae=0.0, papillae=0.0,
     flush=False, tentacles=0.0,
     grip=0, canopy=False, scuff=False,
@@ -250,10 +251,15 @@ def draw_cuttlefish(
 
     if cloud is not None:  # passing-cloud hunting display
         def paint(ld):
+            # Bold is the hypnotic version: darker, wider bands. A stalking
+            # cuttlefish runs this faintly; one working on a fish at close range
+            # turns it all the way up, which is the whole point of the display.
+            colour = CLOUD_BOLD if cloud_bold else CLOUD
+            half = 24 if cloud_bold else 17
             for ph in cloud:
                 bx = body[0] - 30 + ph * (w + 60)
-                ld.rounded_rectangle([bx - 17, body[1] - 20, bx + 17, body[3] + 20],
-                                     radius=16, fill=CLOUD)
+                ld.rounded_rectangle([bx - half, body[1] - 20, bx + half, body[3] + 20],
+                                     radius=16, fill=colour)
         masked_overlay(img, paint, body)
 
     if zebra:  # rival display: bold stripes
@@ -548,6 +554,20 @@ def a_strike(n=4):
     ext = (0.15, 0.75, 1.0, 0.5)
     return [draw_cuttlefish(fin_phase=i * 1.6, arm_splay=-0.8, stretch_x=1.12, squash=-0.05,
                             fin_amp=6, wide_eye=True, tentacles=ext[i]) for i in range(n)]
+
+
+def a_hypnose(n=8):
+    """The passing cloud at full strength, held on a fish at close range.
+
+    Cuttlefish run dark bands forward along the mantle while closing on prey, and
+    the prey stops bolting. Nobody is certain why it works. This is that display
+    turned all the way up: more bands, wider, darker, and moving faster than the
+    faint version they stalk with -- a thing you are meant to notice happening.
+    """
+    return [draw_cuttlefish(fin_phase=i * 0.8, arm_splay=0.35, arm_sway=i * 0.4,
+                            stretch_x=1.05, squash=0.02, fin_amp=4, wide_eye=True,
+                            cloud=[(i / n + k / 4) % 1.0 for k in range(4)],
+                            cloud_bold=True) for i in range(n)]
 
 
 def a_mimic_fish(n=6):
@@ -965,6 +985,7 @@ ACTIONS = {
     "mimic_shrimp": (a_mimic_shrimp, 7, False),
     "threat":     (a_threat,      6,   False),
     "miss":       (a_miss,        9,   False),
+    "hypnose":    (a_hypnose,    11,   True),
     "court":      (a_court,       4,   True),
 }
 

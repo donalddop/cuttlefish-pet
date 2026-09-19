@@ -501,6 +501,23 @@
       7.5
     ]
   },
+  "hypnose": {
+    "file": "hypnose.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 8,
+    "fps": 11,
+    "loop": true,
+    "anchor": [
+      30,
+      55
+    ],
+    "eye": [
+      39.65,
+      40.35,
+      7.5
+    ]
+  },
   "court": {
     "file": "court.png",
     "frameW": 64,

@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 
 namespace CuttlefishPet.Core;
@@ -21,6 +21,13 @@ public sealed class Prey
     public bool FacingRight = true;
     /// <summary>Set while a pet is committed to this fish, so they don't all converge.</summary>
     public Pet? StalkedBy;
+
+    /// <summary>
+    /// Seconds left under the passing-cloud display. A mesmerised fish stops bolting
+    /// and barely swims. Cuttlefish really do this, and nobody is certain why it
+    /// works on the fish -- which is reason enough to put it on a desktop.
+    /// </summary>
+    public double Mesmerised;
     public Image Visual = null!;
 
     private Point _target;
@@ -36,11 +43,14 @@ public sealed class Prey
         if (Held) return;
         _retarget -= dt;
         _panic = Math.Max(0, _panic - dt);
+        Mesmerised = Math.Max(0, Mesmerised - dt);
 
-        // Bolt from the nearest cuttlefish that has come within striking distance.
+        // Bolt from the nearest cuttlefish that has come within striking distance --
+        // unless it is under the display, which is exactly what the display is for.
         Vector flee = default;
         foreach (var pet in world.Pets)
         {
+            if (Mesmerised > 0) break;
             var away = Pos - pet.Pos;
             double d = away.Length;
             if (d < 200 && d > 1)
@@ -67,6 +77,10 @@ public sealed class Prey
             var to = _target - Pos;
             desired = to.Length < 1 ? default : to / to.Length * 95;
         }
+
+        // Under the display it hangs there and drifts, which is what makes the
+        // strike that follows almost a formality.
+        if (Mesmerised > 0) desired *= 0.12;
 
         Vel += (desired - Vel) * Math.Min(1, 2.4 * dt);
         Pos += Vel * dt;

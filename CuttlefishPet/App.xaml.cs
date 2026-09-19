@@ -111,11 +111,51 @@ public partial class App : Application
     private void SetupTray()
     {
         var menu = new System.Windows.Forms.ContextMenuStrip();
+
+        // How full the tank should be, right here rather than behind a window. The
+        // number is a resting level and not a quota: it sets what counts as crowded,
+        // how big a clutch is and how much there is to eat, so the tank still swings
+        // above and below it by itself.
+        var count = new System.Windows.Forms.ToolStripMenuItem { Enabled = false };
+        var bar = new System.Windows.Forms.TrackBar
+        {
+            Minimum = Core.Settings.MinPopulation,
+            Maximum = Core.Settings.MaxPopulation,
+            TickStyle = System.Windows.Forms.TickStyle.None,
+            AutoSize = false,
+            Width = 210,
+            Height = 30,
+        };
+        bar.Value = Math.Clamp(_manager.TargetPopulation, bar.Minimum, bar.Maximum);
+        count.Text = $"Zeekatten: {bar.Value}";
+        bar.ValueChanged += (_, _) =>
+        {
+            count.Text = $"Zeekatten: {bar.Value}";
+            _manager.TargetPopulation = bar.Value;
+        };
+        // Hosted rather than drawn: a real TrackBar keeps its own mouse capture, so
+        // dragging it does not dismiss the menu the way clicking a menu item would.
+        var slider = new System.Windows.Forms.ToolStripControlHost(bar)
+        {
+            AutoSize = false,
+            Width = 214,
+            Height = 32,
+        };
+        menu.Items.Add(count);
+        menu.Items.Add(slider);
+        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
+        // Whatever the tank does on its own, the slider should read the truth when
+        // the menu is opened again.
+        menu.Opening += (_, _) =>
+        {
+            bar.Value = Math.Clamp(_manager.TargetPopulation, bar.Minimum, bar.Maximum);
+            count.Text = $"Zeekatten: {bar.Value}";
+        };
+
         menu.Items.Add("Add cuttlefish", null, (_, _) => RunCommand("add"));
         menu.Items.Add("Remove one", null, (_, _) => RunCommand("remove"));
         menu.Items.Add("Thin them out", null, (_, _) => RunCommand("cull"));
         menu.Items.Add("Toss a shrimp", null, (_, _) => RunCommand("shrimp"));
-        menu.Items.Add("Population…", null, (_, _) => RunCommand("population"));
         var mute = new System.Windows.Forms.ToolStripMenuItem("Mute sounds") { CheckOnClick = true, Checked = true };
         mute.CheckedChanged += (_, _) => _sound.Muted = mute.Checked;
         _muteItem = mute;

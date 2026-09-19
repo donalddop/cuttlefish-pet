@@ -11,7 +11,13 @@ namespace CuttlefishPet.Core;
 public sealed class Settings
 {
     public const int MinPopulation = 1;
-    public const int MaxPopulation = 14;
+    /// <summary>
+    /// Measured, not guessed: a hundred animals cost most of a CPU core and a
+    /// quarter of a gigabyte, which is not what a thing that lives on your desktop
+    /// all day should be spending. Thirty is busy, still runs cheap, and is well
+    /// past the point where the tank behaves like a crowd rather than a handful.
+    /// </summary>
+    public const int MaxPopulation = 30;
 
     /// <summary>
     /// How full the tank should feel. Everything density-dependent is measured
