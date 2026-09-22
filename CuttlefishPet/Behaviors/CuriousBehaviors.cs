@@ -387,3 +387,51 @@ public sealed class ReachBehavior : BehaviorBase
 
     public override void Exit(BehaviorContext c) => c.Pet.Striking = false;
 }
+
+/// <summary>
+/// Stop, and watch it go by.
+///
+/// Forced on everything in sight while an ammonite crosses. It is the only
+/// thing in the tank that interrupts an animal for no reason at all: no drive
+/// is served, nothing is learned, nobody is any better off afterwards.
+/// </summary>
+public sealed class WatchBehavior : BehaviorBase
+{
+    public override string Name => "watch";
+    public override bool Interruptible => false;
+    public override bool OverridesPhysics => true;
+
+    private double _t;
+
+    public override void Enter(BehaviorContext c)
+    {
+        c.Pet.Surface = null;
+        c.Pet.Anim.Play("idle", restart: true);
+    }
+
+    public override void Tick(BehaviorContext c, double dt)
+    {
+        var pet = c.Pet;
+        _t += dt;
+        pet.Vel *= Math.Exp(-2.2 * dt);
+        pet.Pos += pet.Vel * dt;
+        pet.VisualBob = Math.Sin(_t * 1.5) * 2.5;
+        PhysicsEngine.ClampToTank(pet, c.World);
+
+        if (c.World.Ammonite is { } old)
+        {
+            pet.PupilTarget = old.Pos;
+            if (Math.Abs(old.Pos.X - pet.Pos.X) > 30) pet.FacingRight = old.Pos.X > pet.Pos.X;
+        }
+
+        // A cap as well as the sighting, so a bug that leaves one on screen
+        // cannot freeze the whole tank indefinitely.
+        if (c.World.Ammonite == null || _t > 30)
+        {
+            Next = new SwimFreeBehavior();
+            Done = true;
+        }
+    }
+
+    public override void Exit(BehaviorContext c) => c.Pet.PupilTarget = null;
+}

@@ -609,6 +609,19 @@
     ],
     "scale": 1.7
   },
+  "ammonite": {
+    "file": "ammonite.png",
+    "frameW": 170,
+    "frameH": 170,
+    "frames": 6,
+    "fps": 4,
+    "loop": true,
+    "anchor": [
+      85.0,
+      85.0
+    ],
+    "scale": 1.0
+  },
   "egg": {
     "file": "egg.png",
     "frameW": 24,

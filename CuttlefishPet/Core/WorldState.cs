@@ -12,6 +12,9 @@ public sealed class WorldState
 
     /// <summary>Something passing through that eats cuttlefish, or null. Rarely set.</summary>
     public Predator? Hunter { get; set; }
+
+    /// <summary>Something very old going past, or null. Almost always null.</summary>
+    public Ammonite? Ammonite { get; set; }
     public Rect VirtualScreen { get; set; }
     public Point Cursor { get; set; }
     public Vector CursorVelocity { get; set; }

@@ -132,7 +132,16 @@ Eerst een korte jacht -- hij kiest er eentje uit, die vlucht, en pas als hij bin
 bereik is gaat de bek open. Meestal klapt die op niets dicht. Lukt het wel, dan wordt
 de zeekat de bek in getrokken en verdwijnt hij erin; het schelpje wordt er daarna
 weer uitgespuugd, wat ook de reden is dat cuttlebones op stranden aanspoelen. Na een
-vangst is het bezoek voorbij. Wie in de buurt is reageert naar eigen aard: de brutale dieren draaien zich breed en
+vangst is het bezoek voorbij.
+
+Soms laat een zeekat een dubbelganger achter: inkt gebonden met slijm houdt een
+seconde of twee haar eigen vorm, terwijl zij spierwit wegtrekt en opzij schiet.
+De jager moet kiezen. Ze onthouden of het werkte en geven die overtuiging half
+door aan hun jongen, dus dit is het eerste waar de *groep* beter in kan worden in
+plaats van het dier. Het werkt met opzet niet altijd -- een tank die het allemaal
+doorhad zou onaantastbaar zijn, en dan betekent de jager niets meer.
+
+Wie in de buurt is reageert naar eigen aard: de brutale dieren draaien zich breed en
 imponeren, de rest inkt of vlucht, en wie al gecamoufleerd zit blijft simpelweg
 doodstil -- wat meteen het meest werkt. Dit is de enige selectiedruk in de tank:
 tot nu toe ging iedereen dood aan ouderdom, en dan valt er aan het kerkhof niets af

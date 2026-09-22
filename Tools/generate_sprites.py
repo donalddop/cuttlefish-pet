@@ -1260,6 +1260,98 @@ def prop_label(n=1):
     return [img.filter(ImageFilter.GaussianBlur(1.1)).resize((small, small), Image.LANCZOS)], small
 
 
+def prop_ammonite(n=6):
+    """The cousin that did not make it.
+
+    Ammonites were coiled shelled cephalopods that ran for something like three
+    hundred million years and went out with the dinosaurs, leaving the modern
+    lot -- cuttlefish included -- as the branch that carried on. Once in a very
+    long while one drifts across the screen and every animal in the tank stops
+    what it is doing to watch it go. Nothing happens. That is the whole of it.
+
+    The coil is a logarithmic spiral, because that is what the shell is, laid
+    down as a run of overlapping discs. The outline is then lifted off the
+    finished silhouette rather than drawn per disc -- outlining a hundred and
+    fifty overlapping circles individually leaves a black web where they cross,
+    which is exactly what the first attempt produced.
+    """
+    big, small = 512, 170
+    shell = (228, 207, 172, 255)
+    groove = (196, 170, 134, 255)
+    flesh = (208, 152, 124, 255)
+    edge = OUTLINE
+    turns = 3.0
+    a_max = turns * 2 * math.pi
+    # Whorls double per turn rather than trebling, so each one lies against the
+    # one inside it. Any looser and it reads as a snail.
+    growth = 0.115
+    r_out = 134.0
+    cx, cy = 214, 262
+
+    def spiral(t):
+        ang = t * a_max
+        r = r_out * math.exp(growth * (ang - a_max))
+        return (cx + math.cos(ang) * r, cy - math.sin(ang) * r), r * 0.40, ang
+
+    out = []
+    for f in range(n):
+        img = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+        sway = math.sin(f / n * 6.283)
+
+        coil = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+        cd = ImageDraw.Draw(coil)
+        steps = 260
+        for k in range(steps):
+            (px, py), w, _ = spiral(k / (steps - 1.0))
+            cd.ellipse([px - w, py - w, px + w, py + w], fill=shell)
+
+        alpha = coil.split()[3]
+        rim = ImageChops.subtract(alpha, alpha.filter(ImageFilter.MinFilter(9)))
+        outline = Image.new("RGBA", (big, big), edge[:3] + (255,))
+        outline.putalpha(rim)
+
+        # the groove where each whorl meets the one inside it, and the ribs
+        # struck across the coil the way they run on a fossil
+        gd = ImageDraw.Draw(coil)
+        line = [spiral(k / 120.0)[0] for k in range(121)]
+        gd.line(line, fill=groove, width=5, joint="curve")
+        for k in range(24, 121, 7):
+            t = k / 120.0
+            (px, py), w, ang = spiral(t)
+            nx, ny = math.cos(ang), -math.sin(ang)
+            gd.line([(px - nx * w * 0.9, py - ny * w * 0.9),
+                     (px + nx * w * 0.9, py + ny * w * 0.9)],
+                    fill=groove, width=max(2, int(w * 0.14)))
+
+        img.alpha_composite(coil)
+        img.alpha_composite(outline)
+        d = ImageDraw.Draw(img)
+
+        # the aperture, and what used to live in it: the head fills the opening
+        # rather than perching outside it on a stalk
+        (ax, ay), aw, _ = spiral(1.0)
+        hx, hy = ax + aw * 0.22, ay
+        for k in range(8):
+            u = (k - 3.5) / 3.5
+            root = (hx + aw * 0.45, hy + u * aw * 0.5)
+            mid = (hx + aw * (1.05 + 0.1 * abs(u)) + sway * 4,
+                   hy + u * aw * 0.95 + math.sin(f * 0.9 + k * 1.3) * 4)
+            tip = (hx + aw * (1.5 + 0.35 * abs(u)) + sway * 9,
+                   hy + u * aw * 1.5 + math.sin(f * 0.9 + k * 1.3) * 9)
+            d.line(_spline([root, mid, tip], closed=False, steps=8),
+                   fill=flesh, width=max(3, int(aw * 0.2)), joint="curve")
+        d.ellipse([hx - aw * 0.92, hy - aw * 0.92, hx + aw * 0.92, hy + aw * 0.92],
+                  fill=flesh, outline=edge, width=5)
+        er = aw * 0.3
+        ex, ey = hx + aw * 0.2, hy - aw * 0.3
+        d.ellipse([ex - er, ey - er, ex + er, ey + er], fill=EYE_WHITE,
+                  outline=edge, width=4)
+        d.ellipse([ex + er * 0.14 - er * 0.5, ey - er * 0.5,
+                   ex + er * 0.14 + er * 0.5, ey + er * 0.5], fill=PUPIL)
+        out.append(img.resize((small, small), Image.LANCZOS))
+    return out, small
+
+
 def prop_decoy(n=8):
     """The pseudomorph: a cuttlefish-shaped slug of ink left hanging in the water.
 
@@ -1387,6 +1479,7 @@ PROP_SCALE = {
     "blot": 1.6,
     "shrimp": 1.4,
     "fish": 1.0,
+    "ammonite": 1.0,
     "decoy": 1.7,
     "shark": 1.0,
     "dolphin": 1.0,
@@ -1427,6 +1520,7 @@ def main():
         ("dolphin", prop_dolphin(), 7, True),
         ("bubble", prop_bubble(), 6, False),
         ("decoy", prop_decoy(), 5, False),
+        ("ammonite", prop_ammonite(), 4, True),
         ("egg", prop_egg(), 3, True),
         ("blot", prop_blot(), 2, True),
         ("label", prop_label(), 1, True),

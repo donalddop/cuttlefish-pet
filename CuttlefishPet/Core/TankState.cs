@@ -57,6 +57,12 @@ public sealed class TankState
 
     public string SavedAt { get; set; } = "";
 
+    /// <summary>
+    /// Seconds of running time until the next ammonite. Carried across restarts
+    /// so that closing and reopening the app cannot be used to hurry it along.
+    /// </summary>
+    public double AmmoniteIn { get; set; }
+
     public List<SavedPet> Pets { get; set; } = new();
 
     private static string Path =>

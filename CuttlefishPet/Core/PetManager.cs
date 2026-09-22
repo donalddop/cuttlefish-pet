@@ -143,7 +143,7 @@ public sealed class PetManager
     /// <summary>Write the tank out as it stands.</summary>
     public void SaveTank()
     {
-        var state = new TankState { NextId = _nextId };
+        var state = new TankState { NextId = _nextId, AmmoniteIn = _ammoniteIn };
         foreach (var pet in _pets)
         {
             var d = pet.Drives;
@@ -198,6 +198,7 @@ public sealed class PetManager
         if (state.Pets.Count == 0) return 0;
 
         _nextId = Math.Max(_nextId, state.NextId);
+        if (state.AmmoniteIn > 0) _ammoniteIn = state.AmmoniteIn;
         var wa = System.Windows.Forms.Screen.PrimaryScreen!.WorkingArea;
 
         foreach (var saved in state.Pets)
@@ -595,6 +596,7 @@ public sealed class PetManager
         TickShrimp(dt);
         TickPredator(dt);
         TickBones(dt);
+        TickAmmonite(dt);
         TickTreats(dt);
         TickProps(dt);
         CheckSocial(dt);
@@ -1299,6 +1301,80 @@ public sealed class PetManager
         if (pet == null) return;
         pet.Machine.Force(new PseudomorphBehavior(new Vector(-0.7, -0.7)));
         Log($"testdubbelganger bij #{pet.Id} {pet.Name} op ({pet.Pos.X:F0},{pet.Pos.Y:F0}) schaal={pet.Scale:F2}");
+    }
+
+    /// <summary>Seconds of running time until the next ammonite; -1 until first set.</summary>
+    private double _ammoniteIn = -1;
+
+    /// <summary>
+    /// Once in a very long while something old goes past.
+    ///
+    /// Somewhere between fourteen and thirty-six hours of running time, counted
+    /// only while the app is actually up and carried across restarts in the tank
+    /// file -- so it stays something you happen to catch rather than something
+    /// you can close and reopen your way to. Nothing comes of it. Everything
+    /// stops and watches, and then it is gone.
+    /// </summary>
+    private void TickAmmonite(double dt)
+    {
+        if (_ammoniteIn < 0) _ammoniteIn = AmmoniteGap();
+
+        var passing = _world.Ammonite;
+        if (passing == null)
+        {
+            _ammoniteIn -= dt;
+            if (_ammoniteIn > 0 || _pets.Count == 0) return;
+            _ammoniteIn = AmmoniteGap();
+            SpawnAmmonite();
+            return;
+        }
+
+        passing.Age += dt;
+        var tank = _world.VirtualScreen;
+        passing.Vel = new Vector(passing.FacingRight ? Ammonite.Drift : -Ammonite.Drift,
+                                 Math.Sin(passing.Age * 0.45) * 11);
+        passing.Pos += passing.Vel * dt;
+
+        foreach (var pet in _pets)
+        {
+            if (pet.Dying || !pet.Machine.Current.Interruptible) continue;
+            if ((pet.Pos - passing.Pos).Length > 950) continue;
+            pet.Machine.Force(new WatchBehavior());
+        }
+
+        if (passing.Pos.X < tank.Left - 280 || passing.Pos.X > tank.Right + 280)
+        {
+            _renderer.RemoveProp(passing.Visual);
+            _world.Ammonite = null;
+            Log("de ammoniet is weer weg");
+            return;
+        }
+        _renderer.UpdateProp(passing.Visual, "ammonite", passing.Pos, passing.Age,
+                             passing.FacingRight);
+    }
+
+    private double AmmoniteGap() => (14 + _rng.NextDouble() * 22) * 3600;
+
+    /// <summary>Debug, and realistically the only way anyone sees this on purpose.</summary>
+    public void SummonAmmonite()
+    {
+        if (_world.Ammonite == null) _ammoniteIn = 0;
+    }
+
+    private void SpawnAmmonite()
+    {
+        var tank = _world.VirtualScreen;
+        bool fromLeft = _rng.NextDouble() < 0.5;
+        var arrival = new Ammonite
+        {
+            Pos = new Point(fromLeft ? tank.Left - 220 : tank.Right + 220,
+                            tank.Top + 200 + _rng.NextDouble() * (tank.Height - 500)),
+            FacingRight = fromLeft,
+            Visual = _renderer.CreateProp("ammonite"),
+        };
+        _world.Ammonite = arrival;
+        _sound.Play("bubble", 0.22);
+        Log($"een ammoniet komt langs bij {_pets.Count} zeekatten op ({arrival.Pos.X:F0},{arrival.Pos.Y:F0})");
     }
 
     /// <summary>Debug: the three biggest hold their tentacles out for a few seconds.</summary>
