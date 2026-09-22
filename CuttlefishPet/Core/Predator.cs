@@ -53,6 +53,16 @@ public sealed class Predator
     /// </summary>
     public double Lock;
 
+    /// <summary>
+    /// A pseudomorph it has committed to instead of the animal. While this is set
+    /// it drives at the blot and ignores everything else, which is the entire
+    /// value of the trick to whoever left it behind.
+    /// </summary>
+    public Point? Decoy;
+
+    /// <summary>Whether this quarry has already had its one chance to try.</summary>
+    public bool DecoyRolled;
+
     /// <summary>Seconds into the bite, or -1 when the mouth is shut.</summary>
     public double BiteT = -1;
 

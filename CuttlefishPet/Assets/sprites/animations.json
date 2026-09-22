@@ -596,6 +596,19 @@
     ],
     "scale": 1.0
   },
+  "decoy": {
+    "file": "decoy.png",
+    "frameW": 64,
+    "frameH": 64,
+    "frames": 8,
+    "fps": 5,
+    "loop": false,
+    "anchor": [
+      32.0,
+      32.0
+    ],
+    "scale": 1.7
+  },
   "egg": {
     "file": "egg.png",
     "frameW": 24,

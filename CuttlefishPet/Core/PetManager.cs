@@ -71,6 +71,7 @@ public sealed class PetManager
         _sound = sound;
         _settings = Settings.Load();
         _world.Settings = _settings;
+        Rendering.AnimationPlayer.Report = Log;
     }
 
     /// <summary>How full the tank is meant to be; the slider writes this.</summary>
@@ -1287,6 +1288,19 @@ public sealed class PetManager
     /// fifteen summoned strikes in a row came away empty, which is exactly the
     /// odds working as designed and no help at all.
     /// </param>
+    /// <summary>
+    /// Debug: make the biggest one leave a pseudomorph on the spot. The real
+    /// thing needs a hunter, a chase, a grown animal and a coin flip all lining
+    /// up, which is not something you can stand and wait for.
+    /// </summary>
+    public void DropDecoy()
+    {
+        var pet = _pets.OrderByDescending(p => p.Scale).FirstOrDefault();
+        if (pet == null) return;
+        pet.Machine.Force(new PseudomorphBehavior(new Vector(-0.7, -0.7)));
+        Log($"testdubbelganger bij #{pet.Id} {pet.Name} op ({pet.Pos.X:F0},{pet.Pos.Y:F0}) schaal={pet.Scale:F2}");
+    }
+
     /// <summary>Debug: the three biggest hold their tentacles out for a few seconds.</summary>
     public void ReachOut()
     {
@@ -1362,7 +1376,7 @@ public sealed class PetManager
         // Pick something to go for. Conspicuousness decides, which is the point:
         // a pet flaring at a rival is advertising, and one sitting still wearing
         // the desktop is very nearly invisible.
-        if (!hunter.Leaving && hunter.LookIn <= 0)
+        if (!hunter.Leaving && hunter.Decoy == null && hunter.LookIn <= 0)
         {
             hunter.LookIn = 0.5;
             Pet? best = null;
@@ -1379,6 +1393,7 @@ public sealed class PetManager
             {
                 hunter.Target = best;
                 hunter.Lock = 0;
+                hunter.DecoyRolled = false;
                 // A chase only reads as a chase if the quarry runs. Everything
                 // nearby is already alarmed; the one actually being aimed at is
                 // told outright, so the two of them move across the screen as a
@@ -1391,7 +1406,27 @@ public sealed class PetManager
         }
 
         var tankRect = _world.VirtualScreen;
-        if (hunter.Target is { } quarry && !quarry.Dying && !hunter.Leaving)
+        if (hunter.Decoy is { } blot && !hunter.Leaving)
+        {
+            // Committed to the blot. It gets its bite and finds a mouthful of ink.
+            var toBlot = blot - hunter.Pos;
+            double blotGap = toBlot.Length;
+            var wantBlot = blotGap < 1 ? hunter.Vel : toBlot / blotGap * Predator.Lunge;
+            hunter.Vel += (wantBlot - hunter.Vel) * Math.Min(1, dt * 1.8);
+
+            if (blotGap < 54 && hunter.BiteT < 0)
+            {
+                hunter.BiteT = 0;
+                hunter.Tries++;
+                _sound.Play("splat", 0.55);
+                hunter.Decoy = null;
+                hunter.Target = null;
+                hunter.LookIn = 3.5;
+                if (hunter.Tries >= 2) hunter.Leaving = true;
+                Log($"{hunter.Kind} hapt in de dubbelganger");
+            }
+        }
+        else if (hunter.Target is { } quarry && !quarry.Dying && !hunter.Leaving)
         {
             hunter.Lock += dt;
             var to = quarry.Pos - hunter.Pos;
@@ -1405,7 +1440,16 @@ public sealed class PetManager
             var want = gap < 1 ? hunter.Vel : to / gap * speed;
             hunter.Vel += (want - hunter.Vel) * Math.Min(1, dt * 1.8);
 
-            if (gap < 62 && hunter.Lock > 0.6 && hunter.BiteT < 0)
+            // One chance per quarry: close enough to be worth the ink, far
+            // enough that the swap is not simply watched happening.
+            bool decoyed = false;
+            if (!hunter.DecoyRolled && gap < 155)
+            {
+                hunter.DecoyRolled = true;
+                decoyed = TryPseudomorph(hunter, quarry);
+            }
+
+            if (!decoyed && gap < 62 && hunter.Lock > 0.6 && hunter.BiteT < 0)
             {
                 // The jaw opens whatever happens next. A snap at empty water
                 // is worth as much to watch as a hit, and it is most of what
@@ -1463,6 +1507,56 @@ public sealed class PetManager
         // rather than being sampled at whatever point the visit has reached.
         _renderer.UpdateProp(hunter.Visual, hunter.Anim, hunter.Pos,
                              hunter.Biting ? hunter.BiteT : hunter.Age, hunter.FacingRight);
+    }
+
+    /// <summary>
+    /// The one real counter a cuttlefish has to being hunted: leave a blot of ink
+    /// its own size and shape, blanch, and go sideways.
+    ///
+    /// It deliberately does not always work. A tank that had all learned the trick
+    /// would be untouchable, and then the hunter would stop meaning anything --
+    /// and the hunter is the only thing in here that makes being conspicuous cost
+    /// something. Roughly three times in four, and only once per quarry.
+    /// </summary>
+    private bool TryPseudomorph(Predator hunter, Pet quarry)
+    {
+        // Inking and bolting is not an adult skill, but the very newest hatchlings
+        // do not have it in them yet.
+        if (quarry.GrownScale < 0.38) return false;
+
+        // The catch that nearly buried this: fleeing is not interruptible, and the
+        // hunter tells its quarry to flee the moment it locks on -- so by the time
+        // it is close enough for the trick, the animal is always mid-flight and
+        // could never pull it. Bolting is precisely when you would, so a flight
+        // may be broken off. A threat display or a mouthful of shark may not.
+        var doing = quarry.Machine.Current;
+        if (!doing.Interruptible && doing is not (FleeBehavior or StartleBehavior))
+            return false;
+
+        // A naive animal tries it about half the time; one that has got away with
+        // it before tries it nearly always, and one that has been caught out
+        // trying stops bothering. That is the whole of the learning.
+        if (_rng.NextDouble() >= 0.48 * quarry.Memory.Appeal("decoy")) return false;
+
+        var blot = quarry.Pos;
+        var away = quarry.Pos - hunter.Pos;
+        away = away.Length < 1 ? new Vector(0, -1) : away / away.Length;
+        // Away and across: straight down the hunter's own line is no escape at all.
+        away = new Vector(away.X * 0.5 - away.Y * 0.86, away.Y * 0.5 + away.X * 0.86);
+        quarry.Machine.Force(new PseudomorphBehavior(away));
+
+        if (_rng.NextDouble() < 0.72)
+        {
+            hunter.Decoy = blot;
+            hunter.Target = null;
+            quarry.Memory.Worked("decoy", 0.34);
+            Log($"#{quarry.Id} {quarry.Name} laat een dubbelganger achter en {hunter.Kind} trapt erin");
+            return true;
+        }
+
+        quarry.Memory.Failed("decoy", 0.2);
+        Log($"#{quarry.Id} {quarry.Name} laat een dubbelganger achter, {hunter.Kind} trapt er niet in");
+        return false;
     }
 
     /// <summary>
@@ -1546,7 +1640,7 @@ public sealed class PetManager
                 continue;
             }
             p.Visual.Opacity = p.Opacity;
-            _renderer.UpdateProp(p.Visual, p.Anim, p.Pos, p.Age);
+            _renderer.UpdateProp(p.Visual, p.Anim, p.Pos, p.Age, scale: p.Scale);
         }
     }
 

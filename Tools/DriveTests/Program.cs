@@ -291,6 +291,26 @@ foreach (var (key, w) in Memory.PassedOn(new Dictionary<string, double> {
 Check("a hatchling of experienced stock is born partly sure", born.Conviction > 0.15, $"{born.Conviction:F2}");
 Check("and still less sure than its mother", born.Conviction < sure.Conviction);
 
+// Getting away from a hunter settles no need, so Payoff cannot score it and it
+// is credited by hand instead. A hand-credited number still has to behave.
+var learned = new Memory();
+for (int i = 0; i < 40; i++) learned.Worked("decoy");
+Check("a trick that keeps working approaches certainty without passing it",
+      learned.Worth("decoy") is > 0.9 and <= 1.0, $"{learned.Worth("decoy"):F3}");
+for (int i = 0; i < 40; i++) learned.Failed("decoy");
+Check("and the same in reverse", learned.Worth("decoy") is >= -1.0 and < -0.9,
+      $"{learned.Worth("decoy"):F3}");
+Check("one escape is a start, not a conviction", ((Func<bool>)(() => {
+    var m = new Memory(); m.Worked("decoy", 0.34);
+    return m.Worth("decoy") is > 0.3 and < 0.4; }))());
+
+// And it has to travel, because the point is that a brood starts where its
+// mother left off rather than working the whole thing out again.
+var handed = Memory.PassedOn(new Dictionary<string, double> { ["decoy"] = 0.8 }, rng);
+Check("the trick is handed on, halved",
+      handed.TryGetValue("decoy", out var passed) && passed is > 0.3 and < 0.5,
+      $"{handed.GetValueOrDefault("decoy"):F2}");
+
 Console.WriteLine(failed == 0 ? "\nALL PASS" : $"\n{failed} FAILED");
 return failed;
 

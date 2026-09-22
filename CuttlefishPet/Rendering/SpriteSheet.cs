@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Media.Imaging;
@@ -134,9 +134,28 @@ public sealed class AnimationPlayer
 
     public SpriteAnim Current { get; private set; } = null!;
 
+    /// <summary>
+    /// Set once at startup so a missing animation can say so. A hook rather than
+    /// a reference to the logger, to keep this class clear of the rest of the app.
+    /// </summary>
+    public static Action<string>? Report;
+
+    private static readonly HashSet<string> _missing = new();
+
     public void Play(string name, bool restart = false)
     {
-        var anim = _library[name];
+        if (!_library.TryGetValue(name, out var anim))
+        {
+            // Asking for an animation that does not exist used to bring the whole
+            // app down mid-frame, taking the tank with it as far as the last save.
+            // Behaviour names and animation names are two different sets that look
+            // alike -- "dart" is a behaviour, the animation is "jump" -- so the
+            // mistake is easy to make and invisible until something triggers it.
+            // A desktop toy has no business dying over a typo.
+            if (_missing.Add(name))
+                Report?.Invoke($"animatie '{name}' bestaat niet -- idle gebruikt");
+            if (!_library.TryGetValue("idle", out anim)) return;
+        }
         if (!restart && ReferenceEquals(anim, Current)) return;
         Current = anim;
         _t = 0;

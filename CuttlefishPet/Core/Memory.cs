@@ -99,6 +99,26 @@ public sealed class Memory
     public void Relearn(string behavior, double worth) =>
         _worth[behavior] = Math.Clamp(worth, -1, 1);
 
+    /// <summary>
+    /// Credit something the drives have no opinion about. Getting away from a
+    /// hunter settles no hunger and eases no fatigue, so Payoff has nothing to
+    /// score it with -- and it is still the most worthwhile thing an animal can
+    /// work out in this tank. Moves a share of the distance left to certainty,
+    /// so repeated success approaches conviction without ever quite arriving.
+    /// </summary>
+    public void Worked(string behavior, double much = 0.3)
+    {
+        double was = Worth(behavior);
+        _worth[behavior] = Math.Clamp(was + much * (1 - was), -1, 1);
+    }
+
+    /// <summary>The same, for when it did not work.</summary>
+    public void Failed(string behavior, double much = 0.3)
+    {
+        double was = Worth(behavior);
+        _worth[behavior] = Math.Clamp(was - much * (1 + was), -1, 1);
+    }
+
     /// <summary>How much of a parent's conviction a hatchling starts out with.</summary>
     private const double Dilution = 0.5;
 

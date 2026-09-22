@@ -1260,6 +1260,33 @@ def prop_label(n=1):
     return [img.filter(ImageFilter.GaussianBlur(1.1)).resize((small, small), Image.LANCZOS)], small
 
 
+def prop_decoy(n=8):
+    """The pseudomorph: a cuttlefish-shaped slug of ink left hanging in the water.
+
+    Cephalopod ink is bound with mucus, and a frightened one can put out a blob
+    that holds roughly its own size and shape for a second or two while the
+    animal itself blanches and jets off in another direction. The predator
+    commits to the wrong one.
+
+    So it is drawn from the animal's own silhouette rather than as a cloud --
+    the alpha of a real cuttlefish frame, filled with ink and blurred a little
+    further each frame until it is nothing but a smudge. Any other approach
+    would have meant hand-drawing a shape that had to match a body already
+    drawn elsewhere, and then keeping the two in step forever.
+    """
+    base, _eye = draw_cuttlefish(arm_splay=0.18, squash=0.04, fin_amp=4)
+    mask = base.split()[3]
+    out = []
+    for i in range(n):
+        t = i / (n - 1)
+        m = mask.filter(ImageFilter.GaussianBlur(2.6 + t * 24))
+        m = m.point(lambda v, t=t: int(min(255, v * (1.35 - t * 1.05))))
+        lay = Image.new("RGBA", base.size, INK[:3] + (255,))
+        lay.putalpha(m)
+        out.append(lay.resize((S, S), Image.LANCZOS))
+    return out, S
+
+
 def prop_bubble(n=4):
     big, small = 64, 16
     out = []
@@ -1360,6 +1387,7 @@ PROP_SCALE = {
     "blot": 1.6,
     "shrimp": 1.4,
     "fish": 1.0,
+    "decoy": 1.7,
     "shark": 1.0,
     "dolphin": 1.0,
     "sharkbite": 1.0,
@@ -1398,6 +1426,7 @@ def main():
         ("shark", prop_shark(), 7, True),
         ("dolphin", prop_dolphin(), 7, True),
         ("bubble", prop_bubble(), 6, False),
+        ("decoy", prop_decoy(), 5, False),
         ("egg", prop_egg(), 3, True),
         ("blot", prop_blot(), 2, True),
         ("label", prop_label(), 1, True),

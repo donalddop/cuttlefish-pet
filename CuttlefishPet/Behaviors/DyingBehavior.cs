@@ -152,3 +152,61 @@ public sealed class DyingBehavior : BehaviorBase
         c.Pet.Fade = 1;
     }
 }
+
+/// <summary>
+/// Leave a copy of yourself behind and go.
+///
+/// Cephalopod ink is bound with mucus, and a frightened cuttlefish can put out a
+/// blob that holds roughly its own size and shape for a second or two. It blanches
+/// white in the same instant -- so the two of them stop looking alike -- and jets
+/// off at an angle. Whatever is chasing has to pick one, and often picks wrong.
+///
+/// Nothing in the drives can judge this: getting away settles no hunger and eases
+/// no fatigue. So it is scored by hand, and since what an animal has worked out is
+/// halved and handed to its brood, a tank left running for days gets measurably
+/// harder to hunt.
+/// </summary>
+public sealed class PseudomorphBehavior : BehaviorBase
+{
+    public override string Name => "decoy";
+    public override bool Interruptible => false;
+    public override bool OverridesPhysics => true;
+
+    private readonly Vector _away;
+    private double _t;
+
+    public PseudomorphBehavior(Vector away) => _away = away;
+
+    public override void Enter(BehaviorContext c)
+    {
+        var pet = c.Pet;
+        pet.Surface = null;
+        pet.Anim.Play("jump", restart: true);   // the jet, same as a dart
+        // Blanching is half the trick: the blot stays dark and the animal does not.
+        pet.ShiftTo(Palettes.IndexOf("pearl"), 7);
+        c.AddProp(new Prop
+        {
+            Anim = "decoy",
+            Pos = pet.Pos,
+            Life = 1.9,
+            Scale = pet.Scale,
+        });
+        pet.Vel = _away * 430;
+        c.Sound.Play("squirt", 0.45);
+    }
+
+    public override void Tick(BehaviorContext c, double dt)
+    {
+        var pet = c.Pet;
+        _t += dt;
+        pet.Vel *= Math.Exp(-1.4 * dt);
+        pet.Pos += pet.Vel * dt;
+        if (Math.Abs(pet.Vel.X) > 10) pet.FacingRight = pet.Vel.X > 0;
+        PhysicsEngine.ClampToTank(pet, c.World);
+        if (_t > 1.3)
+        {
+            Next = new FleeBehavior();
+            Done = true;
+        }
+    }
+}
