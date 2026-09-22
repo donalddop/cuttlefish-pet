@@ -18,14 +18,14 @@ public sealed class BehaviorMachine
         ["climb"] = 8, ["climbDown"] = 5, ["slide"] = 5, ["leave"] = 12,
         // rare set pieces — kept low so they stay surprises
         ["burrow"] = 5, ["eggs"] = 16, ["blot"] = 4, ["nibble"] = 6,
-        ["inkBomb"] = 2, ["balloon"] = 3, ["ghost"] = 1, ["shock"] = 2,
+        ["inkBomb"] = 2, ["ghost"] = 1, ["shock"] = 2,
         // meddling with your desktop
         ["push"] = 6, ["tease"] = 5, ["clock"] = 4, ["caret"] = 12,
         ["ride"] = 6, ["jet"] = 7,
         // social and flourishes
         ["pile"] = 10, ["colourShow"] = 6, ["icon"] = 22, ["play"] = 9,
         ["handFeed"] = 30,
-        ["cross"] = 7, ["read"] = 16, ["bone"] = 70, ["bigBubble"] = 9,
+        ["cross"] = 7, ["read"] = 16, ["bone"] = 70,
         ["imitate"] = 24,
     };
 
@@ -219,7 +219,6 @@ public sealed class BehaviorMachine
             if ((_ctx.World.Cursor - pet.Pos).Length < 900)
                 Add("chase", () => new ChaseCursorBehavior());
             if (SettleBehavior.Find(_ctx) is { } settle) Add("settle", () => settle);
-            Add("balloon", () => new BalloonBehavior());
             Add("inkBomb", () => new InkBombBehavior());
             Add("shock", () => new ShockBehavior());
             if (_ctx.World.PetCount > 1) Add("ghost", () => new GhostBehavior());
@@ -234,7 +233,6 @@ public sealed class BehaviorMachine
 
             Add("colourShow", () => new ColourShowBehavior());
             Add("play", () => new BubblePlayBehavior());
-            Add("bigBubble", () => new BigBubbleBehavior());
             Add("cross", () => new EdgeCrossBehavior(_ctx.Rng.NextDouble() < 0.5 ? -1 : 1));
             if (ReadAlongBehavior.Possible(_ctx)) Add("read", () => new ReadAlongBehavior());
             if (ImitateBehavior.Find(_ctx) is { } copy) Add("imitate", () => copy);

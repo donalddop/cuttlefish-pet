@@ -387,23 +387,6 @@
       55
     ]
   },
-  "balloon": {
-    "file": "balloon.png",
-    "frameW": 64,
-    "frameH": 64,
-    "frames": 4,
-    "fps": 2.5,
-    "loop": true,
-    "anchor": [
-      30,
-      55
-    ],
-    "eye": [
-      39.24,
-      40.58,
-      6.5
-    ]
-  },
   "shock": {
     "file": "shock.png",
     "frameW": 64,
@@ -651,19 +634,6 @@
       16.0
     ],
     "scale": 1.9
-  },
-  "bigbubble": {
-    "file": "bigbubble.png",
-    "frameW": 64,
-    "frameH": 64,
-    "frames": 14,
-    "fps": 12,
-    "loop": false,
-    "anchor": [
-      32.0,
-      32.0
-    ],
-    "scale": 2.2
   },
   "sharkbite": {
     "file": "sharkbite.png",

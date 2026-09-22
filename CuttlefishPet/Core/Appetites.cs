@@ -50,9 +50,7 @@ public static class Appetites
         ["imitate"]    = new(Loneliness: 0.4, Boredom: 0.7, Curiosity: 0.8),
         // something to do
         ["play"]      = new(Boredom: 1.0, Curiosity: 0.8),
-        ["bigBubble"] = new(Boredom: 0.8, Curiosity: 0.6),
         ["bone"]      = new(Boredom: 0.5, Curiosity: 0.7),
-        ["balloon"]   = new(Boredom: 0.5, Curiosity: 0.7),
         ["blot"]      = new(Boredom: 0.5),
         ["ghost"]     = new(Boredom: 0.4, Curiosity: 0.4),
         ["swimFree"]  = new(Boredom: 0.8, Restlessness: 0.5),

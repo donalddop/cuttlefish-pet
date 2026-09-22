@@ -202,44 +202,6 @@ public sealed class InkBombBehavior : BehaviorBase
     public override void Exit(BehaviorContext c) => c.Pet.Visual.Root.Visibility = Visibility.Visible;
 }
 
-/// <summary>Drift upward hanging from a big bubble, until it pops.</summary>
-public sealed class BalloonBehavior : BehaviorBase
-{
-    public override string Name => "balloon";
-    public override bool OverridesPhysics => true;
-    private double _t;
-
-    public override void Enter(BehaviorContext c)
-    {
-        c.Pet.Anim.Play("balloon", restart: true);
-        c.Pet.Surface = null;
-        c.Pet.Vel = new Vector(0, 0);
-        c.Sound.Play("bubble", 0.3);
-    }
-
-    public override void Tick(BehaviorContext c, double dt)
-    {
-        var pet = c.Pet;
-        _t += dt;
-        pet.Pos = new Point(pet.Pos.X + Math.Sin(_t * 1.1) * 26 * dt, pet.Pos.Y - 62 * dt);
-        pet.Rotation = Math.Sin(_t * 1.4) * 6;
-        PhysicsEngine.ClampToTank(pet, c.World);
-
-        bool atTop = pet.Pos.Y <= c.World.VirtualScreen.Top + 110;
-        if (atTop || _t > 9)
-        {
-            c.Renderer.SpawnBubble(pet.Pos + new Vector(6, -46));
-            c.Sound.Play("blip", 0.2);
-            pet.Rotation = 0;
-            pet.Vel = new Vector(0, 90);
-            Next = new SwimFreeBehavior();
-            Done = true;
-        }
-    }
-
-    public override void Exit(BehaviorContext c) => c.Pet.Rotation = 0;
-}
-
 /// <summary>
 /// Fade out as a pale spirit and leave the tank — then a fresh one swims in, so the
 /// crew size stays the same. Pure eSheep theatre.

@@ -223,73 +223,6 @@ public sealed class InvestigateBoneBehavior : BehaviorBase
 }
 
 /// <summary>
-/// Work up one enormous bubble and let it burst. Everyone else in earshot jumps out
-/// of their skin; the one that blew it looks rather pleased.
-/// </summary>
-public sealed class BigBubbleBehavior : BehaviorBase
-{
-    public override string Name => "bigBubble";
-    public override bool Interruptible => false;
-    public override bool OverridesPhysics => true;
-
-    private const double PopAt = 0.83;     // matches the burst frames of the prop
-    private double _t;
-    private bool _popped;
-    private Point _where;
-
-    public override void Enter(BehaviorContext c)
-    {
-        var pet = c.Pet;
-        pet.Anim.Play("hunt", restart: true);
-        pet.Surface = null;
-        _where = pet.Pos + new Vector(pet.FacingRight ? 74 : -74, -18);
-        c.AddProp(new Prop { Anim = "bigbubble", Pos = _where, Life = 1.17 });
-        c.Sound.Play("bubble", 0.3);
-    }
-
-    public override void Tick(BehaviorContext c, double dt)
-    {
-        var pet = c.Pet;
-        _t += dt;
-        pet.Vel *= Math.Exp(-3 * dt);
-        pet.Pos += pet.Vel * dt;
-        pet.PupilTarget = _where;
-
-        if (!_popped)
-        {
-            // Straining harder the bigger it gets.
-            pet.VisualBob = Math.Sin(_t * 14) * (1 + _t * 4.2);
-            if (_t < PopAt) return;
-
-            _popped = true;
-            c.Sound.Play("squirt", 0.4);
-            for (int i = 0; i < 5; i++)
-                c.Renderer.SpawnBubble(_where + new Vector(c.Rng.Next(-40, 41), c.Rng.Next(-30, 31)));
-
-            // Everyone close enough to hear it bolts.
-            foreach (var other in c.World.Pets)
-            {
-                if (ReferenceEquals(other, pet)) continue;
-                if (!other.Machine.Current.Interruptible) continue;
-                if ((other.Pos - _where).Length > 520) continue;
-                other.Machine.Force(new StartleBehavior());
-            }
-            pet.Anim.Play("happy", restart: true);
-            return;
-        }
-
-        pet.VisualBob = Math.Sin(_t * 8) * 4;
-        if (_t > PopAt + 1.0)
-        {
-            Next = new SwimFreeBehavior();
-            Done = true;
-        }
-    }
-
-    public override void Exit(BehaviorContext c) => c.Pet.PupilTarget = null;
-}
-
-/// <summary>
 /// Drift toward the colour of whoever you are swimming with. Cuttlefish take cues
 /// from each other, and it makes a group look like a group.
 /// </summary>
@@ -410,4 +343,47 @@ public sealed class BoneRideBehavior : BehaviorBase
         c.Pet.PupilTarget = null;
         c.Pet.Rotation = 0;
     }
+}
+
+/// <summary>
+/// Debug: hold the feeding tentacle out at full stretch so the drawing of it can
+/// actually be looked at.
+///
+/// A real strike is fully extended for about three tenths of a second and happens
+/// when the animal decides, not when you ask. Checking the geometry by screenshot
+/// is therefore pure luck: forty frames over eight seconds, with shrimp in the
+/// tank and the log showing strikes landing, caught none of it.
+/// </summary>
+public sealed class ReachBehavior : BehaviorBase
+{
+    public override string Name => "reach";
+    public override bool Interruptible => false;
+    public override bool OverridesPhysics => true;
+
+    private readonly TentacleStrike _strike = new();
+    private double _t;
+
+    public override void Enter(BehaviorContext c)
+    {
+        c.Pet.Anim.Play("strike", restart: true);
+        c.Pet.Surface = null;
+        c.Pet.Vel = new Vector(0, 0);
+    }
+
+    public override void Tick(BehaviorContext c, double dt)
+    {
+        var pet = c.Pet;
+        _t += dt;
+        var mouth = TentacleStrike.Mouth(pet);
+        var target = mouth + new Vector((pet.FacingRight ? 130 : -130) * pet.Scale,
+                                        -34 * pet.Scale);
+        _strike.Tick(pet, target, dt, holdOn: _t < 5);
+        if (_t > 6)
+        {
+            Next = new SwimFreeBehavior();
+            Done = true;
+        }
+    }
+
+    public override void Exit(BehaviorContext c) => c.Pet.Striking = false;
 }

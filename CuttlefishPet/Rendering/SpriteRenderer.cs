@@ -389,10 +389,14 @@ public sealed class SpriteRenderer
 
 
     /// <summary>
-    /// Draw the feeding tentacles for this frame. Two strands bowing apart and
-    /// converging on a pair of clubs, rebuilt from scratch each tick — the geometry
-    /// is four segments, so this is cheaper than it sounds and it lets the reach
-    /// follow whatever the pet is actually striking at.
+    /// Draw the feeding tentacle for this frame: one taut line from the mouth to
+    /// the club, rebuilt from scratch each tick so the reach follows whatever the
+    /// pet is actually striking at.
+    ///
+    /// A cuttlefish really does fire two of them, and they were drawn that way --
+    /// but at this size two strands bowing apart read as a wishbone rather than a
+    /// strike. One straight line is what the eye expects from something shot out
+    /// at speed, so accuracy loses to legibility here.
     /// </summary>
     private void UpdateTentacles(Pet pet, PetVisual v)
     {
@@ -415,34 +419,27 @@ public sealed class SpriteRenderer
         var a = _overlay.PhysToDiu(mouth);
         var b = _overlay.PhysToDiu(pet.StrikeTip);
         var dir = new Vector(b.X - a.X, b.Y - a.Y);
-        double dlen = Math.Max(1, dir.Length);
-        var normal = new Vector(-dir.Y, dir.X) / dlen;
-
-        // They bow apart over the first stretch and come together at the clubs; the
-        // longer the reach, the straighter they pull.
-        double bow = Math.Min(13, dlen * 0.17) * pet.Scale;
-        double club = 3.6 * pet.Scale * k;
+        double club = 4.3 * pet.Scale * k;
 
         var group = new GeometryGroup();
-        foreach (double side in stackalloc[] { -1.0, 1.0 })
-        {
-            var mid = new Point((a.X + b.X) / 2 + normal.X * bow * side,
-                                (a.Y + b.Y) / 2 + normal.Y * bow * side);
-            var figure = new PathFigure { StartPoint = a, IsClosed = false, IsFilled = false };
-            figure.Segments.Add(new QuadraticBezierSegment(mid, b, true));
-            var strand = new PathGeometry();
-            strand.Figures.Add(figure);
-            group.Children.Add(strand);
+        var figure = new PathFigure { StartPoint = a, IsClosed = false, IsFilled = false };
+        figure.Segments.Add(new LineSegment(b, true));
+        var strand = new PathGeometry();
+        strand.Figures.Add(figure);
+        group.Children.Add(strand);
 
-            var tip = new Point(b.X + normal.X * club * 0.8 * side,
-                                b.Y + normal.Y * club * 0.8 * side);
-            group.Children.Add(new EllipseGeometry(tip, club, club * 0.72));
-        }
+        // The club is the paddle on the end, laid along the line of the strike
+        // rather than square to the screen.
+        group.Children.Add(new EllipseGeometry(b, club * 1.3, club * 0.78)
+        {
+            Transform = new RotateTransform(
+                Math.Atan2(dir.Y, dir.X) * 180 / Math.PI, b.X, b.Y),
+        });
 
         v.Tentacle.Data = group;
         v.TentacleEdge.Data = group;
-        v.Tentacle.StrokeThickness = 2.1 * pet.Scale * k;
-        v.TentacleEdge.StrokeThickness = 3.6 * pet.Scale * k;
+        v.Tentacle.StrokeThickness = 2.6 * pet.Scale * k;
+        v.TentacleEdge.StrokeThickness = 4.3 * pet.Scale * k;
         v.Tentacle.Opacity = 0.92 * pet.Fade;
         v.TentacleEdge.Opacity = 0.55 * pet.Fade;
         v.Tentacle.Visibility = Visibility.Visible;

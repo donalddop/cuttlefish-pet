@@ -1,4 +1,4 @@
-{
+﻿{
   "_comment": [
     "Optional tuning. Anything you put under 'weights' is merged over the built-in",
     "defaults, so list only what you want to change — leave the rest out and it keeps",
@@ -6,7 +6,7 @@
     "",
     "Open water:  swimFree hover dart chase hunt settle",
     "On a perch:  patrol idle sit camouflage peek hang swing climb climbDown slide leave",
-    "Set pieces:  burrow eggs blot nibble inkBomb balloon ghost shock bigBubble",
+    "Set pieces:  burrow eggs blot nibble inkBomb ghost shock",
     "Desktop:     push tease clock caret ride jet",
     "Social:      pile colourShow imitate icon bone play read cross",
     "",

@@ -1287,6 +1287,15 @@ public sealed class PetManager
     /// fifteen summoned strikes in a row came away empty, which is exactly the
     /// odds working as designed and no help at all.
     /// </param>
+    /// <summary>Debug: the three biggest hold their tentacles out for a few seconds.</summary>
+    public void ReachOut()
+    {
+        var chosen = _pets.OrderByDescending(p => p.Scale).Take(3).ToList();
+        foreach (var pet in chosen) pet.Machine.Force(new ReachBehavior());
+        foreach (var pet in chosen)
+            Log($"tentakel uit bij #{pet.Id} op ({pet.Pos.X:F0},{pet.Pos.Y:F0}) schaal={pet.Scale:F2}");
+    }
+
     public void SummonHunter(bool sure = false)
     {
         if (_world.Hunter != null) return;

@@ -138,7 +138,7 @@ def draw_cuttlefish(
     tail=0.0, antennae=0.0, papillae=0.0,
     flush=False, tentacles=0.0,
     grip=0, canopy=False, scuff=False,
-    sink=0.0, balloon=False, shock=False, ghost=False, display_arms=0.0,
+    sink=0.0, shock=False, ghost=False, display_arms=0.0,
 ):
     """One 256x256 frame, facing right. Returns (image, eye).
 
@@ -392,17 +392,6 @@ def draw_cuttlefish(
                 py = BOTTOM - 14 - math.sin(ang) * 26 * sink
                 ld.ellipse([px - r, py - r, px + r, py + r], fill=(214, 196, 172, 205))
         blend(img, paint_grit)
-
-    if balloon:  # a big bubble hauling the pet upward
-        def paint_balloon(ld):
-            bx, by, br = cx + 6, cy - h * 1.35, 46
-            ld.ellipse([bx - br, by - br, bx + br, by + br],
-                       outline=(228, 242, 250, 225), width=5, fill=(206, 230, 246, 70))
-            ld.ellipse([bx - br * 0.5, by - br * 0.58, bx - br * 0.14, by - br * 0.2],
-                       fill=(255, 255, 255, 205))
-            ld.line([(bx - 12, by + br - 6), (cx - 6, cy - h * 0.5)],
-                    fill=(214, 232, 244, 200), width=3)
-        blend(img, paint_balloon)
 
     if shock:  # zigzag bolts crackling off the body
         for sx in (-1, 1):
@@ -708,12 +697,6 @@ def a_ghost(n=4):
     return [draw_cuttlefish(fin_phase=i / n * 6.28, arms_dangle=True, arm_sway=i / n * 3.1,
                             squash=-0.1, fin_amp=9, ghost=True, baked_eye="closed")
             for i in range(n)]
-
-
-def a_balloon(n=4):
-    """Hauled up by a bubble, arms dangling."""
-    return [draw_cuttlefish(fin_phase=i / n * 4.7, arms_dangle=True, arm_sway=i / n * 3.1,
-                            squash=0.05, fin_amp=5, balloon=True) for i in range(n)]
 
 
 def a_shock(n=2):
@@ -1267,51 +1250,6 @@ def prop_bone(n=4):
     return out, small
 
 
-def prop_bigbubble(n=14):
-    """One big bubble swelling until it bursts.
-
-    The first version was eight frames at three a second: five visible steps to
-    inflate, then a pop that took a full second. A pop that takes a second is
-    not a pop. Ten frames of swelling at twelve a second reads as one smooth
-    stretch lasting under a second, and the burst is over in a third of one --
-    which is roughly how long a real one lasts, and short enough that the
-    fright it gives the neighbours lands at the same moment as the bang.
-    """
-    big, small = 128, 64
-    inflate = n - 4
-    out = []
-    for i in range(n):
-        img = Image.new("RGBA", (big, big), (0, 0, 0, 0))
-        d = ImageDraw.Draw(img)
-        c = big / 2
-        if i < inflate:
-            # Fast at first, then straining: the skin fights back as it stretches.
-            t = i / (inflate - 1)
-            r = 12 + 46 * t ** 0.68
-            wob = math.sin(i * 1.45) * (1.5 + t * 6)
-            d.ellipse([c - r - wob, c - r + wob, c + r + wob, c + r - wob],
-                      outline=(232, 246, 252, 235), width=5,
-                      fill=(206, 232, 246, int(42 + t * 40)))
-            d.ellipse([c - r * 0.55, c - r * 0.62, c - r * 0.16, c - r * 0.22],
-                      fill=(255, 255, 255, 210))
-        else:
-            # Burst: a shock ring plus fragments flying out, kept inside the
-            # frame so the pop actually reads instead of leaving the canvas.
-            k = (i - inflate) / 3
-            ring = 30 + k * 30
-            alpha = int(235 * (1 - k * 0.8))
-            d.ellipse([c - ring, c - ring, c + ring, c + ring],
-                      outline=(245, 252, 255, alpha), width=max(1, int(7 - k * 5)))
-            for a in range(12):
-                ang = a / 12 * 2 * math.pi + k
-                fs = 34 + k * 26
-                fr = max(1, 9 - k * 6)
-                fx, fy = c + math.cos(ang) * fs, c + math.sin(ang) * fs
-                d.ellipse([fx - fr, fy - fr, fx + fr, fy + fr],
-                          fill=(228, 245, 253, alpha))
-        out.append(img.resize((small, small), Image.LANCZOS))
-    return out, small
-
 def prop_label(n=1):
     """A blurred two-line filename to sit under a cuttlefish posing as a shortcut."""
     big, small = 128, 32
@@ -1367,7 +1305,6 @@ ACTIONS = {
     "slide":      (a_slide,       5,   True),
     "burrow":     (a_burrow,      4,   False),
     "ghost":      (a_ghost,       3,   True),
-    "balloon":    (a_balloon,     2.5, True),
     "shock":      (a_shock,      10,   True),
     "sleep":      (a_sleep,       3,   True),
     "mimic_fish":   (a_mimic_fish,   7, False),
@@ -1418,7 +1355,6 @@ def make_icon():
 # look like a mouthful, not a rival.
 PROP_SCALE = {
     "bone": 1.5,
-    "bigbubble": 2.2,
     "label": 1.9,
     "egg": 1.9,
     "blot": 1.6,
@@ -1465,9 +1401,8 @@ def main():
         ("egg", prop_egg(), 3, True),
         ("blot", prop_blot(), 2, True),
         ("label", prop_label(), 1, True),
-        ("bigbubble", prop_bigbubble(), 12, False),
-    ("sharkbite", prop_sharkbite(), 16, False),
-    ("dolphinbite", prop_dolphinbite(), 16, False),
+        ("sharkbite", prop_sharkbite(), 16, False),
+        ("dolphinbite", prop_dolphinbite(), 16, False),
         ("bone", prop_bone(), 2, True),
     ):
         sheets.append((name, save_strip(name, frames, size)))
