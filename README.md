@@ -42,7 +42,13 @@ naar de draaiende instantie:
 CuttlefishPet.exe shrimp
 ```
 
-Commando's: `add`, `remove`, `shrimp`, `mute`, `exit`.
+Commando's: `add`, `remove`, `cull`, `shrimp`, `population`, `hunter`, `mute`, `exit`.
+
+En een paar die er zijn omdat zeldzame dingen anders niet te controleren zijn:
+`strike` stuurt een jager die niet mis grijpt, `bones` legt de kleinste, middelste
+en grootste cuttlebone naast elkaar, en `reach` laat de drie grootste hun
+vangtentakel uitsteken. Alle drie duren in het wild een fractie van een seconde en
+gebeuren wanneer het dier het wil.
 
 ## Wat ze doen
 
