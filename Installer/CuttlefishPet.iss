@@ -8,7 +8,7 @@
 ; Expects the self-contained publish output in publish\CuttlefishPet\.
 
 #define AppName "Cuttlefish Pet"
-#define AppVersion "2.6"
+#define AppVersion "2.7"
 #define AppPublisher "donalddop"
 #define AppUrl "https://github.com/donalddop/cuttlefish-pet"
 #define AppExe "CuttlefishPet.exe"
@@ -21,7 +21,11 @@ AppPublisher={#AppPublisher}
 AppPublisherURL={#AppUrl}
 AppSupportURL={#AppUrl}
 VersionInfoVersion={#AppVersion}
-DefaultDirName={localappdata}\CuttlefishPet
+; NOT {localappdata}\CuttlefishPet -- that is where the tank, the graveyard
+; and the settings live. Installing on top of them would mean the uninstaller
+; deleted the whole population, which is the one thing in here that cannot be
+; rebuilt: days of inherited learning and bonds.
+DefaultDirName={localappdata}\Programs\CuttlefishPet
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
 DisableDirPage=yes
@@ -68,6 +72,8 @@ Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchNow}"; Flags: nowait postin
 Filename: "{app}\{#AppExe}"; Parameters: "exit"; Flags: runhidden skipifdoesntexist; RunOnceId: "StopPet"
 
 [UninstallDelete]
+; Only the program. The aquarium in {localappdata}\CuttlefishPet is left alone,
+; so reinstalling later finds the same animals where you left them.
 Type: filesandordirs; Name: "{app}"
 
 [Code]
