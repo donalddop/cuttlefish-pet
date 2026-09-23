@@ -19,6 +19,7 @@ wanneer een verschil groter is dan de ruis.
 import json
 import os
 import statistics
+from datetime import datetime
 import sys
 from collections import Counter
 
@@ -53,6 +54,62 @@ def load(fn):
 
 def spread(values):
     return statistics.pstdev(values) if len(values) > 1 else 0.0
+
+
+def moment(stamp):
+    """Parse a timestamp from the file, or None.
+
+    The app writes seven digits of fractional seconds and Python will take six,
+    so the tail is trimmed rather than the whole line thrown away.
+    """
+    if not stamp:
+        return None
+    text = stamp.rstrip("Z")
+    if "." in text:
+        head, _, frac = text.partition(".")
+        text = head + "." + frac[:6]
+    try:
+        return datetime.fromisoformat(text)
+    except ValueError:
+        return None
+
+
+def reproduction(dead):
+    """The baseline that says whether a change to breeding broke anything.
+
+    Births are not recorded anywhere, but in a tank that is neither growing nor
+    collapsing deaths are the same number, and deaths are recorded exactly. So
+    the rate of turnover stands in for the rate of breeding -- and it is the
+    number to write down before touching how breeding works, because afterwards
+    there is no way back to it.
+    """
+    stamps = sorted(m for m in (moment(d.get("Died")) for d in dead) if m)
+    if len(stamps) < 2:
+        print("\nvoortplanting: te weinig data")
+        return
+
+    span = (stamps[-1] - stamps[0]).total_seconds() / 3600
+    recent = [m for m in stamps if (stamps[-1] - m).total_seconds() <= 24 * 3600]
+    recent_span = max(0.02, (stamps[-1] - recent[0]).total_seconds() / 3600)
+
+    ages = [d["Age"] / 60 for d in dead if d.get("Age")]
+    eggs = [d.get("Offspring", 0) for d in dead]
+    breeders = [e for e in eggs if e > 0]
+
+    print("\nvoortplanting")
+    print(f"  laatste 24 uur : {len(recent)} doden over {recent_span:.1f} uur"
+          f"  =  {len(recent) / recent_span:.1f} per uur")
+    if span > 0:
+        print(f"  hele kerkhof   : {len(stamps)} doden over {span:.1f} uur"
+              f"  =  {len(stamps) / span:.1f} per uur")
+    if ages:
+        print(f"  leeftijd       : gemiddeld {statistics.mean(ages):.1f} min"
+              f"  (spreiding {spread(ages):.1f})")
+    share = 100.0 * len(breeders) / len(eggs) if eggs else 0
+    print(f"  eieren         : gemiddeld {statistics.mean(eggs):.2f} per dier,"
+          f" {share:.0f}% liet er ooit een na")
+    if breeders:
+        print(f"                   en wie dat deed, gemiddeld {statistics.mean(breeders):.1f}")
 
 
 def main():
@@ -119,6 +176,8 @@ def main():
             worths = [d["Learned"][behaviour] for d in dead
                       if behaviour in (d.get("Learned") or {})]
             print(f"  {behaviour:<14} {n:>4} dieren   gemiddeld {statistics.mean(worths):+.2f}")
+
+    reproduction(dead)
     return 0
 
 
