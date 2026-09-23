@@ -8,7 +8,7 @@
 ; Expects the self-contained publish output in publish\CuttlefishPet\.
 
 #define AppName "Cuttlefish Pet"
-#define AppVersion "2.7"
+#define AppVersion "2.8"
 #define AppPublisher "donalddop"
 #define AppUrl "https://github.com/donalddop/cuttlefish-pet"
 #define AppExe "CuttlefishPet.exe"

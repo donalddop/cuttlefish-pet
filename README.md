@@ -46,9 +46,11 @@ Commando's: `add`, `remove`, `cull`, `shrimp`, `population`, `hunter`, `mute`, `
 
 En een paar die er zijn omdat zeldzame dingen anders niet te controleren zijn:
 `strike` stuurt een jager die niet mis grijpt, `bones` legt de kleinste, middelste
-en grootste cuttlebone naast elkaar, en `reach` laat de drie grootste hun
-vangtentakel uitsteken. Alle drie duren in het wild een fractie van een seconde en
-gebeuren wanneer het dier het wil.
+en grootste cuttlebone naast elkaar, `reach` laat de drie grootste hun vangtentakel
+uitsteken, `decoy` laat er eentje een inktdubbelganger achter, en `lurk` zet de tank
+in de rustige drift waar hij vanzelf in valt als er een kwartier niemand aan de muis
+zit. Stuk voor stuk duren ze in het wild een fractie van een seconde, of een kwartier
+geduld, en ze gebeuren wanneer het dier het wil.
 
 ## Wat ze doen
 
