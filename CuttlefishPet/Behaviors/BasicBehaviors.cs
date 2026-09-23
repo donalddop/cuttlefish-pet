@@ -119,29 +119,64 @@ public sealed class SleepBehavior : BehaviorBase
 }
 
 /// <summary>
-/// Hold station quietly, barely moving. What they do when you have walked away —
-/// they simply blend out rather than nodding off.
+/// Drift quietly, going nowhere in particular. What they do when you have
+/// walked away — they blend out rather than nodding off.
+///
+/// Quiet, not stopped. The first version damped the velocity to nothing within
+/// a second and then held it there until someone touched the mouse, so a tank
+/// nobody had prodded was a still image rather than a slow one. The whole point
+/// of the thing is a desktop that is alive in the corner of your eye, and it
+/// cannot be alive and motionless.
 /// </summary>
 public sealed class LurkBehavior : BehaviorBase
 {
     public override string Name => "lurk";
     public override bool OverridesPhysics => true;
     private double _t;
+    private Vector _drift;
+    private readonly double _hold;
 
-    public override void Enter(BehaviorContext c) => c.Pet.Anim.Play("idle");
+    /// <param name="hold">
+    /// Seconds to stay put regardless of input. Zero in the tank -- they wake
+    /// the instant anyone touches anything. The debug command passes a few, so
+    /// the drift can be watched without twelve minutes of nobody breathing on
+    /// the mouse, which is otherwise the only way to see it at all.
+    /// </param>
+    public LurkBehavior(double hold = 0) => _hold = hold;
+
+    public override void Enter(BehaviorContext c)
+    {
+        c.Pet.Anim.Play("idle");
+        // Its own heading, or a tank full of them slides one way together like
+        // a screensaver.
+        double a = c.Rng.NextDouble() * Math.PI * 2;
+        _drift = new Vector(Math.Cos(a), Math.Sin(a) * 0.45) * (15 + c.Rng.NextDouble() * 16);
+    }
 
     public override void Tick(BehaviorContext c, double dt)
     {
         var pet = c.Pet;
         _t += dt;
-        pet.Vel *= Math.Exp(-2.5 * dt);
+        // The swell never drops far: at the bottom of the old one they were
+        // making one or two pixels a second, which the eye reads as stopped.
+        var want = _drift * (0.78 + 0.22 * Math.Sin(_t * 0.23));
+        pet.Vel += (want - pet.Vel) * Math.Min(1, dt * 0.8);
         pet.Pos += pet.Vel * dt;
+        if (Math.Abs(pet.Vel.X) > 4) pet.FacingRight = pet.Vel.X > 0;
         pet.VisualBob = Math.Sin(_t * 1.3) * 2.5;
+        PhysicsEngine.ClampToTank(pet, c.World);
 
         // Back the moment you touch anything.
-        if (c.World.IdleSeconds < 1.5)
+        if (c.World.IdleSeconds < 1.5 && _t >= _hold)
         {
             Next = new WakeStretchBehavior();
+            Done = true;
+        }
+        // Otherwise pick a new heading now and then, so it wanders instead of
+        // sliding down one line until it meets the edge.
+        else if (_t > 26)
+        {
+            Next = new LurkBehavior(Math.Max(0, _hold - _t));
             Done = true;
         }
     }

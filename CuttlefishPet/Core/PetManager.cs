@@ -1260,6 +1260,19 @@ public sealed class PetManager
     /// largest size a life can leave behind. There is no other way to see the
     /// three together -- in the tank they arrive minutes apart.
     /// </summary>
+    /// <summary>
+    /// Debug: put everyone into the quiet drift they fall into once nobody has
+    /// touched the machine for a while. Otherwise seeing it takes twelve minutes
+    /// of genuinely not breathing on the mouse.
+    /// </summary>
+    public void LurkNow()
+    {
+        foreach (var pet in _pets)
+            if (pet.Machine.Current.Interruptible) pet.Machine.Force(new LurkBehavior(hold: 40));
+        foreach (var pet in _pets.Take(4))
+            Log($"lurk #{pet.Id} op ({pet.Pos.X:F0},{pet.Pos.Y:F0})");
+    }
+
     public void DropTestBones()
     {
         var tank = _world.VirtualScreen;

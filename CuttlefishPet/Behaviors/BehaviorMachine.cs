@@ -130,7 +130,13 @@ public sealed class BehaviorMachine
         if (!Current.Interruptible) return;
 
         // Nobody watching → melt into the background rather than nod off.
-        if (world.IdleSeconds > 240 && Current is not (LurkBehavior or CamouflageBehavior))
+        //
+        // Twelve minutes, not four. What this measures is the last time anyone
+        // touched a mouse or a key, and that is not the same question as whether
+        // anyone is there: reading a long page or sitting through a video looks
+        // identical to having left the building. Four minutes of that turned the
+        // aquarium into a still image while its owner was watching it.
+        if (world.IdleSeconds > 720 && Current is not (LurkBehavior or CamouflageBehavior))
         {
             Force(_ctx.Rng.NextDouble() < 0.6 && pet.Surface != null
                 ? new CamouflageBehavior()

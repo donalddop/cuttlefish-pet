@@ -91,6 +91,7 @@ public partial class App : Application
             case "reach": _manager.ReachOut(); break;
             case "decoy": _manager.DropDecoy(); break;
             case "ammonite": _manager.SummonAmmonite(); break;
+            case "lurk": _manager.LurkNow(); break;
             case "mute": if (_muteItem != null) _muteItem.Checked = !_muteItem.Checked; break;
             case "exit": Shutdown(); break;
         }
