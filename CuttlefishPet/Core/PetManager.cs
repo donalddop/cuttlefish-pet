@@ -1273,6 +1273,33 @@ public sealed class PetManager
             Log($"lurk #{pet.Id} op ({pet.Pos.X:F0},{pet.Pos.Y:F0})");
     }
 
+    /// <summary>
+    /// Debug: lean on a scratch Notepad window as hard as the code allows, both
+    /// ways, and log where it ends up. There is no other way to check the limit:
+    /// reaching it through an actual cuttlefish means waiting for one to pick
+    /// the behaviour and then shoving sixty pixels at a time for minutes.
+    /// </summary>
+    public void ShoveTest()
+    {
+        var hwnd = Interop.SystemProbes.FindByTitle("kladblok");
+        if (hwnd == IntPtr.Zero) hwnd = Interop.SystemProbes.FindByTitle("notepad");
+        if (hwnd == IntPtr.Zero) { Log("shove: geen kladblok open"); return; }
+
+        var screen = System.Windows.Forms.SystemInformation.VirtualScreen;
+        Log($"shove: scherm [{screen.Left},{screen.Top} {screen.Width}x{screen.Height}]"
+            + $" venster {Interop.SystemProbes.Where(hwnd)}");
+
+        int moved = 0;
+        for (int i = 0; i < 600; i++)
+            if (Interop.SystemProbes.NudgeWindow(hwnd, 40)) moved++;
+        Log($"shove: {moved} duwtjes naar rechts -> {Interop.SystemProbes.Where(hwnd)}");
+
+        moved = 0;
+        for (int i = 0; i < 1200; i++)
+            if (Interop.SystemProbes.NudgeWindow(hwnd, -40)) moved++;
+        Log($"shove: {moved} duwtjes naar links -> {Interop.SystemProbes.Where(hwnd)}");
+    }
+
     public void DropTestBones()
     {
         var tank = _world.VirtualScreen;

@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 
 namespace CuttlefishPet.Interop;
 
@@ -121,12 +121,70 @@ public static class SystemProbes
         return found;
     }
 
-    /// <summary>Nudge a window sideways. Returns false if Windows refused.</summary>
+    /// <summary>
+    /// Debug: the first visible window whose title contains this, or zero.
+    /// Used to aim the shove test at a scratch Notepad rather than at whatever
+    /// the owner of the machine happens to have open.
+    /// </summary>
+    public static IntPtr FindByTitle(string needle)
+    {
+        IntPtr found = IntPtr.Zero;
+        needle = needle.ToLowerInvariant();
+        Win32.EnumWindows((hwnd, _) =>
+        {
+            if (!Win32.IsWindowVisible(hwnd) || Win32.IsIconic(hwnd)) return true;
+            int len = Win32.GetWindowTextLength(hwnd);
+            if (len == 0 || len > 200) return true;
+            var sb = new System.Text.StringBuilder(len + 1);
+            Win32.GetWindowText(hwnd, sb, sb.Capacity);
+            if (!sb.ToString().ToLowerInvariant().Contains(needle)) return true;
+            found = hwnd;
+            return false;
+        }, IntPtr.Zero);
+        return found;
+    }
+
+    /// <summary>Debug: where a window is, as text for the log.</summary>
+    public static string Where(IntPtr hwnd) =>
+        Win32.GetWindowRect(hwnd, out var r)
+            ? $"[{r.Left},{r.Top} {r.Width}x{r.Height}]"
+            : "[weg]";
+
+    /// <summary>
+    /// How much of a window's width has to stay on the desktop. Enough title bar
+    /// to get hold of with the mouse, with room to spare.
+    /// </summary>
+    private const int KeepOnScreen = 160;
+
+    /// <summary>
+    /// Nudge a window sideways. Returns false if Windows refused, or if the
+    /// window is already as far over as it is allowed to go.
+    ///
+    /// The limit is not optional. Windows will happily park a window entirely
+    /// outside the desktop if you ask it to, title bar and all, and at that
+    /// point its owner has nothing left to drag it back by -- so a cuttlefish
+    /// leaning on a window long enough could post it somewhere unreachable.
+    /// A desktop toy is allowed to be a nuisance and is not allowed to do that.
+    /// </summary>
     public static bool NudgeWindow(IntPtr hwnd, int dx)
     {
         if (!Win32.IsWindow(hwnd) || Win32.IsZoomed(hwnd)) return false;
         if (!Win32.GetWindowRect(hwnd, out var r)) return false;
-        return Win32.SetWindowPos(hwnd, IntPtr.Zero, r.Left + dx, r.Top, 0, 0,
+
+        // The whole desktop, every monitor: being shoved onto the next screen is
+        // fine, being shoved off the end of them all is not.
+        var screen = System.Windows.Forms.SystemInformation.VirtualScreen;
+        int keep = Math.Min(KeepOnScreen, r.Width);
+        int left = Math.Clamp(r.Left + dx,
+                              screen.Left - r.Width + keep,
+                              screen.Right - keep);
+
+        // Already against the limit: report it as a window that will not budge,
+        // which is the same thing as far as the animal leaning on it is
+        // concerned, and makes it give up and swim off.
+        if (left == r.Left) return false;
+
+        return Win32.SetWindowPos(hwnd, IntPtr.Zero, left, r.Top, 0, 0,
             Win32.SWP_NOSIZE | Win32.SWP_NOZORDER | Win32.SWP_NOACTIVATE);
     }
 }
