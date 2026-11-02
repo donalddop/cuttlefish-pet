@@ -1,0 +1,22 @@
+  Determining projects to restore...
+  Restored C:\Users\donald\Repositories\cuttlefish-pet\CuttlefishPet\CuttlefishPet.csproj (in 396 ms).
+  CuttlefishPet -> C:\Users\donald\Repositories\cuttlefish-pet\CuttlefishPet\bin\Release\net8.0-windows\win-x64\CuttlefishPet.dll
+  CuttlefishPet -> C:\Users\donald\Repositories\cuttlefish-pet\publish\CuttlefishPet\
+  Determining projects to restore...
+  Restored C:\Users\donald\Repositories\cuttlefish-pet\CuttlefishPet\CuttlefishPet.csproj (in 80 ms).
+  CuttlefishPet -> C:\Users\donald\Repositories\cuttlefish-pet\CuttlefishPet\bin\Release\net8.0-windows\win-x64\CuttlefishPet.dll
+  CuttlefishPet -> C:\Users\donald\Repositories\cuttlefish-pet\publish\klein\
+Built version 2.9
+
+
+    Directory: C:\Users\donald\Repositories\cuttlefish-pet\publish
+
+
+Mode                 LastWriteTime         Length Name                                                                 
+----                 -------------         ------ ----                                                                 
+-a----         11/2/2026   7:37 AM        1196377 CuttlefishPet-klein.zip                                              
+-a----         11/2/2026   7:37 AM       50367886 CuttlefishPet-setup.exe                                              
+-a----         11/2/2026   7:37 AM       66691949 CuttlefishPet-standalone.zip                                         
+-a----         11/2/2026   7:29 AM          10169 LEES-MIJ.txt                                                         
+
+

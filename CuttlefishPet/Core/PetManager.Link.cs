@@ -43,10 +43,14 @@ public sealed partial class PetManager
         var fish = _pets.Where(p => !p.Dying).Select(p =>
         {
             var b = p.Bounds;
+            var a = p.Anim.Current;
+            double s = Pet.RenderScale * p.Scale;
+            // Where a rider's seat is: the top of the mantle, not of the sprite frame.
+            double back = p.Pos.Y - (a.Anchor.Y - a.BackTop(p.Anim.FrameIndex)) * s + p.VisualBob;
             return new
             {
                 id = p.Id, name = p.Name, x = p.Pos.X, y = p.Pos.Y,
-                l = b.Left, t = b.Top, r = b.Right, bo = b.Bottom,
+                l = b.Left, t = b.Top, r = b.Right, bo = b.Bottom, back,
                 vx = p.Vel.X, vy = p.Vel.Y, right = p.FacingRight,
                 beh = p.Machine.Current.Name, scale = p.Scale,
             };

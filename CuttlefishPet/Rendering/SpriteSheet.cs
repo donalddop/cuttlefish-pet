@@ -1,6 +1,7 @@
 ﻿using System.IO;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
 namespace CuttlefishPet.Rendering;
@@ -23,6 +24,41 @@ public sealed class SpriteAnim
     public Point? EyeCenter { get; init; }
     public double EyeRadius { get; init; }
     public double Duration => Frames.Length / Fps;
+
+    private double[]? _backTop;
+
+    /// <summary>
+    /// Top of the body straight above the anchor in this frame, in frame px: the first
+    /// solid row in a narrow column around the contact point. The frame itself has empty
+    /// space above the mantle, so its top edge is not where anything could sit. Measured
+    /// once per frame, on first use (Desktop Dude asks while riding).
+    /// </summary>
+    public double BackTop(int frame)
+    {
+        if (_backTop == null)
+        {
+            _backTop = new double[Frames.Length];
+            Array.Fill(_backTop, double.NaN);
+        }
+        frame = Math.Clamp(frame, 0, Frames.Length - 1);
+        if (double.IsNaN(_backTop[frame])) _backTop[frame] = MeasureTop(Frames[frame]);
+        return _backTop[frame];
+    }
+
+    private double MeasureTop(BitmapSource frame)
+    {
+        var src = new FormatConvertedBitmap(frame, PixelFormats.Bgra32, null, 0);
+        int w = src.PixelWidth, h = src.PixelHeight, stride = w * 4;
+        var px = new byte[stride * h];
+        src.CopyPixels(px, stride, 0);
+        int half = Math.Max(2, (int)(w * 0.12));
+        int x0 = Math.Clamp((int)Anchor.X - half, 0, w - 1);
+        int x1 = Math.Clamp((int)Anchor.X + half, 0, w - 1);
+        for (int y = 0; y < h; y++)
+            for (int x = x0; x <= x1; x++)
+                if (px[y * stride + x * 4 + 3] > 140) return y;
+        return Anchor.Y;
+    }
 }
 
 /// <summary>Skin textures laid over the body: patterns plus the iridescent sheen.</summary>
