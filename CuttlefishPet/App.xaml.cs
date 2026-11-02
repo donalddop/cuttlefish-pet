@@ -21,6 +21,8 @@ public partial class App : Application
     private CommandServer? _commands;
     private Mutex? _instanceLock;
     private System.Windows.Forms.ToolStripMenuItem? _muteItem;
+    private Updater? _updater;
+    private LinkServer? _link;
     private readonly Stopwatch _clock = new();
     private double _lastT;
 
@@ -56,8 +58,13 @@ public partial class App : Application
         _manager.RestoreTank();
         _manager.StockTank();
 
+        _updater = new Updater(Dispatcher,
+            msg => _tray?.ShowBalloonTip(6000, "Cuttlefish Pet", msg, System.Windows.Forms.ToolTipIcon.Info),
+            () => Shutdown());
         SetupTray();
         _commands = new CommandServer(Dispatcher, RunCommand);
+        // Desktop Dude (or anything else) can ride, carry, pet, fight and eat them over this.
+        _link = new LinkServer(Dispatcher, _manager.HandleLink);
         if (e.Args.Length > 0) RunCommand(string.Join(' ', e.Args).ToLowerInvariant());
 
         _clock.Start();
@@ -173,6 +180,11 @@ public partial class App : Application
         { CheckOnClick = true, Checked = Autostart.Enabled };
         startup.CheckedChanged += (_, _) => Autostart.Set(startup.Checked);
         menu.Items.Add(startup);
+        var auto = new System.Windows.Forms.ToolStripMenuItem("Automatisch updaten")
+        { CheckOnClick = true, Checked = _updater!.Auto };
+        auto.CheckedChanged += (_, _) => _updater.Auto = auto.Checked;
+        menu.Items.Add(auto);
+        menu.Items.Add("Zoek naar updates", null, async (_, _) => await _updater.CheckAsync(manual: true));
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
         menu.Items.Add("Exit", null, (_, _) => Shutdown());
 
@@ -182,9 +194,15 @@ public partial class App : Application
             Icon = File.Exists(iconPath)
                 ? new System.Drawing.Icon(iconPath)
                 : System.Drawing.SystemIcons.Application,
-            Text = "Cuttlefish Pet",
+            Text = $"Cuttlefish Pet {_updater.Current.ToString(2)}",
             Visible = true,
             ContextMenuStrip = menu,
+        };
+        // A balloon about a new portable version opens the release page.
+        _tray.BalloonTipClicked += (_, _) =>
+        {
+            if (_updater.AvailableUrl is string url)
+                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
         };
         // Left-click opens the menu too — no hunting for the right mouse button.
         _tray.MouseUp += (_, e) =>
@@ -202,6 +220,7 @@ public partial class App : Application
         _loop?.Stop();
         _manager?.SaveTank();
         _commands?.Dispose();
+        _link?.Dispose();
         _input?.Dispose();
         if (_tray != null) { _tray.Visible = false; _tray.Dispose(); }
         _instanceLock?.Dispose();

@@ -17,6 +17,17 @@ Liever draagbaar? Pak `CuttlefishPet-standalone.zip` uit en start `CuttlefishPet
 
 De app verschijnt als tray-icoon (het zeekatje): links- of rechtsklik voor het menu.
 
+**Updates gaan vanzelf.** Een geïnstalleerde versie kijkt een minuut na het starten en daarna elke zes uur
+op GitHub of er een nieuwe release is. Zo ja: downloaden, controleren tegen de SHA-256 die GitHub publiceert,
+stil installeren en opnieuw starten. Het aquarium wordt eerst bewaard en blijft gewoon staan. Uitzetten kan in
+het tray-menu (*Automatisch updaten*), en *Zoek naar updates* kijkt meteen. De draagbare zip krijgt alleen een
+melding met een link.
+
+**Samen met [Desktop Dude](https://github.com/donalddop/desktop-dude).** Draait die ook, dan praten ze via een
+named pipe (`CuttlefishPet.link`) met elkaar: de dude rijdt op een zeekat tot hij eraf gebokt wordt, sjouwt er
+eentje rond en gooit hem weg, aait ze, vecht ermee (en krijgt inkt terug) en eet er af en toe echt eentje op.
+Die gaat dan het graf in als *opgegeten door de dude*. Onder de drie zeekatten weigert hij dat.
+
 ## Zelf bouwen
 
 ```bash

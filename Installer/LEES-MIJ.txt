@@ -202,3 +202,16 @@ HET AQUARIUM BLIJFT STAAN
 Windows 10/11, 64-bit. Geen installatie. Schrijft niets naar je systeem behalve
 een logbestandje in je tijdelijke map en het aquarium zelf in
 %LocalAppData%\CuttlefishPet.
+
+
+UPDATES
+  De geinstalleerde versie houdt zichzelf bij: elke zes uur kijkt hij of er een
+  nieuwe versie is, en installeert die stil. Je aquarium blijft gewoon staan.
+  Uitzetten: tray-menu -> Automatisch updaten. Deze losse zip-versie meldt
+  alleen dat er iets nieuws is.
+
+
+DESKTOP DUDE
+  Draait Desktop Dude ook (github.com/donalddop/desktop-dude)? Dan kan hij op
+  een zeekat rijden, er eentje rondsjouwen, aaien, ermee vechten -- en heel af
+  en toe eentje opeten. Nooit als er nog maar twee over zijn.

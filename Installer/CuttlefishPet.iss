@@ -8,7 +8,9 @@
 ; Expects the self-contained publish output in publish\CuttlefishPet\.
 
 #define AppName "Cuttlefish Pet"
-#define AppVersion "2.8"
+#ifndef AppVersion
+  #define AppVersion "2.9"
+#endif
 #define AppPublisher "donalddop"
 #define AppUrl "https://github.com/donalddop/cuttlefish-pet"
 #define AppExe "CuttlefishPet.exe"
@@ -40,6 +42,9 @@ SolidCompression=yes
 WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
+; Auto-update runs this silently while the old copy is closing.
+CloseApplications=force
+RestartApplications=no
 
 [Languages]
 Name: "dutch"; MessagesFile: "compiler:Languages\Dutch.isl"
@@ -66,6 +71,8 @@ Name: "{userstartup}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: startup
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchNow}"; Flags: nowait postinstall skipifsilent
+; Silent install = an auto-update: let them straight back out.
+Filename: "{app}\{#AppExe}"; Flags: nowait; Check: WizardSilent
 
 [UninstallRun]
 ; Ask the running instance to close itself before the files are removed.

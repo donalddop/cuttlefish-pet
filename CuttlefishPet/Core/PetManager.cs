@@ -10,7 +10,7 @@ namespace CuttlefishPet.Core;
 /// Owns all pets and the shared world sensing. One tick: sense → route input →
 /// behave → physics → render.
 /// </summary>
-public sealed class PetManager
+public sealed partial class PetManager
 {
     private const double DoubleClickSeconds = 0.4;
     private const double RivalDistance = 110;
