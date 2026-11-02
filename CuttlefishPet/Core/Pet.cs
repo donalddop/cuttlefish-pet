@@ -25,6 +25,12 @@ public sealed class Pet
     /// <summary>Eggs it has laid. The one number selection actually reads.</summary>
     public int Offspring;
 
+    /// <summary>
+    /// Only females lay. Courtship pairs a male with a female, and she is the one
+    /// who nests afterwards. See <see cref="Breeding"/>.
+    /// </summary>
+    public bool Female;
+
     /// <summary>Meals taken, which is most of how big it got.</summary>
     public int Meals;
 

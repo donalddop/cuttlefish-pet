@@ -111,6 +111,20 @@ def reproduction(dead):
     if breeders:
         print(f"                   en wie dat deed, gemiddeld {statistics.mean(breeders):.1f}")
 
+    # Since 2 Nov only females lay. Graves from before that carry no sex, so
+    # this line only counts the animals that lived under the new rules -- it is
+    # the number to hold against the old 36% and the predicted 18%.
+    sexed = [d for d in dead if d.get("Female") is not None]
+    if sexed:
+        females = [d for d in sexed if d["Female"]]
+        laid = [d for d in sexed if d.get("Offspring", 0) > 0]
+        print(f"  met geslacht   : {len(sexed)} dieren, {len(females)} vrouwtjes;"
+              f" {100.0 * len(laid) / len(sexed):.0f}% liet ooit een ei na"
+              f" (oud: 36%, zonder compensatie verwacht ~18%)")
+        if females:
+            eggs_f = [d.get("Offspring", 0) for d in females]
+            print(f"                   vrouwtjes gemiddeld {statistics.mean(eggs_f):.2f} eieren")
+
 
 def main():
     fn = path()

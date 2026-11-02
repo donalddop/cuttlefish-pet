@@ -11,6 +11,10 @@ public sealed class SavedPet
     public Genome Genome { get; set; }
     public string Born { get; set; } = "";
     public int Offspring { get; set; }
+
+    /// <summary>Null in tanks saved before sexes existed; those get rolled on load.</summary>
+    public bool? Female { get; set; }
+
     public int Meals { get; set; }
     public double Age { get; set; }
     public double Lifespan { get; set; }
