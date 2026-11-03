@@ -51,11 +51,36 @@ public static class Breeding
     }
 
     /// <summary>
-    /// What sex a drifter is. A lone survivor always gets the other sex, which
-    /// keeps the old promise that a lone survivor eventually gets a mate.
+    /// What sex a drifter is. A tank of one sex (a lone survivor, or three males
+    /// together) always gets the other sex, which keeps the old promise that a
+    /// lone survivor eventually gets a mate. An empty or mixed tank rolls it.
     /// </summary>
     public static bool DrifterFemale(IReadOnlyList<bool> residents, Random rng) =>
-        residents.Count == 1 ? !residents[0] : RollFemale(rng);
+        OneSex(residents) ? !residents[0] : RollFemale(rng);
+
+    /// <summary>True when there is someone in the tank and they are all one sex.</summary>
+    public static bool OneSex(IReadOnlyList<bool> residents)
+    {
+        if (residents.Count == 0) return false;
+        for (int i = 1; i < residents.Count; i++)
+            if (residents[i] != residents[0]) return false;
+        return true;
+    }
+
+    /// <summary>
+    /// How long a tank of two or more, all one sex, waits before a newcomer of the
+    /// other sex drifts in: a few minutes, so a hatching or a stray can still fix
+    /// it first. (Below two the old immigration floor already takes care of it.)
+    /// </summary>
+    public const double OneSexWaitMin = 150, OneSexWaitMax = 270;
+
+    public static double OneSexWait(Random rng) =>
+        OneSexWaitMin + rng.NextDouble() * (OneSexWaitMax - OneSexWaitMin);
+
+    /// <summary>For the population window: "3 mannetjes, 2 vrouwtjes".</summary>
+    public static string Census(int males, int females) =>
+        $"{males} {(males == 1 ? "mannetje" : "mannetjes")}, " +
+        $"{females} {(females == 1 ? "vrouwtje" : "vrouwtjes")}";
 
     /// <summary>For the log and the graveyard: Dutch, like the rest of the log.</summary>
     public static string Word(bool female) => female ? "vrouwtje" : "mannetje";

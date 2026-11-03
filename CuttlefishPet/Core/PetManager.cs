@@ -35,6 +35,8 @@ public sealed partial class PetManager
     private double _preySpawnIn = 12, _courtCooldown = 30, _shrimpSpawnIn = 25;
     private double _immigrationIn = 60, _bloomIn = 240, _fightCooldown = 120;
     private double _ritualIn = 600;
+    /// <summary>Countdown while the tank is all one sex; NaN when it is not.</summary>
+    private double _oneSexIn = double.NaN;
 
     /// <summary>Seconds to the next autosave. A kill or a crash costs a minute, not a tank.</summary>
     private double _saveIn = 60;
@@ -51,6 +53,8 @@ public sealed partial class PetManager
     private int _tick;
 
     public int Count => _pets.Count;
+    public int Females => _pets.Count(p => p.Female);
+    public int Males => _pets.Count - Females;
 
     /// <summary>
     /// How readily two cuttlefish that meet in open water end up courting. Rises
@@ -502,6 +506,22 @@ public sealed partial class PetManager
             }
         }
         else _immigrationIn = 45 + _rng.NextDouble() * 45;
+
+        // Two or more but all one sex: nobody can court, so after a few minutes
+        // one of the other sex drifts in. Any mix (a hatching, a stray) resets it.
+        var sexes = _pets.ConvertAll(p => p.Female);
+        if (_pets.Count >= 2 && Breeding.OneSex(sexes))
+        {
+            if (double.IsNaN(_oneSexIn)) _oneSexIn = Breeding.OneSexWait(_rng);
+            _oneSexIn -= dt;
+            if (_oneSexIn <= 0)
+            {
+                _oneSexIn = double.NaN;
+                Log($"alleen {Breeding.Word(sexes[0])}s in de tank; er drijft er een van het andere geslacht binnen");
+                SpawnDrifter();
+            }
+        }
+        else _oneSexIn = double.NaN;
 
         // The boom. Held off while the tank is already full — a bloom there would
         // only push against the crowding that is about to kill everyone anyway.

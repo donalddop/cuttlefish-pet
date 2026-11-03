@@ -341,6 +341,18 @@ Check("a lone female gets a male drifter", !Breeding.DrifterFemale(new[] { true 
 Check("a lone male gets a female drifter", Breeding.DrifterFemale(new[] { false }, rng));
 var emptyDrifters = Enumerable.Range(0, 2000).Count(_ => Breeding.DrifterFemale(Array.Empty<bool>(), rng));
 Check("into an empty tank either sex drifts", emptyDrifters is > 900 and < 1100, $"{emptyDrifters}/2000 female");
+Check("three males get a female drifter", Breeding.DrifterFemale(new[] { false, false, false }, rng));
+Check("four females get a male drifter", !Breeding.DrifterFemale(new[] { true, true, true, true }, rng));
+var mixedDrifters = Enumerable.Range(0, 2000).Count(_ => Breeding.DrifterFemale(new[] { true, false, false }, rng));
+Check("into a mixed tank either sex drifts", mixedDrifters is > 900 and < 1100, $"{mixedDrifters}/2000 female");
+Check("one-sex: all males or all females, not mixed or empty",
+      Breeding.OneSex(new[] { false, false }) && Breeding.OneSex(new[] { true }) &&
+      !Breeding.OneSex(new[] { true, false }) && !Breeding.OneSex(Array.Empty<bool>()));
+Check("a one-sex tank waits a few minutes, not forever",
+      Enumerable.Range(0, 2000).All(_ => Breeding.OneSexWait(rng) is >= 150 and <= 270));
+Check("the census reads naturally",
+      Breeding.Census(3, 1) == "3 mannetjes, 1 vrouwtje" && Breeding.Census(1, 0) == "1 mannetje, 0 vrouwtjes",
+      Breeding.Census(3, 1));
 
 // An old tank file has no sexes in it. It has to load, and the field has to come
 // out null so the manager knows to assign one rather than make everyone male.

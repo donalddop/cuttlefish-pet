@@ -18,6 +18,7 @@ public sealed class PopulationWindow : Window
 {
     private readonly PetManager _manager;
     private readonly TextBlock _readout;
+    private readonly TextBlock _census;
     private readonly Slider _slider;
     /// <summary>
     /// WPF raises ValueChanged while the control template is being applied, before
@@ -33,7 +34,7 @@ public sealed class PopulationWindow : Window
 
         Title = "Cuttlefish Pet";
         Width = 380;
-        Height = 230;
+        Height = 260;
         ResizeMode = ResizeMode.NoResize;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         ShowInTaskbar = false;
@@ -59,6 +60,20 @@ public sealed class PopulationWindow : Window
             Margin = new Thickness(0, 0, 0, 10),
         };
         panel.Children.Add(_readout);
+
+        // Who is in the tank right now, by sex, refreshed once a second while open.
+        _census = new TextBlock
+        {
+            FontSize = 13,
+            Foreground = new SolidColorBrush(Color.FromRgb(210, 190, 150)),
+            Margin = new Thickness(0, 0, 0, 10),
+        };
+        panel.Children.Add(_census);
+        var tick = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        tick.Tick += (_, _) => UpdateCensus();
+        Loaded += (_, _) => tick.Start();
+        Closed += (_, _) => tick.Stop();
+        UpdateCensus();
 
         _slider = new Slider
         {
@@ -95,6 +110,12 @@ public sealed class PopulationWindow : Window
             UpdateReadout();
         };
         UpdateReadout();
+    }
+
+    private void UpdateCensus()
+    {
+        int females = _manager.Females;
+        _census.Text = $"Nu: {_manager.Count} — {Breeding.Census(_manager.Count - females, females)}";
     }
 
     private void UpdateReadout()

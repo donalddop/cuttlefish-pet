@@ -9,7 +9,7 @@
 
 #define AppName "Cuttlefish Pet"
 #ifndef AppVersion
-  #define AppVersion "2.9.1"
+  #define AppVersion "2.10.0"
 #endif
 #define AppPublisher "donalddop"
 #define AppUrl "https://github.com/donalddop/cuttlefish-pet"
