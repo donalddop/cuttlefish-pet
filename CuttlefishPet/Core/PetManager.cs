@@ -115,6 +115,7 @@ public sealed partial class PetManager
             Size = Math.Round(pet.GrownScale, 3),
             Meals = pet.Meals,
             Offspring = pet.Offspring,
+            Female = pet.Female,
         };
         foreach (var (behavior, worth) in pet.Memory.Learned)
             stone.Learned[behavior] = Math.Round(worth, 3);
@@ -154,6 +155,7 @@ public sealed partial class PetManager
                 Genome = pet.Genome,
                 Born = pet.BornAt.ToString("o"),
                 Offspring = pet.Offspring,
+                Female = pet.Female,
                 Meals = pet.Meals,
                 Age = pet.Age,
                 Lifespan = pet.Lifespan,
@@ -217,6 +219,9 @@ public sealed partial class PetManager
                 : saved.Name;
             if (DateTime.TryParse(saved.Born, out var born)) pet.BornAt = born;
             pet.Offspring = saved.Offspring;
+            // A tank saved before sexes existed: split it by id rather than by a
+            // roll, so an old pair of two is always one of each, not one in two.
+            pet.Female = saved.Female ?? (saved.Id % 2 == 0);
             pet.Meals = saved.Meals;
             pet.Age = saved.Age;
             pet.Lifespan = saved.Lifespan;
@@ -259,7 +264,8 @@ public sealed partial class PetManager
     /// head start on what its mother had learned. Null for anything that swam in
     /// from outside, which gets a fresh roll and no opinions at all.
     /// </param>
-    public void Spawn(Point? at, bool hatchling = false, Heritage? inherit = null)
+    /// <param name="female">Null rolls it; a drifter for a lone survivor passes it in.</param>
+    public void Spawn(Point? at, bool hatchling = false, Heritage? inherit = null, bool? female = null)
     {
         var wa = System.Windows.Forms.Screen.PrimaryScreen!.WorkingArea; // physical px
         var pet = new Pet
@@ -280,6 +286,7 @@ public sealed partial class PetManager
         pet.Id = ++_nextId;
         pet.Name = Names.Pick(_rng, _pets.ConvertAll(p => p.Name));
         pet.Genome = inherit?.Genome ?? Genome.Random(_rng);
+        pet.Female = female ?? Breeding.RollFemale(_rng);
         if (inherit != null)
             foreach (var (behavior, worth) in inherit.Lore) pet.Memory.Relearn(behavior, worth);
         // Colour and pattern are inherited rather than rolled fresh every so often,
@@ -296,7 +303,7 @@ public sealed partial class PetManager
         _pets.Add(pet);
 
         var g = pet.Genome;
-        Log($"#{pet.Id} {pet.Name} {(inherit is null ? "nieuw" : $"uit ei (erft {inherit.Lore.Count} inzichten)")} " +
+        Log($"#{pet.Id} {pet.Name} {Breeding.Word(pet.Female)} {(inherit is null ? "nieuw" : $"uit ei (erft {inherit.Lore.Count} inzichten)")} " +
             $"{Palettes.All[g.Chroma].Name}/{g.Pattern} " +
             $"lef={g.Boldness:F2} sociaal={g.Sociability:F2} nieuwsgierig={g.Curiosity:F2} " +
             $"stofwisseling={g.Metabolism:F2} onrustig={g.Restlessness:F2}");
@@ -518,7 +525,7 @@ public sealed partial class PetManager
         bool fromLeft = _rng.NextDouble() < 0.5;
         var at = new Point(fromLeft ? tank.Left + 70 : tank.Right - 70,
                            tank.Top + 150 + _rng.NextDouble() * (tank.Height - 300));
-        Spawn(at);
+        Spawn(at, female: Breeding.DrifterFemale(_pets.ConvertAll(p => p.Female), _rng));
         var arrival = _pets[^1];
         arrival.Vel = new Vector(fromLeft ? 150 : -150, 0);
         arrival.FacingRight = fromLeft;
@@ -1146,17 +1153,19 @@ public sealed partial class PetManager
                     b.Machine.Force(new RivalDisplayBehavior(a, !aRetreats));
                 }
                 else if (a.Mature && b.Mature &&
+                         Breeding.CanCourt(a.Female, b.Female) &&
                          a.Surface == null && b.Surface == null &&
                          roll < CourtChance * Familiarity(a, b) &&
                          _courtCooldown <= 0)
                 {
-                    // One puts on a display; the other decides how it lands.
+                    // He puts on a display; she decides how it lands, and if it
+                    // lands well she is the one who goes off to nest.
+                    var (male, female) = a.Female ? (b, a) : (a, b);
                     bool welcome = _rng.NextDouble() < 0.55;
-                    a.Machine.Force(new CourtshipBehavior(b, suitor: true, welcome));
-                    b.Machine.Force(new CourtshipBehavior(a, suitor: false, welcome));
-                    _courtCooldown = _world.Bloom > 0
-                        ? 10
-                        : 60 + 90.0 * _pets.Count / _settings.TargetPopulation;
+                    male.Machine.Force(new CourtshipBehavior(female, suitor: true, welcome));
+                    female.Machine.Force(new CourtshipBehavior(male, suitor: false, welcome));
+                    _courtCooldown = Breeding.CourtCooldown(
+                        _world.Bloom > 0, _pets.Count, _settings.TargetPopulation);
                 }
                 else if (a.Surface == null && b.Surface == null && roll < 0.42)
                 {

@@ -311,6 +311,45 @@ Check("the trick is handed on, halved",
       handed.TryGetValue("decoy", out var passed) && passed is > 0.3 and < 0.5,
       $"{handed.GetValueOrDefault("decoy"):F2}");
 
+// ---------- breeding: sexes + variant (c) ----------
+// Only females lay, so courtship comes round 0.7x as often and a clutch is 1.4x
+// bigger. These hold the numbers to what was chosen on 1 November.
+var sexes = Enumerable.Range(0, 4000).Select(_ => Breeding.RollFemale(rng)).ToList();
+double femaleShare = sexes.Count(f => f) / (double)sexes.Count;
+Check("about half are female", femaleShare is > 0.46 and < 0.54, $"{femaleShare:P1}");
+Check("only a male and a female court",
+      Breeding.CanCourt(true, false) && Breeding.CanCourt(false, true) &&
+      !Breeding.CanCourt(true, true) && !Breeding.CanCourt(false, false));
+
+Check("courtship cooldown is 0.7x the old one, empty tank",
+      Math.Abs(Breeding.CourtCooldown(false, 0, 10) - 42) < 1e-9, $"{Breeding.CourtCooldown(false, 0, 10):F1}s");
+Check("courtship cooldown is 0.7x the old one, full tank",
+      Math.Abs(Breeding.CourtCooldown(false, 10, 10) - 105) < 1e-9, $"{Breeding.CourtCooldown(false, 10, 10):F1}s");
+Check("a bloom keeps its quick courtship", Breeding.CourtCooldown(true, 10, 10) == 10);
+Check("a zero target cannot divide by zero", double.IsFinite(Breeding.CourtCooldown(false, 3, 0)));
+
+double MeanClutch(int target, int count, bool bloom) =>
+    Enumerable.Range(0, 20000).Average(_ => Breeding.ClutchSize(target, count, bloom, rng));
+double emptyTank = MeanClutch(10, 2, false), fullTank = MeanClutch(10, 10, false), bloomTank = MeanClutch(10, 2, true);
+Check("an empty tank lays 1.4x three", Math.Abs(emptyTank - 4.2) < 0.03, $"{emptyTank:F2}");
+Check("a full tank lays 1.4x a token egg", Math.Abs(fullTank - 1.4) < 0.02, $"{fullTank:F2}");
+Check("a bloom lays 1.4x six", Math.Abs(bloomTank - 8.4) < 0.03, $"{bloomTank:F2}");
+Check("a clutch is never empty and never wild",
+      Enumerable.Range(0, 5000).All(i => Breeding.ClutchSize(10, i % 30, i % 3 == 0, rng) is >= 1 and <= 9));
+
+Check("a lone female gets a male drifter", !Breeding.DrifterFemale(new[] { true }, rng));
+Check("a lone male gets a female drifter", Breeding.DrifterFemale(new[] { false }, rng));
+var emptyDrifters = Enumerable.Range(0, 2000).Count(_ => Breeding.DrifterFemale(Array.Empty<bool>(), rng));
+Check("into an empty tank either sex drifts", emptyDrifters is > 900 and < 1100, $"{emptyDrifters}/2000 female");
+
+// An old tank file has no sexes in it. It has to load, and the field has to come
+// out null so the manager knows to assign one rather than make everyone male.
+var oldSave = System.Text.Json.JsonSerializer.Deserialize<SavedPet>("{\"Id\":7,\"Name\":\"Oud\",\"Offspring\":2}")!;
+Check("a pre-sexes save still loads, with no sex in it", oldSave.Id == 7 && oldSave.Female is null);
+var newSave = System.Text.Json.JsonSerializer.Deserialize<SavedPet>(
+    System.Text.Json.JsonSerializer.Serialize(new SavedPet { Id = 8, Female = true }))!;
+Check("and a new one keeps it", newSave.Female == true);
+
 Console.WriteLine(failed == 0 ? "\nALL PASS" : $"\n{failed} FAILED");
 return failed;
 

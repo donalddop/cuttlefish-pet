@@ -131,6 +131,14 @@ volwassen formaat, dat langzaam uitgroeit — jonge dieren beheersen camouflage 
 dus die zie je in kleur rondzwemmen. Als het einde komt trekt de kleur weg en zinkt hij
 met een sliert luchtbelletjes uit beeld.
 
+Er zijn mannetjes en vrouwtjes (half om half; het log zegt bij elke geboorte welk). Alleen
+een mannetje en een vrouwtje baltsen, en alleen vrouwtjes leggen. Omdat zo maar de helft
+van de tank kan leggen, komt een balts vaker langs (cooldown 0,7x, ongeveer 0,7 tot 3
+minuten) en is een tros gemiddeld 1,4x zo groot. Een eenling krijgt altijd een
+nieuwkomer van het andere geslacht. Alle getallen staan in `Core/Breeding.cs`;
+`Tools/graveyard.py` laat zien welk deel van de dieren mét geslacht ooit een ei legde
+(oud: 36%, zonder compensatie verwacht ~18%).
+
 Drukte versnelt ieders klok en een tros komt alleen uit als er ruimte is, dus de groep
 regelt zijn eigen omvang. Loopt het toch vol: **Thin them out** in het tray-menu.
 

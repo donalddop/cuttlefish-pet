@@ -27,6 +27,9 @@ public sealed class Epitaph
     /// <summary>Eggs it laid. The only number here that selection actually reads.</summary>
     public int Offspring { get; set; }
 
+    /// <summary>Null for every grave dug before sexes existed.</summary>
+    public bool? Female { get; set; }
+
     /// <summary>What it had concluded about its own repertoire by the end.</summary>
     public Dictionary<string, double> Learned { get; set; } = new();
 }

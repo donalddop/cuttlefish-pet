@@ -87,6 +87,7 @@ public sealed class LayEggsBehavior : BehaviorBase
     private bool _laid;
 
     public static bool Possible(BehaviorContext c) =>
+        c.Pet.Female &&
         c.Pet.Surface is { IsLandable: true } &&
         c.Pet.Mature;
 
@@ -108,9 +109,10 @@ public sealed class LayEggsBehavior : BehaviorBase
 
             // How many eggs is the whole population control in one line. An empty
             // tank gets a big clutch; a full one gets a token single egg that the
-            // hatching cap will probably refuse anyway. A bloom adds two on top.
-            int clutch = Math.Clamp(c.World.Settings.TargetPopulation + 1 - c.World.PetCount, 1, 3)
-                         + (c.World.Bloom > 0 ? 3 : 0);
+            // hatching cap will probably refuse anyway. A bloom adds three on top.
+            // Since only females lay, all of it is 1.4x what it was (Breeding).
+            int clutch = Breeding.ClutchSize(c.World.Settings.TargetPopulation,
+                                             c.World.PetCount, c.World.Bloom > 0, c.Rng);
 
             // Read the parents out now: the eggs outlive the pair that laid them,
             // and a Genome is a value, so nothing here keeps a dead pet alive.
