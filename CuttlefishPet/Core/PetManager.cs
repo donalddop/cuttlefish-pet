@@ -54,6 +54,8 @@ public sealed partial class PetManager
 
     public int Count => _pets.Count;
     public int Females => _pets.Count(p => p.Female);
+    /// <summary>Eggs on a ledge that have not hatched yet.</summary>
+    public int EggsWaiting => _props.Count(p => p.Anim == "egg");
     public int Males => _pets.Count - Females;
 
     /// <summary>
@@ -75,6 +77,7 @@ public sealed partial class PetManager
         _sound = sound;
         _settings = Settings.Load();
         _world.Settings = _settings;
+        Breeding.Apply(_settings.BreedingOverrides);
         Rendering.AnimationPlayer.Report = Log;
     }
 

@@ -353,6 +353,42 @@ Check("a one-sex tank waits a few minutes, not forever",
 Check("the census reads naturally",
       Breeding.Census(3, 1) == "3 mannetjes, 1 vrouwtje" && Breeding.Census(1, 0) == "1 mannetje, 0 vrouwtjes",
       Breeding.Census(3, 1));
+Check("the eggs line reads naturally",
+      Breeding.EggsLine(0) == "Geen eieren onderweg" && Breeding.EggsLine(1) == "1 ei onderweg" &&
+      Breeding.EggsLine(4) == "4 eieren onderweg", Breeding.EggsLine(4));
+
+// The breeding numbers can be overridden from settings.json. Without a block the
+// defaults must be exactly what variant (c) was built with.
+Breeding.Apply(null);
+Check("no overrides: variant (c) defaults stand",
+      Breeding.CooldownFactor == 0.7 && Breeding.ClutchFactor == 1.4 &&
+      Breeding.OneSexWaitMin == 150 && Breeding.OneSexWaitMax == 270);
+Check("no overrides: the cooldown is unchanged",
+      Math.Abs(Breeding.CourtCooldown(false, 0, 10) - 42) < 1e-9);
+var tuned = System.Text.Json.JsonSerializer.Deserialize<Settings>(
+    "{\"TargetPopulation\":8,\"Breeding\":{\"CooldownFactor\":0.5,\"ClutchFactor\":2,\"OneSexWaitMin\":60,\"OneSexWaitMax\":120}}")!;
+Breeding.Apply(tuned.BreedingOverrides);
+Check("overrides from settings.json are used",
+      Breeding.CooldownFactor == 0.5 && Breeding.ClutchFactor == 2 &&
+      Math.Abs(Breeding.CourtCooldown(false, 0, 10) - 30) < 1e-9 &&
+      Enumerable.Range(0, 500).All(_ => Breeding.OneSexWait(rng) is >= 60 and <= 120));
+Check("a clutch follows the overridden factor (2x of 3 = 6)", Breeding.ClutchSize(10, 0, false, rng) == 6);
+var partial = System.Text.Json.JsonSerializer.Deserialize<Settings>("{\"Breeding\":{\"ClutchFactor\":1.0}}")!;
+Breeding.Apply(partial.BreedingOverrides);
+Check("a partial block only changes what it names",
+      Breeding.ClutchFactor == 1.0 && Breeding.CooldownFactor == 0.7 && Breeding.OneSexWaitMax == 270);
+var silly = System.Text.Json.JsonSerializer.Deserialize<Settings>(
+    "{\"Breeding\":{\"CooldownFactor\":0,\"ClutchFactor\":-3,\"OneSexWaitMin\":300,\"OneSexWaitMax\":100}}")!;
+Breeding.Apply(silly.BreedingOverrides);
+Check("nonsense falls back to the defaults, a swapped range is put right",
+      Breeding.CooldownFactor == 0.7 && Breeding.ClutchFactor == 1.4 &&
+      Breeding.OneSexWaitMin == 100 && Breeding.OneSexWaitMax == 300);
+var plainJson = System.Text.Json.JsonSerializer.Serialize(new Settings { TargetPopulation = 6 });
+var keptJson = System.Text.Json.JsonSerializer.Serialize(tuned);
+Check("saving without overrides writes no Breeding block, with them keeps it",
+      !plainJson.Contains("Breeding") && keptJson.Contains("\"Breeding\"") && !keptJson.Contains("null"),
+      keptJson);
+Breeding.Apply(null);
 
 // An old tank file has no sexes in it. It has to load, and the field has to come
 // out null so the manager knows to assign one rather than make everyone male.

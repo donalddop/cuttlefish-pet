@@ -27,6 +27,14 @@ public sealed class Settings
     /// </summary>
     public int TargetPopulation { get; set; } = 5;
 
+    /// <summary>
+    /// Optional, hand-edited: overrides for the breeding numbers (see Breeding).
+    /// Left out of the file when there are none, and kept when the slider saves.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonPropertyName("Breeding")]
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public BreedingOverrides? BreedingOverrides { get; set; }
+
 
     private static string Path =>
         System.IO.Path.Combine(

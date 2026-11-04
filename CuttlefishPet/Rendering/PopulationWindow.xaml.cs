@@ -115,7 +115,8 @@ public sealed class PopulationWindow : Window
     private void UpdateCensus()
     {
         int females = _manager.Females;
-        _census.Text = $"Nu: {_manager.Count} — {Breeding.Census(_manager.Count - females, females)}";
+        _census.Text = $"Nu: {_manager.Count} — {Breeding.Census(_manager.Count - females, females)}\n" +
+                       Breeding.EggsLine(_manager.EggsWaiting);
     }
 
     private void UpdateReadout()

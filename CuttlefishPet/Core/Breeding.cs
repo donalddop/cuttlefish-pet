@@ -12,15 +12,38 @@ namespace CuttlefishPet.Core;
 /// instead of 1-4) and a clutch is 1.4x bigger on average.
 ///
 /// Every number lives here so the next tuning pass is one file, and so the
-/// console checks in Tools/DriveTests can hold it to account.
+/// console checks in Tools/DriveTests can hold it to account. The four tuning
+/// numbers can also be overridden from settings.json without a rebuild, e.g.
+/// "Breeding": {"CooldownFactor": 0.5, "ClutchFactor": 2, "OneSexWaitMin": 60,
+/// "OneSexWaitMax": 120}; leave a key out and its default stays.
 /// </summary>
 public static class Breeding
 {
+    public const double DefaultCooldownFactor = 0.7, DefaultClutchFactor = 1.4;
+    public const double DefaultOneSexWaitMin = 150, DefaultOneSexWaitMax = 270;
+
     /// <summary>How much more often courtship comes round than before sexes.</summary>
-    public const double CooldownFactor = 0.7;
+    public static double CooldownFactor { get; private set; } = DefaultCooldownFactor;
 
     /// <summary>How much bigger a clutch is, on average, than before sexes.</summary>
-    public const double ClutchFactor = 1.4;
+    public static double ClutchFactor { get; private set; } = DefaultClutchFactor;
+
+    /// <summary>
+    /// Take the overrides from settings.json, or go back to the defaults for any
+    /// that are missing or make no sense (zero, negative, absurdly large, NaN). A
+    /// typo in a hand-edited file should never stop the tank from breeding.
+    /// </summary>
+    public static void Apply(BreedingOverrides? o)
+    {
+        CooldownFactor = Pick(o?.CooldownFactor, DefaultCooldownFactor, 0.05, 10);
+        ClutchFactor = Pick(o?.ClutchFactor, DefaultClutchFactor, 0.05, 10);
+        double lo = Pick(o?.OneSexWaitMin, DefaultOneSexWaitMin, 0, 3600);
+        double hi = Pick(o?.OneSexWaitMax, DefaultOneSexWaitMax, 0, 3600);
+        (OneSexWaitMin, OneSexWaitMax) = lo <= hi ? (lo, hi) : (hi, lo);
+    }
+
+    private static double Pick(double? v, double fallback, double min, double max) =>
+        v is double d && double.IsFinite(d) && d >= min && d <= max ? d : fallback;
 
     /// <summary>Even odds. Hatchlings and arrivals both roll it.</summary>
     public static bool RollFemale(Random rng) => rng.NextDouble() < 0.5;
@@ -72,7 +95,8 @@ public static class Breeding
     /// other sex drifts in: a few minutes, so a hatching or a stray can still fix
     /// it first. (Below two the old immigration floor already takes care of it.)
     /// </summary>
-    public const double OneSexWaitMin = 150, OneSexWaitMax = 270;
+    public static double OneSexWaitMin { get; private set; } = DefaultOneSexWaitMin;
+    public static double OneSexWaitMax { get; private set; } = DefaultOneSexWaitMax;
 
     public static double OneSexWait(Random rng) =>
         OneSexWaitMin + rng.NextDouble() * (OneSexWaitMax - OneSexWaitMin);
@@ -82,6 +106,27 @@ public static class Breeding
         $"{males} {(males == 1 ? "mannetje" : "mannetjes")}, " +
         $"{females} {(females == 1 ? "vrouwtje" : "vrouwtjes")}";
 
+    /// <summary>For the population window: eggs laid that have not hatched yet.</summary>
+    public static string EggsLine(int eggs) => eggs switch
+    {
+        <= 0 => "Geen eieren onderweg",
+        1 => "1 ei onderweg",
+        _ => $"{eggs} eieren onderweg",
+    };
+
     /// <summary>For the log and the graveyard: Dutch, like the rest of the log.</summary>
     public static string Word(bool female) => female ? "vrouwtje" : "mannetje";
+}
+
+/// <summary>The "Breeding" block of settings.json: null = keep the default.</summary>
+public sealed class BreedingOverrides
+{
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public double? CooldownFactor { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public double? ClutchFactor { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public double? OneSexWaitMin { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public double? OneSexWaitMax { get; set; }
 }

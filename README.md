@@ -1,4 +1,4 @@
-﻿# Cuttlefish Pet 🦑
+# Cuttlefish Pet 🦑
 
 Desktop pets voor Windows, maar dan **zeekatten**. Je scherm is hun aquarium: ze
 zweven er vrij doorheen, strijken neer op je taskbar en vensterranden, klimmen langs
@@ -138,6 +138,10 @@ minuten) en is een tros gemiddeld 1,4x zo groot. Een eenling krijgt altijd een
 nieuwkomer van het andere geslacht. Alle getallen staan in `Core/Breeding.cs`;
 `Tools/graveyard.py` laat zien welk deel van de dieren mét geslacht ooit een ei legde
 (oud: 36%, zonder compensatie verwacht ~18%).
+Zelf bijstellen zonder te bouwen: zet in `%LOCALAPPDATA%\CuttlefishPet\settings.json` een blok
+`"Breeding": {"CooldownFactor": 0.5, "ClutchFactor": 2, "OneSexWaitMin": 60, "OneSexWaitMax": 120}`
+(alleen de sleutels die je wilt veranderen) en herstart de app. Onzin valt terug op de
+standaard. Het populatievenster toont ook hoeveel eieren er nog moeten uitkomen.
 
 Drukte versnelt ieders klok en een tros komt alleen uit als er ruimte is, dus de groep
 regelt zijn eigen omvang. Loopt het toch vol: **Thin them out** in het tray-menu.
