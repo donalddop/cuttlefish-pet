@@ -9,7 +9,7 @@
 
 #define AppName "Cuttlefish Pet"
 #ifndef AppVersion
-  #define AppVersion "2.10.0"
+  #define AppVersion "2.10.1"
 #endif
 #define AppPublisher "donalddop"
 #define AppUrl "https://github.com/donalddop/cuttlefish-pet"
@@ -71,8 +71,8 @@ Name: "{userstartup}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: startup
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchNow}"; Flags: nowait postinstall skipifsilent
-; Silent install = an auto-update: let them straight back out.
-Filename: "{app}\{#AppExe}"; Flags: nowait; Check: WizardSilent
+; Silent install = an auto-update: let them straight back out (not with /NOLAUNCH, e.g. a local test install).
+Filename: "{app}\{#AppExe}"; Flags: nowait; Check: AutoLaunch
 
 [UninstallRun]
 ; Ask the running instance to close itself before the files are removed.
@@ -84,6 +84,17 @@ Filename: "{app}\{#AppExe}"; Parameters: "exit"; Flags: runhidden skipifdoesntex
 Type: filesandordirs; Name: "{app}"
 
 [Code]
+// Silent installs relaunch the pet (auto-update); /NOLAUNCH installs without starting it.
+function AutoLaunch: Boolean;
+var
+  i: Integer;
+begin
+  Result := WizardSilent;
+  for i := 1 to ParamCount do
+    if CompareText(ParamStr(i), '/NOLAUNCH') = 0 then
+      Result := False;
+end;
+
 // Leftover autostart entry from the tray menu's own toggle.
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
