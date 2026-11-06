@@ -138,10 +138,29 @@ minuten) en is een tros gemiddeld 1,4x zo groot. Een eenling krijgt altijd een
 nieuwkomer van het andere geslacht. Alle getallen staan in `Core/Breeding.cs`;
 `Tools/graveyard.py` laat zien welk deel van de dieren mét geslacht ooit een ei legde
 (oud: 36%, zonder compensatie verwacht ~18%).
-Zelf bijstellen zonder te bouwen: zet in `%LOCALAPPDATA%\CuttlefishPet\settings.json` een blok
-`"Breeding": {"CooldownFactor": 0.5, "ClutchFactor": 2, "OneSexWaitMin": 60, "OneSexWaitMax": 120}`
-(alleen de sleutels die je wilt veranderen) en herstart de app. Onzin valt terug op de
-standaard. Het populatievenster toont ook hoeveel eieren er nog moeten uitkomen.
+Het populatievenster toont ook hoeveel eieren er nog moeten uitkomen.
+
+**Breeding zelf bijstellen (zonder te bouwen).** Zet in
+`%LOCALAPPDATA%\CuttlefishPet\settings.json` een blok `"Breeding"` met alleen de
+sleutels die je wilt veranderen, en herstart de app. Een ontbrekende sleutel houdt zijn
+standaard; een waarde buiten het bereik (of geen getal) valt stil terug op de standaard.
+
+| Sleutel | Standaard | Bereik | Wat het doet |
+| --- | --- | --- | --- |
+| `CooldownFactor` | `0.7` | 0,05 - 10 | Wachttijd tussen twee baltsen, als factor op de oude 60 + 90 x (aantal / rustpeil) seconden. Lager = vaker baltsen. Een bloei houdt altijd 10 s. |
+| `ClutchFactor` | `1.4` | 0,05 - 10 | Grootte van een tros als factor op de oude regel (1 tot 3 eitjes, +3 bij een bloei). Het restje wordt gegooid, dus 1,4 = meestal 1, vier op tien keer 2. |
+| `OneSexWaitMin` | `150` | 0 - 3600 | Minimaal aantal seconden voordat een tank met maar één geslacht een nieuwkomer van het andere geslacht krijgt. |
+| `OneSexWaitMax` | `270` | 0 - 3600 | Maximaal aantal seconden daarvoor (min en max omgedraaid? dan worden ze gewisseld). |
+
+Voorbeeld, een drukkere tank met snelle hulp bij één geslacht:
+
+```json
+{
+  "Breeding": { "CooldownFactor": 0.5, "ClutchFactor": 2, "OneSexWaitMin": 60, "OneSexWaitMax": 120 }
+}
+```
+
+Laat de rest van settings.json staan zoals hij is; de app schrijft dat bestand zelf ook.
 
 Drukte versnelt ieders klok en een tros komt alleen uit als er ruimte is, dus de groep
 regelt zijn eigen omvang. Loopt het toch vol: **Thin them out** in het tray-menu.

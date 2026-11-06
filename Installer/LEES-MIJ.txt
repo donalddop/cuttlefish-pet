@@ -109,6 +109,26 @@ ZE LEVEN EN GAAN DOOD
   Drukte versnelt ieders klok en een tros komt alleen uit als er ruimte is, dus de
   groep regelt zijn eigen omvang. Loopt het toch vol: "Thin them out".
 
+  Er zijn mannetjes en vrouwtjes, half om half. Alleen een mannetje en een
+  vrouwtje baltsen, en alleen vrouwtjes leggen. Het populatievenster toont
+  hoeveel van elk er zwemmen en hoeveel eitjes er nog moeten uitkomen.
+
+
+ZELF DE VOORTPLANTING BIJSTELLEN
+  Open %LocalAppData%\CuttlefishPet\settings.json in Kladblok en zet er een
+  blok "Breeding" bij met alleen wat je wilt veranderen. Daarna de app opnieuw
+  starten. Een onzinnige waarde wordt genegeerd; dan geldt de standaard.
+
+     CooldownFactor   standaard 0.7   lager = vaker baltsen (0.05 - 10)
+     ClutchFactor     standaard 1.4   hoger = grotere trossen (0.05 - 10)
+     OneSexWaitMin    standaard 150   seconden voor er bij een tank met maar
+     OneSexWaitMax    standaard 270   een geslacht een nieuwkomer van het
+                                      andere geslacht binnendrijft (0 - 3600)
+
+  Voorbeeld (let op de komma achter de regel ervoor in het bestand):
+
+     "Breeding": { "CooldownFactor": 0.5, "ClutchFactor": 2 }
+
 
 MENU (klik het icoontje bij je klok)
   Schuifregelaar      - hoe vol de tank moet zijn, 1 tot 30. Het is een rustpeil
