@@ -9,6 +9,10 @@ meer zijn. Dit leest de andere helft van het verhaal -- wat elk dier meekreeg, h
 lang het het volhield, hoe goed het at en hoeveel eieren het naliet.
 
     uv run Tools/graveyard.py
+    uv run Tools/graveyard.py --since "2026-11-03 03:31"
+
+Met --since telt het alleen dieren die op of na dat moment geboren zijn (lokale
+tijd), bv. de basislijn na een release: wie al leefde vóór de wissel telt niet mee.
 
 De vraag die het beantwoordt: welke eigenschappen komen bovendrijven op dit
 bureaublad? Daarvoor vergelijkt het de dieren die nakomelingen kregen met de rest.
@@ -16,11 +20,11 @@ Bij weinig doden zegt dat nog niets -- de spreiding staat erbij, zodat je ziet
 wanneer een verschil groter is dan de ruis.
 """
 
+import argparse
 import json
 import os
 import statistics
 from datetime import datetime
-import sys
 from collections import Counter
 
 TRAITS = ["Boldness", "Sociability", "Curiosity", "Metabolism", "Restlessness"]
@@ -33,10 +37,39 @@ DUTCH = {
 }
 
 
-def path() -> str:
-    if len(sys.argv) > 1:
-        return sys.argv[1]
+def default_path() -> str:
     return os.path.join(os.environ["LOCALAPPDATA"], "CuttlefishPet", "graveyard.jsonl")
+
+
+def args(argv=None):
+    ap = argparse.ArgumentParser(description="Lees het kerkhof uit.")
+    ap.add_argument("file", nargs="?", default=None, help="graveyard.jsonl (standaard: %%LOCALAPPDATA%%)")
+    ap.add_argument("--since", type=since_moment, default=None, metavar="DATUM[ TIJD]",
+                    help='alleen dieren geboren op of na dit moment, bv. "2026-11-03 03:31"')
+    return ap.parse_args(argv)
+
+
+def since_moment(text):
+    try:
+        return datetime.fromisoformat(text.strip())
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"geen datum/tijd: {text!r} (gebruik bv. 2026-11-03 03:31)")
+
+
+def born_since(dead, since):
+    """Keep the graves of animals born at or after `since` (local time).
+
+    Graves without a birth stamp (from before it was recorded) are left out,
+    because there is no telling which side of the line they were born on.
+    """
+    kept, unknown = [], 0
+    for d in dead:
+        born = moment(d.get("Born"))
+        if born is None:
+            unknown += 1
+        elif born >= since:
+            kept.append(d)
+    return kept, unknown
 
 
 def load(fn):
@@ -127,14 +160,20 @@ def reproduction(dead):
 
 
 def main():
-    fn = path()
+    opts = args()
+    fn = opts.file or default_path()
     if not os.path.exists(fn):
         print(f"nog geen kerkhof op {fn}")
         return 0
 
     dead = load(fn)
+    if opts.since:
+        total = len(dead)
+        dead, unknown = born_since(dead, opts.since)
+        print(f"alleen geboren sinds {opts.since:%Y-%m-%d %H:%M}: {len(dead)} van de {total}"
+              f" (zonder geboortedatum: {unknown})")
     if not dead:
-        print("kerkhof is leeg")
+        print("kerkhof is leeg" if not opts.since else "geen dieren geboren sinds dat moment")
         return 0
 
     print(f"{len(dead)} zeekatten begraven")
