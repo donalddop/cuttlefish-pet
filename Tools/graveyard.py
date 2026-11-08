@@ -10,9 +10,15 @@ lang het het volhield, hoe goed het at en hoeveel eieren het naliet.
 
     uv run Tools/graveyard.py
     uv run Tools/graveyard.py --since "2026-11-03 03:31"
+    uv run Tools/graveyard.py --since "2026-11-03 03:31" --until "2026-11-05 12:00"
+    uv run Tools/graveyard.py --selftest
 
 Met --since telt het alleen dieren die op of na dat moment geboren zijn (lokale
 tijd), bv. de basislijn na een release: wie al leefde vóór de wissel telt niet mee.
+Met --until telt het alleen dieren die vóór dat moment geboren zijn; samen bakenen
+ze een venster af, bv. alleen de 2.10.0-periode tegenover 2.10.1.
+--selftest controleert since/until op een paar nepgraven en raakt het echte
+kerkhof niet aan.
 
 De vraag die het beantwoordt: welke eigenschappen komen bovendrijven op dit
 bureaublad? Daarvoor vergelijkt het de dieren die nakomelingen kregen met de rest.
@@ -46,7 +52,14 @@ def args(argv=None):
     ap.add_argument("file", nargs="?", default=None, help="graveyard.jsonl (standaard: %%LOCALAPPDATA%%)")
     ap.add_argument("--since", type=since_moment, default=None, metavar="DATUM[ TIJD]",
                     help='alleen dieren geboren op of na dit moment, bv. "2026-11-03 03:31"')
-    return ap.parse_args(argv)
+    ap.add_argument("--until", type=since_moment, default=None, metavar="DATUM[ TIJD]",
+                    help='alleen dieren geboren vóór dit moment, bv. "2026-11-05 12:00"')
+    ap.add_argument("--selftest", action="store_true",
+                    help="controleer --since/--until op nepgraven en stop")
+    opts = ap.parse_args(argv)
+    if opts.since and opts.until and opts.until <= opts.since:
+        ap.error("--until moet na --since liggen")
+    return opts
 
 
 def since_moment(text):
@@ -56,20 +69,62 @@ def since_moment(text):
         raise argparse.ArgumentTypeError(f"geen datum/tijd: {text!r} (gebruik bv. 2026-11-03 03:31)")
 
 
-def born_since(dead, since):
-    """Keep the graves of animals born at or after `since` (local time).
+def born_between(dead, since=None, until=None):
+    """Keep the graves of animals born at or after `since` and before `until`.
 
-    Graves without a birth stamp (from before it was recorded) are left out,
-    because there is no telling which side of the line they were born on.
+    Either end may be None (open). Times are local. Graves without a birth stamp
+    (from before it was recorded) are left out, because there is no telling which
+    side of the line they were born on.
     """
     kept, unknown = [], 0
     for d in dead:
         born = moment(d.get("Born"))
         if born is None:
             unknown += 1
-        elif born >= since:
+        elif (since is None or born >= since) and (until is None or born < until):
             kept.append(d)
     return kept, unknown
+
+
+def born_since(dead, since):
+    """Keep the graves of animals born at or after `since` (local time)."""
+    return born_between(dead, since=since)
+
+
+def selftest():
+    """Check the since/until window on a handful of fake graves."""
+    fake = [
+        {"Born": "2026-11-03T03:30:59.9999999", "Offspring": 0},   # just before since
+        {"Born": "2026-11-03T03:31:00.0000000", "Offspring": 1},   # exactly since: in
+        {"Born": "2026-11-04T10:00:00.1234567", "Offspring": 2},   # inside
+        {"Born": "2026-11-05T11:59:59.0000000", "Offspring": 0},   # just before until: in
+        {"Born": "2026-11-05T12:00:00.0000000", "Offspring": 3},   # exactly until: out
+        {"Offspring": 5},                                         # no birth stamp
+        {"Born": "rommel", "Offspring": 0},                        # unreadable stamp
+    ]
+    since = datetime(2026, 11, 3, 3, 31)
+    until = datetime(2026, 11, 5, 12, 0)
+    checks = [
+        ("since + until", born_between(fake, since, until), [1, 2, 0], 2),
+        ("alleen since", born_between(fake, since=since), [1, 2, 0, 3], 2),
+        ("alleen until", born_between(fake, until=until), [0, 1, 2, 0], 2),
+        ("geen grenzen", born_between(fake), [0, 1, 2, 0, 3], 2),
+        ("born_since", born_since(fake, since), [1, 2, 0, 3], 2),
+    ]
+    failed = 0
+    for name, (kept, unknown), want, want_unknown in checks:
+        got = [d["Offspring"] for d in kept]
+        ok = got == want and unknown == want_unknown
+        failed += not ok
+        print(f"  {'ok  ' if ok else 'FOUT'} {name}: {got} (zonder datum {unknown})")
+    try:
+        args(["--since", "2026-11-05", "--until", "2026-11-03"])
+        print("  FOUT until vóór since werd geaccepteerd")
+        failed += 1
+    except SystemExit:
+        print("  ok   until vóór since wordt geweigerd")
+    print("selftest geslaagd" if not failed else f"selftest: {failed} fout(en)")
+    return 1 if failed else 0
 
 
 def load(fn):
@@ -161,19 +216,27 @@ def reproduction(dead):
 
 def main():
     opts = args()
+    if opts.selftest:
+        return selftest()
     fn = opts.file or default_path()
     if not os.path.exists(fn):
         print(f"nog geen kerkhof op {fn}")
         return 0
 
     dead = load(fn)
-    if opts.since:
+    window = opts.since or opts.until
+    if window:
         total = len(dead)
-        dead, unknown = born_since(dead, opts.since)
-        print(f"alleen geboren sinds {opts.since:%Y-%m-%d %H:%M}: {len(dead)} van de {total}"
+        dead, unknown = born_between(dead, opts.since, opts.until)
+        parts = []
+        if opts.since:
+            parts.append(f"sinds {opts.since:%Y-%m-%d %H:%M}")
+        if opts.until:
+            parts.append(f"vóór {opts.until:%Y-%m-%d %H:%M}")
+        print(f"alleen geboren {' en '.join(parts)}: {len(dead)} van de {total}"
               f" (zonder geboortedatum: {unknown})")
     if not dead:
-        print("kerkhof is leeg" if not opts.since else "geen dieren geboren sinds dat moment")
+        print("kerkhof is leeg" if not window else "geen dieren geboren in dat venster")
         return 0
 
     print(f"{len(dead)} zeekatten begraven")

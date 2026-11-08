@@ -139,6 +139,9 @@ nieuwkomer van het andere geslacht. Alle getallen staan in `Core/Breeding.cs`;
 `Tools/graveyard.py` laat zien welk deel van de dieren mét geslacht ooit een ei legde
 (oud: 36%, zonder compensatie verwacht ~18%). Voor een basislijn na een release tel je alleen
 de dieren die daarna geboren zijn: `uv run Tools/graveyard.py --since "2026-11-03 03:31"` (lokale tijd).
+Met `--until` baken je een venster af, bv. alleen de 2.10.0-periode:
+`--since "2026-11-03 03:31" --until "2026-11-05 12:00"` (until = geboren vóór dat moment).
+`uv run Tools/graveyard.py --selftest` controleert since/until op nepgraven.
 Het populatievenster toont ook hoeveel eieren er nog moeten uitkomen.
 
 **Breeding zelf bijstellen (zonder te bouwen).** Zet in
@@ -200,7 +203,7 @@ te lezen.
 - `CuttlefishPet/Rendering` — klikdoorlatend overlay-venster, sprite-renderer met oog-, huid- en glanslagen, kleurpaletten, screen sampler
 - `Tools/` — generatoren voor sprites, huidtexturen, geluid en het tray-icoon, plus previewscripts (`uv run`)
 - `Tools/DriveTests/` — controles op het genoom, de drijfveren en de gedragsweging (`dotnet run --project Tools/DriveTests`)
-- `Tools/graveyard.py` — leest het kerkhof uit en laat zien welke eigenschappen bovendrijven (`uv run Tools/graveyard.py`, met `--since "JJJJ-MM-DD UU:MM"` alleen dieren die sindsdien geboren zijn)
+- `Tools/graveyard.py` — leest het kerkhof uit en laat zien welke eigenschappen bovendrijven (`uv run Tools/graveyard.py`, met `--since "JJJJ-MM-DD UU:MM"` alleen dieren die sindsdien geboren zijn, met `--until` alleen wie daarvóór geboren is, `--selftest` voor een snelle check)
 
 De tank zelf staat in `%LocalAppData%\CuttlefishPet\tank.json`: genen, leeftijden, wat elk dier
 geleerd heeft en wat ze van elkaar vinden. Hij wordt elke minuut weggeschreven en bij het
