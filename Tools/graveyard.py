@@ -17,8 +17,10 @@ Met --since telt het alleen dieren die op of na dat moment geboren zijn (lokale
 tijd), bv. de basislijn na een release: wie al leefde vóór de wissel telt niet mee.
 Met --until telt het alleen dieren die vóór dat moment geboren zijn; samen bakenen
 ze een venster af, bv. alleen de 2.10.0-periode tegenover 2.10.1.
---selftest controleert since/until op een paar nepgraven en raakt het echte
-kerkhof niet aan.
+--selftest controleert since/until, het inlezen van tijden en regels en de
+samenvattingsregel op nepdata en raakt het echte kerkhof niet aan.
+Bovenaan staat altijd één samenvattingsregel (dieren, % legde ooit, eieren per
+dier), zodat je twee vensters makkelijk naast elkaar zet.
 
 De vraag die het beantwoordt: welke eigenschappen komen bovendrijven op dit
 bureaublad? Daarvoor vergelijkt het de dieren die nakomelingen kregen met de rest.
@@ -91,6 +93,45 @@ def born_since(dead, since):
     return born_between(dead, since=since)
 
 
+def selftest_moment_load_summary():
+    """Check moment(), load() and summary() on made-up input; returns the number of failures."""
+    import tempfile
+
+    failed = 0
+
+    def check(name, ok, got):
+        nonlocal failed
+        failed += not ok
+        print(f"  {'ok  ' if ok else 'FOUT'} {name}: {got}")
+
+    m = moment("2026-11-03T03:31:00.1234567")
+    check("moment 7 cijfers", m == datetime(2026, 11, 3, 3, 31, 0, 123456), m)
+    m = moment("2026-11-03T03:31:00Z")
+    check("moment met Z", m == datetime(2026, 11, 3, 3, 31), m)
+    m = moment("2026-11-03T03:31:00.5Z")
+    check("moment fractie + Z", m == datetime(2026, 11, 3, 3, 31, 0, 500000), m)
+    for junk in ("rommel", "", None, "2026-13-40T99:00:00"):
+        m = moment(junk)
+        check(f"moment {junk!r}", m is None, m)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        fn = os.path.join(tmp, "graveyard.jsonl")
+        with open(fn, "w", encoding="utf-8") as f:
+            f.write('{"Offspring": 1}\n\n   \n{"Offspring": 0}\n{"Offspring": 2, "Bo')
+        dead = load(fn)
+        check("load slaat lege + afgekapte regel over", [d["Offspring"] for d in dead] == [1, 0], dead)
+        with open(fn, "w", encoding="utf-8") as f:
+            f.write("")
+        check("load leeg bestand", load(fn) == [], load(fn))
+
+    fake = [{"Offspring": 0}, {"Offspring": 3}, {"Offspring": 1}, {}]
+    got = summary(fake)
+    check("samenvatting", got == "samenvatting: 4 dieren · 50.0% legde ooit · 1.00 eieren per dier", got)
+    got = summary([])
+    check("samenvatting leeg", got == "samenvatting: 0 dieren", got)
+    return failed
+
+
 def selftest():
     """Check the since/until window on a handful of fake graves."""
     fake = [
@@ -117,6 +158,7 @@ def selftest():
         ok = got == want and unknown == want_unknown
         failed += not ok
         print(f"  {'ok  ' if ok else 'FOUT'} {name}: {got} (zonder datum {unknown})")
+    failed += selftest_moment_load_summary()
     try:
         args(["--since", "2026-11-05", "--until", "2026-11-03"])
         print("  FOUT until vóór since werd geaccepteerd")
@@ -142,6 +184,16 @@ def load(fn):
 
 def spread(values):
     return statistics.pstdev(values) if len(values) > 1 else 0.0
+
+
+def summary(dead):
+    """One line to hold two windows side by side: animals, % that ever laid, eggs per animal."""
+    if not dead:
+        return "samenvatting: 0 dieren"
+    eggs = [d.get("Offspring", 0) for d in dead]
+    laid = sum(1 for e in eggs if e > 0)
+    return (f"samenvatting: {len(dead)} dieren · {100.0 * laid / len(dead):.1f}% legde ooit"
+            f" · {statistics.mean(eggs):.2f} eieren per dier")
 
 
 def moment(stamp):
@@ -239,6 +291,7 @@ def main():
         print("kerkhof is leeg" if not window else "geen dieren geboren in dat venster")
         return 0
 
+    print(summary(dead))
     print(f"{len(dead)} zeekatten begraven")
     print(f"  van {dead[0].get('Died', '?')[:19]} tot {dead[-1].get('Died', '?')[:19]}")
     print()

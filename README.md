@@ -141,7 +141,8 @@ nieuwkomer van het andere geslacht. Alle getallen staan in `Core/Breeding.cs`;
 de dieren die daarna geboren zijn: `uv run Tools/graveyard.py --since "2026-11-03 03:31"` (lokale tijd).
 Met `--until` baken je een venster af, bv. alleen de 2.10.0-periode:
 `--since "2026-11-03 03:31" --until "2026-11-05 12:00"` (until = geboren vóór dat moment).
-`uv run Tools/graveyard.py --selftest` controleert since/until op nepgraven.
+`uv run Tools/graveyard.py --selftest` controleert since/until, het inlezen van tijden en regels en de samenvatting op nepdata.
+Bovenaan staat altijd één samenvattingsregel (`samenvatting: 386 dieren · 24.6% legde ooit · 0.82 eieren per dier`), handig om twee vensters naast elkaar te zetten.
 Het populatievenster toont ook hoeveel eieren er nog moeten uitkomen.
 
 **Breeding zelf bijstellen (zonder te bouwen).** Zet in
