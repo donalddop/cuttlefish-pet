@@ -11,12 +11,16 @@ lang het het volhield, hoe goed het at en hoeveel eieren het naliet.
     uv run Tools/graveyard.py
     uv run Tools/graveyard.py --since "2026-11-03 03:31"
     uv run Tools/graveyard.py --since "2026-11-03 03:31" --until "2026-11-05 12:00"
+    uv run Tools/graveyard.py --compare "2026-11-03 03:31" "2026-11-03 12:00"
     uv run Tools/graveyard.py --selftest
 
 Met --since telt het alleen dieren die op of na dat moment geboren zijn (lokale
 tijd), bv. de basislijn na een release: wie al leefde vóór de wissel telt niet mee.
 Met --until telt het alleen dieren die vóór dat moment geboren zijn; samen bakenen
 ze een venster af, bv. alleen de 2.10.0-periode tegenover 2.10.1.
+Met --compare geef je een paar grensmomenten op; per venster (van de ene grens
+tot de volgende, de laatste loopt door tot nu of tot --until) krijg je alleen de
+samenvattingsregel, zodat releases in één keer naast elkaar staan.
 --selftest controleert since/until, het inlezen van tijden en regels en de
 samenvattingsregel op nepdata en raakt het echte kerkhof niet aan.
 Bovenaan staat altijd één samenvattingsregel (dieren, % legde ooit, eieren per
@@ -56,11 +60,20 @@ def args(argv=None):
                     help='alleen dieren geboren op of na dit moment, bv. "2026-11-03 03:31"')
     ap.add_argument("--until", type=since_moment, default=None, metavar="DATUM[ TIJD]",
                     help='alleen dieren geboren vóór dit moment, bv. "2026-11-05 12:00"')
+    ap.add_argument("--compare", type=since_moment, nargs="+", default=None, metavar="GRENS",
+                    help="grensmomenten; print per venster tussen twee grenzen alleen de samenvatting")
     ap.add_argument("--selftest", action="store_true",
                     help="controleer --since/--until op nepgraven en stop")
     opts = ap.parse_args(argv)
     if opts.since and opts.until and opts.until <= opts.since:
         ap.error("--until moet na --since liggen")
+    if opts.compare:
+        if opts.since:
+            ap.error("--compare en --since gaan niet samen: zet het begin als eerste grens")
+        if any(b <= a for a, b in zip(opts.compare, opts.compare[1:])):
+            ap.error("--compare: grenzen moeten oplopen, elke grens na de vorige")
+        if opts.until and opts.until <= opts.compare[-1]:
+            ap.error("--until moet na de laatste --compare-grens liggen")
     return opts
 
 
@@ -91,6 +104,69 @@ def born_between(dead, since=None, until=None):
 def born_since(dead, since):
     """Keep the graves of animals born at or after `since` (local time)."""
     return born_between(dead, since=since)
+
+
+def compare_windows(dead, bounds, until=None):
+    """Split the graves into windows between consecutive bounds.
+
+    The last window runs from the last bound to `until` (or open-ended).
+    Returns ([(label, graves), ...], graves without a readable birth stamp).
+    """
+    edges = list(bounds) + [until]
+    windows, unknown = [], 0
+    for start, end in zip(edges, edges[1:]):
+        kept, unknown = born_between(dead, start, end)
+        label = f"{start:%Y-%m-%d %H:%M} → " + (f"{end:%Y-%m-%d %H:%M}" if end else "nu")
+        windows.append((label, kept))
+    return windows, unknown
+
+
+def print_compare(dead, bounds, until=None):
+    windows, unknown = compare_windows(dead, bounds, until)
+    width = max(len(label) for label, _ in windows)
+    for label, kept in windows:
+        print(f"{label:<{width}}  {summary(kept)}")
+    print(f"(zonder geboortedatum, niet meegeteld: {unknown})")
+
+
+def selftest_compare():
+    """Check --compare windows and argument checks on fake graves; returns the number of failures."""
+    fake = [
+        {"Born": "2026-11-03T03:30:00", "Offspring": 9},   # before the first bound: never counted
+        {"Born": "2026-11-03T03:31:00", "Offspring": 1},   # exactly the first bound: window 1
+        {"Born": "2026-11-03T11:59:59", "Offspring": 0},   # window 1
+        {"Born": "2026-11-03T12:00:00", "Offspring": 2},   # exactly the second bound: window 2
+        {"Born": "2026-11-06T08:00:00", "Offspring": 0},   # window 2 (open end) / out with until
+        {"Offspring": 5},                                 # no birth stamp
+    ]
+    b1, b2 = datetime(2026, 11, 3, 3, 31), datetime(2026, 11, 3, 12, 0)
+    failed = 0
+
+    def check(name, ok, got):
+        nonlocal failed
+        failed += not ok
+        print(f"  {'ok  ' if ok else 'FOUT'} {name}: {got}")
+
+    windows, unknown = compare_windows(fake, [b1, b2])
+    got = [(label, [d["Offspring"] for d in kept]) for label, kept in windows]
+    want = [("2026-11-03 03:31 → 2026-11-03 12:00", [1, 0]), ("2026-11-03 12:00 → nu", [2, 0])]
+    check("compare open eind", got == want and unknown == 1, got)
+    windows, _ = compare_windows(fake, [b1, b2], until=datetime(2026, 11, 5))
+    got = [[d["Offspring"] for d in kept] for _, kept in windows]
+    check("compare met until", got == [[1, 0], [2]] and windows[-1][0].endswith("2026-11-05 00:00"), got)
+    windows, _ = compare_windows(fake, [b1])
+    check("compare één grens", [len(k) for _, k in windows] == [4], [len(k) for _, k in windows])
+    for bad, name in (
+        (["--compare", "2026-11-03 12:00", "2026-11-03 03:31"], "aflopende grenzen"),
+        (["--compare", "2026-11-03", "--since", "2026-11-02"], "--compare met --since"),
+        (["--compare", "2026-11-03", "2026-11-05", "--until", "2026-11-04"], "until vóór laatste grens"),
+    ):
+        try:
+            args(bad)
+            check(f"{name} geweigerd", False, "geaccepteerd")
+        except SystemExit:
+            check(f"{name} geweigerd", True, "ja")
+    return failed
 
 
 def selftest_moment_load_summary():
@@ -159,6 +235,7 @@ def selftest():
         failed += not ok
         print(f"  {'ok  ' if ok else 'FOUT'} {name}: {got} (zonder datum {unknown})")
     failed += selftest_moment_load_summary()
+    failed += selftest_compare()
     try:
         args(["--since", "2026-11-05", "--until", "2026-11-03"])
         print("  FOUT until vóór since werd geaccepteerd")
@@ -276,6 +353,9 @@ def main():
         return 0
 
     dead = load(fn)
+    if opts.compare:
+        print_compare(dead, opts.compare, opts.until)
+        return 0
     window = opts.since or opts.until
     if window:
         total = len(dead)

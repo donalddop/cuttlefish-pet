@@ -143,6 +143,7 @@ Met `--until` baken je een venster af, bv. alleen de 2.10.0-periode:
 `--since "2026-11-03 03:31" --until "2026-11-05 12:00"` (until = geboren vóór dat moment).
 `uv run Tools/graveyard.py --selftest` controleert since/until, het inlezen van tijden en regels en de samenvatting op nepdata.
 Bovenaan staat altijd één samenvattingsregel (`samenvatting: 386 dieren · 24.6% legde ooit · 0.82 eieren per dier`), handig om twee vensters naast elkaar te zetten.
+Met `--compare` zet je releases in één keer naast elkaar: `uv run Tools/graveyard.py --compare "2026-11-03 03:31" "2026-11-03 12:00"` geeft per venster (van grens tot grens, de laatste tot nu of tot `--until`) alleen de samenvattingsregel.
 Het populatievenster toont ook hoeveel eieren er nog moeten uitkomen.
 
 **Breeding zelf bijstellen (zonder te bouwen).** Zet in
@@ -204,7 +205,7 @@ te lezen.
 - `CuttlefishPet/Rendering` — klikdoorlatend overlay-venster, sprite-renderer met oog-, huid- en glanslagen, kleurpaletten, screen sampler
 - `Tools/` — generatoren voor sprites, huidtexturen, geluid en het tray-icoon, plus previewscripts (`uv run`)
 - `Tools/DriveTests/` — controles op het genoom, de drijfveren en de gedragsweging (`dotnet run --project Tools/DriveTests`)
-- `Tools/graveyard.py` — leest het kerkhof uit en laat zien welke eigenschappen bovendrijven (`uv run Tools/graveyard.py`, met `--since "JJJJ-MM-DD UU:MM"` alleen dieren die sindsdien geboren zijn, met `--until` alleen wie daarvóór geboren is, `--selftest` voor een snelle check)
+- `Tools/graveyard.py` — leest het kerkhof uit en laat zien welke eigenschappen bovendrijven (`uv run Tools/graveyard.py`, met `--since "JJJJ-MM-DD UU:MM"` alleen dieren die sindsdien geboren zijn, met `--until` alleen wie daarvóór geboren is, `--compare GRENS GRENS ...` voor vensters naast elkaar, `--selftest` voor een snelle check)
 
 De tank zelf staat in `%LocalAppData%\CuttlefishPet\tank.json`: genen, leeftijden, wat elk dier
 geleerd heeft en wat ze van elkaar vinden. Hij wordt elke minuut weggeschreven en bij het
