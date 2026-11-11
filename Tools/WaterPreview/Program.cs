@@ -5,13 +5,21 @@ using System.Windows.Media.Imaging;
 using CuttlefishPet.Core;
 using CuttlefishPet.Rendering;
 
-// Three questions this tool answers, in three images:
+// The questions this tool answers, one image each:
 //   water-dark.png   -- is there anything there at all, and does it read as depth?
 //   water-text.png   -- does it spoil a page of text? (the hard requirement)
 //   water-trails.png -- does the current actually carry things, and do near motes
 //                       travel further than far ones? Each mote's last 40 seconds
 //                       are drawn as a tail, which is the only way to see minutes
 //                       of drift in a still image.
+//   water-shafts.png -- the light on both surfaces at once: deep water on the left
+//                       half, a page of text on the right. The whole design of a
+//                       shaft rests on the beam carrying it on the dark side and
+//                       the shade beside it carrying it on the light side, and the
+//                       only way to check that is to see one shaft cross the seam.
+//   water-shafts-loud.png -- the same at four times strength. Not what it looks
+//                       like; what shape it is. Lean, spacing and how far down it
+//                       reaches are all invisible at real strength in a still.
 
 // Donald's actual screen. The mote count follows the area, so previewing at any
 // other size shows a field of the wrong density.
@@ -26,6 +34,12 @@ Render("water-dark.png", Background.Deep, warmUp: 120, trails: 0, covered: false
 // and it is also the dimmest the water ever gets. If it survives here it is there.
 Render("water-text.png", Background.Page, warmUp: 120, trails: 0, covered: true);
 Render("water-trails.png", Background.Deep, warmUp: 120, trails: 40, covered: false);
+// The light alone, with the dust left out: two subtle things on one image means
+// neither can be judged. Covered, because the right half is a document.
+Render("water-shafts.png", Background.Split, warmUp: 120, trails: 0, covered: true,
+       dust: false);
+Render("water-shafts-loud.png", Background.Split, warmUp: 120, trails: 0, covered: true,
+       dust: false, light: 4);
 Zoom("water-zoom.png");
 Console.WriteLine($"written to {outDir}");
 return 0;
@@ -63,17 +77,25 @@ void Zoom(string name)
     Console.WriteLine($"{name}: far..near at {Z}x on dark (top) and light (bottom)");
 }
 
-void Render(string name, Background bg, double warmUp, double trails, bool covered)
+void Render(string name, Background bg, double warmUp, double trails, bool covered,
+            bool dust = true, double light = 1)
 {
     var snow = new MarineSnow(new Random(1904));
     snow.Fit(tank);
     var flow = new Current();
+    var shafts = new LightShafts(new Random(5150)) { Brightness = light };
+    shafts.Fit(tank, flow.Flow);
     var covers = covered ? new List<Rect> { tank } : null;
 
     // Settle first: straight after Fit the motes are scattered but have never
     // moved, so their weave phases have not spread out yet -- and Clarity has not
     // eased down to where a covered screen would hold it.
-    for (double t = 0; t < warmUp; t += Dt) { flow.Tick(Dt); snow.Tick(Dt, flow.Flow, 0, covers); }
+    for (double t = 0; t < warmUp; t += Dt)
+    {
+        flow.Tick(Dt);
+        snow.Tick(Dt, flow.Flow, 0, covers);
+        shafts.Tick(Dt, flow.Flow);
+    }
 
     // A tail per mote, sampled backwards in time by re-running the field.
     var tails = new List<List<Point>>();
@@ -94,6 +116,7 @@ void Render(string name, Background bg, double warmUp, double trails, bool cover
     using (var dc = dv.RenderOpen())
     {
         bg.Draw(dc, W, H);
+        DrawShafts(dc, shafts);
 
         for (int i = 0; i < tails.Count; i++)
         {
@@ -109,13 +132,16 @@ void Render(string name, Background bg, double warmUp, double trails, bool cover
             }
         }
 
-        foreach (var f in snow.Flakes)
+        if (dust)
         {
-            double a = Math.Min(1, f.Alpha * f.Clarity * snow.Brightness);
-            if (a < 0.012) continue;
-            dc.PushOpacity(a);
-            dc.DrawEllipse(brush, null, new Point(f.X, f.Y), f.Size / 2, f.Size / 2);
-            dc.Pop();
+            foreach (var f in snow.Flakes)
+            {
+                double a = Math.Min(1, f.Alpha * f.Clarity * snow.Brightness);
+                if (a < 0.012) continue;
+                dc.PushOpacity(a);
+                dc.DrawEllipse(brush, null, new Point(f.X, f.Y), f.Size / 2, f.Size / 2);
+                dc.Pop();
+            }
         }
     }
 
@@ -125,7 +151,31 @@ void Render(string name, Background bg, double warmUp, double trails, bool cover
     enc.Frames.Add(BitmapFrame.Create(rtb));
     using var fs = File.Create(Path.Combine(outDir, name));
     enc.Save(fs);
-    Console.WriteLine($"{name}: {snow.Flakes.Count} motes, flow {flow.Flow.X:F2},{flow.Flow.Y:F2} px/s");
+    Console.WriteLine($"{name}: {snow.Flakes.Count} motes, {shafts.Shafts.Count} shafts, " +
+                      $"flow {flow.Flow.X:F2},{flow.Flow.Y:F2} px/s");
+}
+
+// The same geometry the overlay builds out of a Rectangle and a SkewTransform:
+// the band hangs from the surface at its own x, leans by `lean` px sideways per px
+// down, and the bitmap brush carries the rest. Written as a matrix here rather
+// than reusing LightShaftLayer because that one needs a live overlay window to
+// know its DPI, and the whole point of this tool is not needing one.
+void DrawShafts(DrawingContext dc, LightShafts shafts)
+{
+    var shaftBrush = WaterLook.Shaft(Math.Max(1, shafts.Brightness));
+    foreach (var s in shafts.Shafts)
+    {
+        double a = s.Strength * Math.Min(1, shafts.Brightness);
+        if (a < 0.012) continue;
+        // (x,y) -> (x + lean*y, y), with the top of the tank pinned so the band
+        // starts where the simulation put it instead of where y=0 happens to be.
+        dc.PushTransform(new MatrixTransform(new Matrix(1, 0, s.Lean, 1, 0, 0)));
+        dc.PushOpacity(a);
+        dc.DrawRectangle(shaftBrush, null,
+            new Rect(s.X - s.Width / 2, 0, s.Width, s.Reach * H));
+        dc.Pop();
+        dc.Pop();
+    }
 }
 
 /// <summary>The two surfaces that matter: deep water, and something to read.</summary>
@@ -133,7 +183,22 @@ abstract class Background
 {
     public static readonly Background Deep = new DeepWater();
     public static readonly Background Page = new TextPage();
+    /// <summary>Both at once, split down the middle, for anything that has to work on either.</summary>
+    public static readonly Background Split = new SplitScreen();
     public abstract void Draw(DrawingContext dc, int w, int h);
+
+    private sealed class SplitScreen : Background
+    {
+        public override void Draw(DrawingContext dc, int w, int h)
+        {
+            dc.PushClip(new RectangleGeometry(new Rect(0, 0, w / 2.0, h)));
+            Deep.Draw(dc, w, h);
+            dc.Pop();
+            dc.PushClip(new RectangleGeometry(new Rect(w / 2.0, 0, w / 2.0, h)));
+            Page.Draw(dc, w, h);
+            dc.Pop();
+        }
+    }
 
     private sealed class DeepWater : Background
     {

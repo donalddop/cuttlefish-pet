@@ -101,6 +101,7 @@ public partial class App : Application
             case "lurk": _manager.LurkNow(); break;
             case "shove": _manager.ShoveTest(); break;
             case "water": _manager.CycleWater(); break;
+            case "light": _manager.CycleLight(); break;
             case "mute": if (_muteItem != null) _muteItem.Checked = !_muteItem.Checked; break;
             case "exit": Shutdown(); break;
         }

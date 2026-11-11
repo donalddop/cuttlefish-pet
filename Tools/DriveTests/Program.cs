@@ -495,6 +495,84 @@ var empty = new MarineSnow(new Random(1));
 empty.Tick(1.0 / 30, strong, 0, null);
 Check("ticking an unfitted field does nothing rather than throwing", empty.Flakes.Count == 0);
 
+// ---------- the water: light shafts ----------
+// Same three failure modes as the current, plus two that are specific to light:
+// the shafts all have to lean the same way (one sun), and none of them may ever go
+// fully dark, because a shaft that reaches zero pops back into existence.
+var tide = new Current();
+var light = new LightShafts(new Random(31));
+light.Fit(new System.Windows.Rect(0, 0, 1920, 1080), tide.Flow);
+Check("a 1080p tank gets a handful of shafts", light.Shafts.Count is >= 3 and <= 5,
+      $"{light.Shafts.Count}");
+Check("shafts spread across the width rather than clumping",
+      light.Shafts.Select(s => s.Home).OrderBy(x => x).Zip(
+          light.Shafts.Select(s => s.Home).OrderBy(x => x).Skip(1),
+          (a, b) => b - a).All(gap => gap > 200),
+      string.Join(",", light.Shafts.Select(s => $"{s.Home:F0}")));
+Check("every shaft leans the same way", light.Shafts.All(s => s.Lean > 0.05),
+      string.Join(",", light.Shafts.Select(s => $"{s.Lean:F3}")));
+Check("a shaft fades out before the bottom of the screen",
+      light.Shafts.All(s => s.Reach is > 0.3 and < 0.85));
+
+var homes = light.Shafts.Select(s => s.Home).ToList();
+var strengths = light.Shafts.Select(_ => (Min: 2.0, Max: -1.0)).ToList();
+var leans = (Min: 9.0, Max: -9.0);
+double worstLeanStep = 0, worstXStep = 0;
+var lastLean = light.Shafts.Select(s => s.Lean).ToList();
+var lastX = light.Shafts.Select(s => s.X).ToList();
+for (int i = 0; i < 30 * 3600; i++)
+{
+    tide.Tick(1.0 / 30);
+    light.Tick(1.0 / 30, tide.Flow);
+    for (int j = 0; j < light.Shafts.Count; j++)
+    {
+        var s = light.Shafts[j];
+        strengths[j] = (Math.Min(strengths[j].Min, s.Strength), Math.Max(strengths[j].Max, s.Strength));
+        leans = (Math.Min(leans.Min, s.Lean), Math.Max(leans.Max, s.Lean));
+        worstLeanStep = Math.Max(worstLeanStep, Math.Abs(s.Lean - lastLean[j]));
+        worstXStep = Math.Max(worstXStep, Math.Abs(s.X - lastX[j]));
+        lastLean[j] = s.Lean;
+        lastX[j] = s.X;
+    }
+}
+Check("an hour of light leaves every strength in range",
+      light.Shafts.All(s => s.Strength is >= 0 and <= 1) &&
+      strengths.All(r => r.Min >= 0.4 && r.Max <= 1.0),
+      $"{strengths.Min(r => r.Min):F2}..{strengths.Max(r => r.Max):F2}");
+Check("every shaft breathes over that hour, and none of them goes dark",
+      strengths.All(r => r.Min < 0.55 && r.Max > 0.95),
+      string.Join(" ", strengths.Select(r => $"{r.Min:F2}-{r.Max:F2}")));
+Check("the lean stays a lean and never flips", leans.Min > 0.02 && leans.Max < 0.5,
+      $"{leans.Min:F3}..{leans.Max:F3}");
+Check("nothing about the light jumps", worstLeanStep < 0.001 && worstXStep < 0.1,
+      $"lean {worstLeanStep:F5}/tick, x {worstXStep:F3}px/tick");
+Check("a shaft stays near the slot it was given",
+      light.Shafts.Select((s, j) => Math.Abs(s.X - homes[j])).All(d => d < 70),
+      $"worst {light.Shafts.Select((s, j) => Math.Abs(s.X - homes[j])).Max():F0}px");
+Check("no NaN anywhere in the light",
+      light.Shafts.All(s => double.IsFinite(s.X) && double.IsFinite(s.Lean) &&
+                            double.IsFinite(s.Strength) && double.IsFinite(s.Reach)));
+
+var jumpedLight = new LightShafts(new Random(31));
+jumpedLight.Fit(new System.Windows.Rect(0, 0, 1920, 1080), tide.Flow);
+double lightBefore = jumpedLight.Shafts[0].Strength;
+double xBefore = jumpedLight.Shafts[0].X;
+jumpedLight.Advance(180);
+Check("Advance moves the light on",
+      Math.Abs(jumpedLight.Shafts[0].Strength - lightBefore) > 0.05 ||
+      Math.Abs(jumpedLight.Shafts[0].X - xBefore) > 5);
+
+var narrow = new LightShafts(new Random(2));
+narrow.Fit(new System.Windows.Rect(0, 0, 800, 600));
+Check("a narrow tank still gets two shafts", narrow.Shafts.Count == 2, $"{narrow.Shafts.Count}");
+narrow.Fit(new System.Windows.Rect(0, 0, 7680, 2160));
+Check("a wall of monitors is capped", narrow.Shafts.Count == 6, $"{narrow.Shafts.Count}");
+Check("and they are spread over the whole wall",
+      narrow.Shafts.Max(s => s.Home) - narrow.Shafts.Min(s => s.Home) > 5000);
+var unfitted = new LightShafts(new Random(1));
+unfitted.Tick(1.0 / 30, strong);
+Check("ticking unfitted light does nothing rather than throwing", unfitted.Shafts.Count == 0);
+
 Console.WriteLine(failed == 0 ? "\nALL PASS" : $"\n{failed} FAILED");
 return failed;
 

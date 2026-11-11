@@ -28,6 +28,7 @@
     <Compile Include="..\..\CuttlefishPet\Core\TankState.cs" />
     <Compile Include="..\..\CuttlefishPet\Core\Current.cs" />
     <Compile Include="..\..\CuttlefishPet\Core\MarineSnow.cs" />
+    <Compile Include="..\..\CuttlefishPet\Core\LightShafts.cs" />
     <Compile Include="..\..\CuttlefishPet\Rendering\Palette.cs" />
   </ItemGroup>
 

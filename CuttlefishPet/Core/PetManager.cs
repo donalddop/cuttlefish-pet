@@ -33,9 +33,14 @@ public sealed partial class PetManager
     private readonly Current _current = new();
     private readonly MarineSnow _snow;
     private readonly MarineSnowLayer _snowLayer;
+    private readonly LightShafts _shafts;
+    private readonly LightShaftLayer _shaftLayer;
     /// <summary>The dust moves at 12fps, not 30; see TickWater for the measurement.</summary>
     private const double WaterStep = 1.0 / 12;
     private double _waterIn;
+    /// <summary>The shafts are redrawn every third water step, so 4fps; see TickWater.</summary>
+    private const int ShaftEvery = 3;
+    private int _shaftStep;
 
     /// <summary>Hands out the identity every pet keeps for life.</summary>
     private int _nextId;
@@ -87,6 +92,8 @@ public sealed partial class PetManager
         _world.Settings = _settings;
         _snow = new MarineSnow(_rng);
         _snowLayer = new MarineSnowLayer(overlay, _snow);
+        _shafts = new LightShafts(_rng);
+        _shaftLayer = new LightShaftLayer(overlay, _shafts);
         Breeding.Apply(_settings.BreedingOverrides);
         Rendering.AnimationPlayer.Report = Log;
     }
@@ -687,6 +694,18 @@ public sealed partial class PetManager
             _snow.Fit(_world.VirtualScreen);
             _snow.Tick(step, _world.Drift, _world.ScrollCurrent, _world.WindowRects);
             _snowLayer.Tick();
+
+            // The light is slower again. A shaft sways about 24px over a minute and
+            // a half, so between two 12fps steps it moves a fiftieth of a pixel,
+            // and the rectangles it moves are hundreds of pixels wide -- the most
+            // expensive thing on screen to redraw for the least visible change. At
+            // 4fps a step is still a quarter of a pixel, below where the eye reads
+            // steps, and the compositor gets three quarters of the work back.
+            // Simulated at the full water rate regardless: it is four sines, and
+            // keeping it continuous means the debug log never shows a stale number.
+            _shafts.Fit(_world.VirtualScreen, _world.Drift);
+            _shafts.Tick(step, _world.Drift);
+            if (++_shaftStep % ShaftEvery == 0) _shaftLayer.Tick();
         }
         catch (Exception ex)
         {
@@ -711,6 +730,42 @@ public sealed partial class PetManager
         _current.Advance(90);
         Log($"water: brightness {_snow.Brightness}, {_snow.Flakes.Count} flakes, " +
             $"flow {_world.Drift.X:F2},{_world.Drift.Y:F2} px/s | {_snowLayer.Describe()}");
+    }
+
+    /// <summary>
+    /// Debug: same problem as the dust, one step worse. A shaft at its real
+    /// strength is a few percent of alpha spread over a few hundred pixels, which
+    /// is invisible in a screenshot of a real desktop and nearly invisible in
+    /// person -- and it breathes on a ninety-second clock, so the one you want to
+    /// look at may be at 42% when you look. Cycles real -> showcase -> off, and
+    /// jumps every shaft's clock on three minutes so the arrangement, the lean and
+    /// the breathing are all somewhere else by the time the log line lands.
+    /// </summary>
+    public void CycleLight()
+    {
+        // Wrapped, unlike CycleWater, because the showcase strength builds a second
+        // bitmap brush: this is the one debug command that allocates and paints
+        // rather than just reading numbers, and it is reached straight from the
+        // pipe on the UI thread.
+        try
+        {
+            _shafts.Brightness = _shafts.Brightness switch
+            {
+                > 2 => 0,
+                < 0.01 => 1,
+                _ => 6,
+            };
+            _shafts.Advance(180);
+            _shaftLayer.Tick();
+            Log($"light: brightness {_shafts.Brightness}, " +
+                string.Join(", ", _shafts.Shafts.Select(s =>
+                    $"x={s.X:F0} w={s.Width:F0} lean={s.Lean:F3} str={s.Strength:F2}")) +
+                $" | {_shaftLayer.Describe()}");
+        }
+        catch (Exception ex)
+        {
+            Log($"light command failed: {ex.Message}");
+        }
     }
 
     private void RouteMouse()

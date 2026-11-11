@@ -38,7 +38,14 @@ bepaalt wanneer er iets gebeurt, en waar je op dat moment naar kijkt.
   een vaste diepte waar formaat, helderheid, daalsnelheid en stromingsgevoel uit
   volgen. Lichte kern in een donkere halo, anders bestaat het niet op een licht
   bureaublad. Draait op 12fps, niet op 30 — zie de meting in `TickWater`.
-- Lichtbundels van de bovenrand, langzaam wiegend, sterker bovenin.
+- ~~Lichtbundels van de bovenrand, langzaam wiegend, sterker bovenin.~~ **Af**
+  (11 nov). Vier tot zes brede, zachte banen die allemaal dezelfde kant op hellen
+  (één zon), over anderhalve minuut heen en weer wiegen, apart van elkaar
+  op- en afademen tussen 42% en 100%, en halverwege het scherm oplossen. Een
+  heldere kern met schaduw ernaast, net als het stof: op donker zie je de bundel,
+  op een witte pagina de schaduw. `Core/LightShafts.cs`,
+  `Rendering/LightShaftLayer.cs`, debug-commando `light`. Draait op 4fps en kost
+  niets meetbaars.
 - ~~Eén gedeelde stroming: een vector die over minuten verloopt. Alles wat zweeft
   erft hem~~ **Af** (11 nov): `Core/Current.cs`, uitgelezen via `WorldState.Drift`.
   Nog niet gedaan: **dieren zetten zich er schuin tegenin**. Dat verandert hoe ze
@@ -135,6 +142,19 @@ Deze zijn duur geleerd. Ze gelden elke dag.
 ## Logboek
 
 Nieuwste bovenaan. Eén regel per dag: wat er gebeurde, en wat het leerde.
+
+- **11 nov (2)** — Licht: lichtbundels van de bovenrand. Geleerd: een mooie
+  preview op diep water bewijst niets — op ware sterkte boven een echt scherm
+  (een game in de schemering) was er één vage baan en verder niets, dus de
+  sterkte moest 40% omhoog; dezelfde les als met het stof, en ik liep er toch
+  weer in. Verder: vijf brede rechthoeken die 4× per seconde kantelen kosten
+  géén meetbare processortijd terwijl 37 stofjes op 12fps +6 punten kostten —
+  het aantal visuals dat je aanraakt telt, niet het aantal pixels. En de
+  sprongtest ving een echte discontinuïteit: `Fit` kende de stroming niet, dus
+  de eerste tick verzette elke bundel in één keer 34px. **Nog open:** de
+  verhoogde sterkte is wel tegen een pagina tekst gecontroleerd, maar niet meer
+  live op het bureaublad — Donald was aan het gamen. En zijn geïnstalleerde
+  versie is daarom nog niet bijgewerkt: die staat nog op 2.10.1 zonder licht.
 
 - **11 nov** — Water: gedeelde stroming + zwevend stof. Geleerd: bleke deeltjes
   bestaan niet op een licht bureaublad (vandaar de donkere halo), "over een

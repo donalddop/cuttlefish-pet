@@ -25,6 +25,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="..\..\CuttlefishPet\Core\Current.cs" />
     <Compile Include="..\..\CuttlefishPet\Core\MarineSnow.cs" />
+    <Compile Include="..\..\CuttlefishPet\Core\LightShafts.cs" />
     <Compile Include="..\..\CuttlefishPet\Rendering\WaterLook.cs" />
   </ItemGroup>
 
