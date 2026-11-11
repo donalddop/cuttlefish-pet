@@ -100,6 +100,7 @@ public partial class App : Application
             case "ammonite": _manager.SummonAmmonite(); break;
             case "lurk": _manager.LurkNow(); break;
             case "shove": _manager.ShoveTest(); break;
+            case "water": _manager.CycleWater(); break;
             case "mute": if (_muteItem != null) _muteItem.Checked = !_muteItem.Checked; break;
             case "exit": Shutdown(); break;
         }

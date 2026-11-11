@@ -398,6 +398,103 @@ var newSave = System.Text.Json.JsonSerializer.Deserialize<SavedPet>(
     System.Text.Json.JsonSerializer.Serialize(new SavedPet { Id = 8, Female = true }))!;
 Check("and a new one keeps it", newSave.Female == true);
 
+// ---------- the water: shared current ----------
+// Both of these are scenery that runs all day, so what is tested is not "does it
+// look nice" but the three ways scenery goes wrong: it leaves its range, it jumps,
+// or it quietly stops moving.
+var flow = new Current();
+var seen = new List<System.Windows.Vector>();
+for (int i = 0; i < 30 * 1800; i++) { flow.Tick(1.0 / 30); if (i % 30 == 0) seen.Add(flow.Flow); }
+Check("the current stays within its range",
+      seen.All(v => Math.Abs(v.X) <= Current.MaxSideways + 1e-9 &&
+                    Math.Abs(v.Y) <= Current.MaxVertical + 1e-9),
+      $"max |x|={seen.Max(v => Math.Abs(v.X)):F2} |y|={seen.Max(v => Math.Abs(v.Y)):F2}");
+Check("the current reverses within half an hour",
+      seen.Any(v => v.X > 1) && seen.Any(v => v.X < -1));
+Check("the current uses most of its range",
+      seen.Max(v => v.X) - seen.Min(v => v.X) > Current.MaxSideways,
+      $"span={seen.Max(v => v.X) - seen.Min(v => v.X):F2}");
+var step = new Current();
+double worstStep = 0;
+var prev = step.Flow;
+for (int i = 0; i < 30 * 900; i++)
+{
+    step.Tick(1.0 / 30);
+    worstStep = Math.Max(worstStep, (step.Flow - prev).Length);
+    prev = step.Flow;
+}
+Check("the current never jumps", worstStep < 0.02, $"worst tick={worstStep:F4} px/s");
+var jumped = new Current();
+var before = jumped.Flow;
+jumped.Advance(600);
+Check("Advance moves the current on", (jumped.Flow - before).Length > 1);
+
+// ---------- the water: marine snow ----------
+var snow = new MarineSnow(new Random(7));
+snow.Fit(new System.Windows.Rect(0, 0, 1920, 1080));
+Check("a 1080p tank gets a sensible number of motes", snow.Flakes.Count is >= 25 and <= 50,
+      $"{snow.Flakes.Count}");
+Check("motes start scattered through the tank, not all at the top",
+      snow.Flakes.Count(f => f.Y > 400) > 5);
+Check("depth spreads across the tank", snow.Flakes.Any(f => f.Depth < 0.3) &&
+                                       snow.Flakes.Any(f => f.Depth > 0.7));
+var strong = new System.Windows.Vector(Current.MaxSideways, Current.MaxVertical);
+for (int i = 0; i < 30 * 600; i++) snow.Tick(1.0 / 30, strong, 0, null);
+Check("ten minutes of the strongest current leaves every mote in the tank",
+      snow.Flakes.All(f => f.X >= -20 && f.X <= 1940 && f.Y >= -20 && f.Y <= 1100));
+for (int i = 0; i < 30 * 600; i++) snow.Tick(1.0 / 30, -strong, 0.9, null);
+Check("so does ten minutes of it reversed, with the wheel stirring",
+      snow.Flakes.All(f => f.X >= -20 && f.X <= 1940 && f.Y >= -20 && f.Y <= 1100));
+Check("nothing turns into a NaN along the way",
+      snow.Flakes.All(f => double.IsFinite(f.X) && double.IsFinite(f.Y) &&
+                           double.IsFinite(f.Clarity)));
+
+// Depth is the whole illusion, so the three things it drives are each pinned down.
+var pair = new MarineSnow(new Random(11));
+pair.Fit(new System.Windows.Rect(0, 0, 4000, 4000));
+pair.Flakes.Clear();
+var far = new Flake { X = 2000, Y = 100, Depth = 0.05 };
+var near = new Flake { X = 2000, Y = 100, Depth = 0.95 };
+pair.Flakes.Add(far);
+pair.Flakes.Add(near);
+for (int i = 0; i < 30 * 20; i++) pair.Tick(1.0 / 30, new System.Windows.Vector(6, 0), 0, null);
+// Distance fallen, not final Y: they both start at 100, and counting from zero
+// quietly flattered the ratio.
+Check("a near mote sinks faster than a far one", near.Y - 100 > (far.Y - 100) * 1.8,
+      $"far fell {far.Y - 100:F0}px, near {near.Y - 100:F0}px");
+Check("a near mote is carried further sideways", near.X - 2000 > (far.X - 2000) * 2,
+      $"far={far.X - 2000:F1} near={near.X - 2000:F1}");
+Check("a near mote is bigger and brighter", near.Size > far.Size * 1.8 && near.Alpha > far.Alpha * 2,
+      $"size {far.Size:F2}->{near.Size:F2}, alpha {far.Alpha:F3}->{near.Alpha:F3}");
+
+// Readability: a mote over a window has to fade back, and come up again after.
+var reading = new MarineSnow(new Random(3));
+reading.Fit(new System.Windows.Rect(0, 0, 4000, 4000));
+reading.Flakes.Clear();
+var overText = new Flake { X = 500, Y = 500, Depth = 0.8 };
+reading.Flakes.Add(overText);
+var window = new List<System.Windows.Rect> { new(0, 0, 1000, 1000) };
+for (int i = 0; i < 30 * 3; i++) reading.Tick(1.0 / 30, default, 0, window);
+Check("a mote over a window steps back but does not vanish",
+      overText.Clarity is > 0.4 and < 0.7, $"{overText.Clarity:F2}");
+double dimmed = overText.Clarity;
+for (int i = 0; i < 30 * 3; i++) reading.Tick(1.0 / 30, default, 0, null);
+Check("and comes up again over bare desktop", overText.Clarity > 0.9,
+      $"{dimmed:F2} -> {overText.Clarity:F2}");
+
+var resized = new MarineSnow(new Random(5));
+resized.Fit(new System.Windows.Rect(0, 0, 1920, 1080));
+int wide = resized.Flakes.Count;
+resized.Fit(new System.Windows.Rect(0, 0, 3840, 2160));
+Check("a bigger tank gets more motes, up to the cap",
+      resized.Flakes.Count > wide && resized.Flakes.Count <= 70,
+      $"{wide} -> {resized.Flakes.Count}");
+resized.Fit(new System.Windows.Rect(0, 0, 800, 600));
+Check("a small tank still gets the minimum", resized.Flakes.Count >= 18, $"{resized.Flakes.Count}");
+var empty = new MarineSnow(new Random(1));
+empty.Tick(1.0 / 30, strong, 0, null);
+Check("ticking an unfitted field does nothing rather than throwing", empty.Flakes.Count == 0);
+
 Console.WriteLine(failed == 0 ? "\nALL PASS" : $"\n{failed} FAILED");
 return failed;
 

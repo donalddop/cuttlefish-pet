@@ -78,6 +78,14 @@ public sealed class WorldState
     public double ScrollCurrent { get; set; }
 
     /// <summary>
+    /// The tank's one shared current, physical px/s, from <see cref="Current"/>.
+    /// Everything afloat inherits it. The animals do not lean into it yet — that
+    /// is a change to how they steer, and it belongs with the depth pass rather
+    /// than with the water it drifts through.
+    /// </summary>
+    public Vector Drift { get; set; }
+
+    /// <summary>
     /// Re-resolve a surface reference to this tick's version (windows move). A window
     /// top can split into several segments when partly occluded; when an x is given,
     /// prefer the segment under that x.

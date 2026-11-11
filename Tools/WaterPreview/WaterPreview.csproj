@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Renders the water off-screen so it can actually be looked at.
+
+    Why this exists: the water is meant to be nearly invisible, and the desktop it
+    normally lands on is whatever happens to be open: a screenshot of that tells
+    you almost nothing, and over a bright game it tells you nothing at all. This
+    draws the real field, with the real brush, onto backgrounds chosen on purpose,
+    including a page of text, which is the one surface it must not spoil.
+
+    Run it from the repo root with:
+      dotnet run (two dashes)project Tools/WaterPreview -c Release
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="..\..\CuttlefishPet\Core\Current.cs" />
+    <Compile Include="..\..\CuttlefishPet\Core\MarineSnow.cs" />
+    <Compile Include="..\..\CuttlefishPet\Rendering\WaterLook.cs" />
+  </ItemGroup>
+
+</Project>

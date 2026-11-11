@@ -29,6 +29,14 @@ public sealed partial class PetManager
     private readonly List<Pet> _leaving = new();
     private readonly List<(Point Pos, bool Hatchling, Heritage? Inherit)> _hatching = new();
 
+    /// <summary>The water: one shared current, and the dust that shows it is moving.</summary>
+    private readonly Current _current = new();
+    private readonly MarineSnow _snow;
+    private readonly MarineSnowLayer _snowLayer;
+    /// <summary>The dust moves at 12fps, not 30; see TickWater for the measurement.</summary>
+    private const double WaterStep = 1.0 / 12;
+    private double _waterIn;
+
     /// <summary>Hands out the identity every pet keeps for life.</summary>
     private int _nextId;
     private double _clock, _lastDownAt = double.NegativeInfinity, _rivalCooldown;
@@ -77,6 +85,8 @@ public sealed partial class PetManager
         _sound = sound;
         _settings = Settings.Load();
         _world.Settings = _settings;
+        _snow = new MarineSnow(_rng);
+        _snowLayer = new MarineSnowLayer(overlay, _snow);
         Breeding.Apply(_settings.BreedingOverrides);
         Rendering.AnimationPlayer.Report = Log;
     }
@@ -589,6 +599,7 @@ public sealed partial class PetManager
         _input.Tick(dt);
         _tracker.Tick();
         RebuildWorld(dt);
+        TickWater(dt);
         RouteMouse();
 
         bool wantClicks = false;
@@ -642,6 +653,64 @@ public sealed partial class PetManager
             _overlay.EnsureTopmost();
             LogDebug();
         }
+    }
+
+    /// <summary>
+    /// Advance the water. Runs straight after RebuildWorld because it needs this
+    /// tick's screen rectangle and window list, and before the animals so the
+    /// current they will eventually lean into is already this tick's value.
+    ///
+    /// Wrapped whole: the water is scenery, and a bad number in here must never be
+    /// able to take the tank down with it.
+    /// </summary>
+    private void TickWater(double dt)
+    {
+        try
+        {
+            // The current is cheap and everything else will come to read it, so it
+            // keeps up with the simulation.
+            _current.Tick(dt);
+            _world.Drift = _current.Flow;
+
+            // The dust does not. Measured on a tank of twelve: moving 37 extra
+            // visuals every frame took the app from 22% of a core to 37%, which is
+            // more than the animals cost and far more than scenery is worth. At
+            // these speeds a mote covers a fifth of a pixel in a 30fps frame, so
+            // two thirds of that work was redrawing dots that had not visibly
+            // moved. At 12fps it is 0.6px a step -- still below the threshold where
+            // the eye reads steps rather than drift -- and the cost comes back down.
+            _waterIn -= dt;
+            if (_waterIn > 0) return;
+            double step = WaterStep - _waterIn;   // the time actually elapsed
+            _waterIn = WaterStep;
+
+            _snow.Fit(_world.VirtualScreen);
+            _snow.Tick(step, _world.Drift, _world.ScrollCurrent, _world.WindowRects);
+            _snowLayer.Tick();
+        }
+        catch (Exception ex)
+        {
+            Log($"water tick failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Debug: the water at its real strength is meant to be almost unnoticeable,
+    /// which makes it impossible to check in a screenshot. Cycles real → showcase
+    /// → off, and jumps the current on a few minutes so a reversal can be seen
+    /// without sitting and waiting for one.
+    /// </summary>
+    public void CycleWater()
+    {
+        _snow.Brightness = _snow.Brightness switch
+        {
+            > 2 => 0,
+            < 0.01 => 1,
+            _ => 5,
+        };
+        _current.Advance(90);
+        Log($"water: brightness {_snow.Brightness}, {_snow.Flakes.Count} flakes, " +
+            $"flow {_world.Drift.X:F2},{_world.Drift.Y:F2} px/s | {_snowLayer.Describe()}");
     }
 
     private void RouteMouse()

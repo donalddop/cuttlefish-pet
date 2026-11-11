@@ -63,6 +63,14 @@ in de rustige drift waar hij vanzelf in valt als er een kwartier niemand aan de 
 zit. Stuk voor stuk duren ze in het wild een fractie van een seconde, of een kwartier
 geduld, en ze gebeuren wanneer het dier het wil.
 
+`water` hoort in datzelfde rijtje, maar om de omgekeerde reden: het water is met opzet
+bijna onzichtbaar. Het commando wisselt tussen echte sterkte, een showcase-stand die
+het stof vijf keer zo helder zet, en helemaal uit — en het schuift de stroming anderhalve
+minuut vooruit, zodat je niet hoeft te wachten tot hij vanzelf omslaat. Hoe het water
+er los van je bureaublad uitziet, tekent `dotnet run --project Tools/WaterPreview -c Release`
+in een paar plaatjes: op diep water, op een pagina tekst, en met sleepsporen zodat de
+drift en de parallax in een stilstaand beeld te zien zijn.
+
 ## Wat ze doen
 
 **Zwemmen en rusten**

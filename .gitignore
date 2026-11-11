@@ -8,3 +8,7 @@ Tools/eye_check.png
 Installer/Output/
 
 __pycache__/
+
+# Output of Tools/WaterPreview: regenerate it, do not keep it.
+preview/
+
