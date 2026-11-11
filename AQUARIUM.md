@@ -33,12 +33,16 @@ bepaalt wanneer er iets gebeurt, en waar je op dat moment naar kijkt.
 
 ### 1. Water en licht
 
-- Zwevend stof (marine snow): enkele tientallen deeltjes, heel traag dalend en
-  drijvend, parallax naar diepte.
+- ~~Zwevend stof (marine snow): enkele tientallen deeltjes, heel traag dalend en
+  drijvend, parallax naar diepte.~~ **Af** (11 nov). 37 deeltjes op 1080p, elk met
+  een vaste diepte waar formaat, helderheid, daalsnelheid en stromingsgevoel uit
+  volgen. Lichte kern in een donkere halo, anders bestaat het niet op een licht
+  bureaublad. Draait op 12fps, niet op 30 — zie de meting in `TickWater`.
 - Lichtbundels van de bovenrand, langzaam wiegend, sterker bovenin.
-- Eén gedeelde stroming: een vector die over minuten verloopt. Alles wat zweeft
-  erft hem; dieren zetten zich er schuin tegenin. Dit is wat losse agenten in
-  één lichaam water verandert.
+- ~~Eén gedeelde stroming: een vector die over minuten verloopt. Alles wat zweeft
+  erft hem~~ **Af** (11 nov): `Core/Current.cs`, uitgelezen via `WorldState.Drift`.
+  Nog niet gedaan: **dieren zetten zich er schuin tegenin**. Dat verandert hoe ze
+  sturen, dus dat hoort bij de diepte-ronde hieronder.
 - Glinstering langs de bovenrand van het scherm.
 
 Harde eis: het mag niets kosten op de processor en nooit tekst onleesbaar maken
@@ -131,3 +135,12 @@ Deze zijn duur geleerd. Ze gelden elke dag.
 ## Logboek
 
 Nieuwste bovenaan. Eén regel per dag: wat er gebeurde, en wat het leerde.
+
+- **11 nov** — Water: gedeelde stroming + zwevend stof. Geleerd: bleke deeltjes
+  bestaan niet op een licht bureaublad (vandaar de donkere halo), "over een
+  venster dus wegdimmen" was fout omdat dit scherm bijna altijd venster is, en
+  37 extra visuals op 30fps kostten méér processor dan twaalf dieren — op 12fps
+  valt dat terug van +14 naar +6 procentpunt van één kern. En: dit water is zo
+  subtiel dat een schermafdruk van een willekeurig bureaublad niets bewijst,
+  dus er staat nu een `Tools/WaterPreview` die het op gekozen achtergronden
+  tekent. Zonder die tool had ik drie keer verkeerd gegokt in plaats van gemeten.
