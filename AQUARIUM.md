@@ -151,10 +151,9 @@ Nieuwste bovenaan. Eén regel per dag: wat er gebeurde, en wat het leerde.
   géén meetbare processortijd terwijl 37 stofjes op 12fps +6 punten kostten —
   het aantal visuals dat je aanraakt telt, niet het aantal pixels. En de
   sprongtest ving een echte discontinuïteit: `Fit` kende de stroming niet, dus
-  de eerste tick verzette elke bundel in één keer 34px. **Nog open:** de
-  verhoogde sterkte is wel tegen een pagina tekst gecontroleerd, maar niet meer
-  live op het bureaublad — Donald was aan het gamen. En zijn geïnstalleerde
-  versie is daarom nog niet bijgewerkt: die staat nog op 2.10.1 zonder licht.
+  de eerste tick verzette elke bundel in één keer 34px. Live nagemeten op het
+  zwarte bureaublad: pieken van 25/255 bovenin, 15 halverwege — dat is de
+  bedoelde sterkte. Geïnstalleerde versie bijgewerkt.
 
 - **11 nov** — Water: gedeelde stroming + zwevend stof. Geleerd: bleke deeltjes
   bestaan niet op een licht bureaublad (vandaar de donkere halo), "over een
