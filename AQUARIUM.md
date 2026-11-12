@@ -50,7 +50,17 @@ bepaalt wanneer er iets gebeurt, en waar je op dat moment naar kijkt.
   erft hem~~ **Af** (11 nov): `Core/Current.cs`, uitgelezen via `WorldState.Drift`.
   Nog niet gedaan: **dieren zetten zich er schuin tegenin**. Dat verandert hoe ze
   sturen, dus dat hoort bij de diepte-ronde hieronder.
-- Glinstering langs de bovenrand van het scherm.
+- ~~Glinstering langs de bovenrand van het scherm.~~ **Af** (12 nov). Drie tot
+  negen zachte lichtvlekken in een band van ~30px onder de bovenrand, die met de
+  stroming meeschuiven (drie keer zo hard als een stofje: een rimpel lóópt over
+  het water) en oplichten als ze onder de voet van een lichtbundel door gaan.
+  Dat laatste is de reden dat het geen los effect is: licht komt binnen waar het
+  oppervlak oplicht. `Core/SurfaceShimmer.cs`, `Rendering/SurfaceShimmerLayer.cs`,
+  zit onder hetzelfde `light`-commando.
+
+**Thema 1 is hiermee af.** Wat er van water en licht nog open staat is
+verhuisd naar de diepte-ronde hieronder: dieren die zich schuin tegen de
+stroming in zetten.
 
 Harde eis: het mag niets kosten op de processor en nooit tekst onleesbaar maken
 waar je in zit te lezen. Subtiliteit ís de functie.
@@ -142,6 +152,17 @@ Deze zijn duur geleerd. Ze gelden elke dag.
 ## Logboek
 
 Nieuwste bovenaan. Eén regel per dag: wat er gebeurde, en wat het leerde.
+
+- **12 nov** — Waterlijn langs de bovenrand; thema 1 af. Geleerd: míjn ogen op
+  een schermafdruk zijn geen meetinstrument voor iets van 20 op 255 — twee keer
+  dacht ik "daar staat niets" terwijl de pixelwaardes lieten zien dat het er
+  prima stond, dus het oordeel ging naar het profiel in getallen en de vorm naar
+  het oog. Eerste poging gaf een lichte rand van twaalf pixels: precies de
+  haarlijn die als beeldfout leest, nu een band van dertig die uitdooft. En de
+  app ging gisteren drie keer uit tijdens het meten — dat bleek de meetopzet
+  (hij stierf mee met het PowerShell-venster dat hem startte), niet de code;
+  starten via `explorer.exe` lost het op. Tank heeft het gered, 13 zeekatten
+  voor en na.
 
 - **11 nov (2)** — Licht: lichtbundels van de bovenrand. Geleerd: een mooie
   preview op diep water bewijst niets — op ware sterkte boven een echt scherm

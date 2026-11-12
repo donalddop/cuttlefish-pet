@@ -17,6 +17,9 @@ using CuttlefishPet.Rendering;
 //                       shaft rests on the beam carrying it on the dark side and
 //                       the shade beside it carrying it on the light side, and the
 //                       only way to check that is to see one shaft cross the seam.
+//                       The waterline along the top edge is in this one too, and
+//                       the top right corner is the case that matters for it: a
+//                       bright band laid over the top of a document.
 //   water-shafts-loud.png -- the same at four times strength. Not what it looks
 //                       like; what shape it is. Lean, spacing and how far down it
 //                       reaches are all invisible at real strength in a still.
@@ -85,6 +88,8 @@ void Render(string name, Background bg, double warmUp, double trails, bool cover
     var flow = new Current();
     var shafts = new LightShafts(new Random(5150)) { Brightness = light };
     shafts.Fit(tank, flow.Flow);
+    var shimmer = new SurfaceShimmer(new Random(8803)) { Brightness = light };
+    shimmer.Fit(tank);
     var covers = covered ? new List<Rect> { tank } : null;
 
     // Settle first: straight after Fit the motes are scattered but have never
@@ -95,6 +100,7 @@ void Render(string name, Background bg, double warmUp, double trails, bool cover
         flow.Tick(Dt);
         snow.Tick(Dt, flow.Flow, 0, covers);
         shafts.Tick(Dt, flow.Flow);
+        shimmer.Tick(Dt, flow.Flow, shafts.Shafts);
     }
 
     // A tail per mote, sampled backwards in time by re-running the field.
@@ -117,6 +123,7 @@ void Render(string name, Background bg, double warmUp, double trails, bool cover
     {
         bg.Draw(dc, W, H);
         DrawShafts(dc, shafts);
+        DrawShimmer(dc, shimmer);
 
         for (int i = 0; i < tails.Count; i++)
         {
@@ -152,7 +159,23 @@ void Render(string name, Background bg, double warmUp, double trails, bool cover
     using var fs = File.Create(Path.Combine(outDir, name));
     enc.Save(fs);
     Console.WriteLine($"{name}: {snow.Flakes.Count} motes, {shafts.Shafts.Count} shafts, " +
-                      $"flow {flow.Flow.X:F2},{flow.Flow.Y:F2} px/s");
+                      $"{shimmer.Glints.Count} glints, flow {flow.Flow.X:F2},{flow.Flow.Y:F2} px/s");
+}
+
+// The waterline, hung from the top of the frame exactly as the overlay hangs it
+// from the top of the virtual screen.
+void DrawShimmer(DrawingContext dc, SurfaceShimmer shimmer)
+{
+    var glintBrush = WaterLook.Glint(Math.Max(1, shimmer.Brightness));
+    foreach (var g in shimmer.Glints)
+    {
+        double a = g.Strength * Math.Min(1, shimmer.Brightness);
+        if (a < 0.012) continue;
+        dc.PushOpacity(a);
+        dc.DrawRectangle(glintBrush, null,
+            new Rect(g.X - g.Width / 2, 0, g.Width, shimmer.Band));
+        dc.Pop();
+    }
 }
 
 // The same geometry the overlay builds out of a Rectangle and a SkewTransform:

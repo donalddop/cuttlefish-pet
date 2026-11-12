@@ -35,6 +35,8 @@ public sealed partial class PetManager
     private readonly MarineSnowLayer _snowLayer;
     private readonly LightShafts _shafts;
     private readonly LightShaftLayer _shaftLayer;
+    private readonly SurfaceShimmer _shimmer;
+    private readonly SurfaceShimmerLayer _shimmerLayer;
     /// <summary>The dust moves at 12fps, not 30; see TickWater for the measurement.</summary>
     private const double WaterStep = 1.0 / 12;
     private double _waterIn;
@@ -94,6 +96,8 @@ public sealed partial class PetManager
         _snowLayer = new MarineSnowLayer(overlay, _snow);
         _shafts = new LightShafts(_rng);
         _shaftLayer = new LightShaftLayer(overlay, _shafts);
+        _shimmer = new SurfaceShimmer(_rng);
+        _shimmerLayer = new SurfaceShimmerLayer(overlay, _shimmer);
         Breeding.Apply(_settings.BreedingOverrides);
         Rendering.AnimationPlayer.Report = Log;
     }
@@ -706,6 +710,17 @@ public sealed partial class PetManager
             _shafts.Fit(_world.VirtualScreen, _world.Drift);
             _shafts.Tick(step, _world.Drift);
             if (++_shaftStep % ShaftEvery == 0) _shaftLayer.Tick();
+
+            // The waterline is drawn at the full water rate, unlike the shafts. A
+            // ripple travels: at the strongest current a glint moves 31px a second
+            // against a shaft's 0.3, so a quarter-second step would be an eight
+            // pixel hop. At 12fps it is 2.6px, which on a highlight whose own
+            // gradient is three hundred pixels wide is a one percent shift in its
+            // profile -- nothing to see. It is also only a handful of small
+            // rectangles along one edge, which is the cheapest thing in here.
+            _shimmer.Fit(_world.VirtualScreen);
+            _shimmer.Tick(step, _world.Drift, _shafts.Shafts);
+            _shimmerLayer.Tick();
         }
         catch (Exception ex)
         {
@@ -749,18 +764,25 @@ public sealed partial class PetManager
         // pipe on the UI thread.
         try
         {
+            // One command for both, because they are one thing: the light comes in
+            // where the surface is bright. Looking at either on its own tells you
+            // less than looking at the pair.
             _shafts.Brightness = _shafts.Brightness switch
             {
                 > 2 => 0,
                 < 0.01 => 1,
                 _ => 6,
             };
+            _shimmer.Brightness = _shafts.Brightness;
             _shafts.Advance(180);
+            _shimmer.Advance(180);
             _shaftLayer.Tick();
+            _shimmerLayer.Tick();
             Log($"light: brightness {_shafts.Brightness}, " +
                 string.Join(", ", _shafts.Shafts.Select(s =>
                     $"x={s.X:F0} w={s.Width:F0} lean={s.Lean:F3} str={s.Strength:F2}")) +
-                $" | {_shaftLayer.Describe()}");
+                $" | {_shaftLayer.Describe()}" +
+                $" | {_shimmerLayer.Describe()}");
         }
         catch (Exception ex)
         {

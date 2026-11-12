@@ -573,6 +573,73 @@ var unfitted = new LightShafts(new Random(1));
 unfitted.Tick(1.0 / 30, strong);
 Check("ticking unfitted light does nothing rather than throwing", unfitted.Shafts.Count == 0);
 
+// ---------- the water: the waterline ----------
+var tank1080 = new System.Windows.Rect(0, 0, 1920, 1080);
+var surf = new SurfaceShimmer(new Random(44));
+surf.Fit(tank1080);
+Check("a 1080p tank gets a handful of glints", surf.Glints.Count is >= 4 and <= 6, $"{surf.Glints.Count}");
+Check("the band is a band, not a hairline and not a curtain",
+      surf.Band is >= 20 and <= 44, $"{surf.Band:F1}px");
+Check("glints start spread along the edge",
+      surf.Glints.Select(g => g.X).OrderBy(x => x).Zip(
+          surf.Glints.Select(g => g.X).OrderBy(x => x).Skip(1), (a, b) => b - a).All(gap => gap > 200));
+
+// The lift under a beam is the whole reason this is not a separate effect, so it
+// is pinned down with a shaft parked right on top of one glint and far from another.
+var underBeam = new SurfaceShimmer(new Random(44));
+underBeam.Fit(tank1080);
+var lone = underBeam.Glints[0];
+var away = underBeam.Glints[2];
+var beam = new List<Shaft> { new() { X = lone.X, Width = 300, Reach = 0.6, Strength = 1 } };
+underBeam.Tick(0.001, default, beam);
+double litUp = lone.Strength, unlit = away.Strength;
+underBeam.Tick(0.001, default, null);
+Check("a glint under a beam is brighter than the same glint without one",
+      litUp > lone.Strength * 1.2, $"{lone.Strength:F2} -> {litUp:F2}");
+Check("a glint nowhere near a beam is not lifted",
+      Math.Abs(unlit - away.Strength) < 0.01, $"{unlit:F3} vs {away.Strength:F3}");
+
+var swell = new Current();
+var ripple = new SurfaceShimmer(new Random(9));
+ripple.Fit(tank1080);
+double worstGlintStep = 0, travelled = 0;
+var wasX = ripple.Glints.Select(g => g.X).ToList();
+var seenStrength = (Min: 2.0, Max: -1.0);
+for (int i = 0; i < 30 * 3600; i++)
+{
+    swell.Tick(1.0 / 30);
+    ripple.Tick(1.0 / 30, swell.Flow, null);
+    for (int j = 0; j < ripple.Glints.Count; j++)
+    {
+        double hop = Math.Abs(ripple.Glints[j].X - wasX[j]);
+        // A wrap is a jump by design; anything else must not be.
+        if (hop < 1000) { worstGlintStep = Math.Max(worstGlintStep, hop); travelled += hop; }
+        wasX[j] = ripple.Glints[j].X;
+        seenStrength = (Math.Min(seenStrength.Min, ripple.Glints[j].Strength),
+                        Math.Max(seenStrength.Max, ripple.Glints[j].Strength));
+    }
+}
+Check("an hour of ripples leaves every glint on the edge it belongs to",
+      ripple.Glints.All(g => g.X >= -41 && g.X <= 1961 && double.IsFinite(g.X)),
+      string.Join(",", ripple.Glints.Select(g => $"{g.X:F0}")));
+Check("the waterline keeps moving rather than settling",
+      travelled / ripple.Glints.Count > 20000, $"{travelled / ripple.Glints.Count:F0}px each");
+Check("no glint slides faster than the eye forgives at 12fps",
+      worstGlintStep * 30 / 12 < 4, $"{worstGlintStep * 30 / 12:F2}px per drawn step");
+Check("glints breathe, and none of them goes out",
+      seenStrength.Min is > 0.2 and < 0.4 && seenStrength.Max > 0.95,
+      $"{seenStrength.Min:F2}..{seenStrength.Max:F2}");
+
+var widened = new SurfaceShimmer(new Random(6));
+widened.Fit(new System.Windows.Rect(0, 0, 800, 600));
+Check("a narrow tank still gets the minimum", widened.Glints.Count == 3, $"{widened.Glints.Count}");
+widened.Fit(new System.Windows.Rect(0, 0, 7680, 2160));
+Check("a wall of monitors is capped, with a deeper band",
+      widened.Glints.Count == 9 && widened.Band > 40, $"{widened.Glints.Count} glints, {widened.Band:F0}px");
+var dry = new SurfaceShimmer(new Random(1));
+dry.Tick(1.0 / 30, strong, null);
+Check("ticking an unfitted waterline does nothing rather than throwing", dry.Glints.Count == 0);
+
 Console.WriteLine(failed == 0 ? "\nALL PASS" : $"\n{failed} FAILED");
 return failed;
 
