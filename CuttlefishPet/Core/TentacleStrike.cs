@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 
 namespace CuttlefishPet.Core;
 
@@ -73,7 +73,7 @@ public sealed class TentacleStrike
     /// </summary>
     public static Point Mouth(Pet pet)
     {
-        double s = Pet.RenderScale * pet.Scale;
+        double s = pet.DrawScale;
         return pet.Pos + new Vector((pet.FacingRight ? 20 : -20) * s, -11 * s);
     }
 }

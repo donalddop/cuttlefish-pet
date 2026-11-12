@@ -59,6 +59,31 @@ public sealed class Pet
     /// </summary>
     public double Carriage;
 
+    /// <summary>
+    /// How far back in the tank it is swimming: 0 = in the haze at the back,
+    /// 1 = right against the glass. Size, screen speed, haze and draw order all
+    /// come out of this one number -- see <see cref="Depths"/>.
+    ///
+    /// Not saved with the tank, on purpose. Depth is where an animal happens to be
+    /// swimming this afternoon, not something it is; re-rolling it on load costs
+    /// nothing and keeps the one irreplaceable file in this project unchanged.
+    /// </summary>
+    public readonly DepthState Deep = new();
+
+    /// <summary>Shorthand for <c>Deep.Now</c>; depth is read far more than it is set.</summary>
+    public double Depth => Deep.Now;
+
+    /// <summary>Size multiplier from distance alone, 0.70 at the back to 1.06 at the glass.</summary>
+    public double DepthScale => Depths.ScaleAt(Depth);
+
+    /// <summary>
+    /// Everything the renderer and the tentacles measure in: the sprite's own
+    /// blow-up, the size this animal grew to, and how far back it is swimming.
+    /// Kept as one property so a new factor can never be applied in three places
+    /// and forgotten in a fourth -- which is exactly what happened to Scale.
+    /// </summary>
+    public double DrawScale => RenderScale * Scale * DepthScale;
+
     /// <summary>Anchor (foot/contact) point.</summary>
     public Point Pos;
     public Vector Vel;
@@ -243,7 +268,7 @@ public sealed class Pet
         get
         {
             var a = Anim.Current;
-            double s = RenderScale * Scale;
+            double s = DrawScale;
             double ax = FacingRight ? a.Anchor.X : a.FrameW - a.Anchor.X;
             return new Rect(
                 Pos.X - ax * s,

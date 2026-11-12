@@ -640,6 +640,81 @@ var dry = new SurfaceShimmer(new Random(1));
 dry.Tick(1.0 / 30, strong, null);
 Check("ticking an unfitted waterline does nothing rather than throwing", dry.Glints.Count == 0);
 
+// ---------- depth ----------
+// The whole model is one number per animal, so the tests are about that number:
+// it has to stay in range, it has to keep moving, it must never jump, and the
+// four things that come out of it have to agree about which way is back.
+Check("the back of the tank is smaller, slower, hazier and further back than the glass",
+      Depths.ScaleAt(0) < Depths.ScaleAt(1) && Depths.SpeedAt(0) < Depths.SpeedAt(1) &&
+      Depths.HazeAt(0) > Depths.HazeAt(1) && Depths.ZFor(0) < Depths.ZFor(1),
+      $"scale {Depths.ScaleAt(0):F2}..{Depths.ScaleAt(1):F2}, " +
+      $"speed {Depths.SpeedAt(0):F2}..{Depths.SpeedAt(1):F2}, " +
+      $"haze {Depths.HazeAt(0):F2}..{Depths.HazeAt(1):F2}, " +
+      $"z {Depths.ZFor(0)}..{Depths.ZFor(1)}");
+Check("size and screen speed agree about distance",
+      Math.Abs(Depths.ScaleAt(0) / Depths.ScaleAt(1) - Depths.SpeedAt(0) / Depths.SpeedAt(1)) < 0.05,
+      $"{Depths.ScaleAt(0) / Depths.ScaleAt(1):F3} vs {Depths.SpeedAt(0) / Depths.SpeedAt(1):F3}");
+Check("nothing at the glass is hazy, and nothing in the front half either",
+      Depths.HazeAt(1) < 1e-9 && Depths.HazeAt(0.62) < 1e-9 && Depths.HazeAt(0.5) > 0.02,
+      $"haze runs out at {Depths.HazeTo:F2}");
+Check("a rubbish depth is treated as the glass rather than thrown over",
+      Math.Abs(Depths.ScaleAt(double.NaN) - Depths.ScaleAt(1)) < 1e-9 &&
+      Depths.ZFor(double.PositiveInfinity) == Depths.ZFor(1));
+Check("draw order leaves every body a slot for its own tentacles",
+      Enumerable.Range(0, 101).Select(i => Depths.ZFor(i / 100.0)).Distinct()
+                .All(z => Enumerable.Range(0, 101)
+                      .All(j => Depths.ZFor(j / 100.0) != z - 1)));
+Check("the far half of the tank draws behind the dust and the shafts, the near half in front",
+      Depths.ZFor(0) < -8 && Depths.ZFor(1) > -5);
+
+var dRng = new Random(77);
+var rolled = Enumerable.Range(0, 400).Select(_ => Depths.Roll(dRng)).ToList();
+Check("newcomers land in the tank, leaning toward the front",
+      rolled.All(x => x is >= 0.18 and <= 1.0) && rolled.Average() > 0.5,
+      $"{rolled.Min():F2}..{rolled.Max():F2}, mean {rolled.Average():F2}");
+
+// An hour of one animal drifting: it has to keep changing depth, stay inside the
+// glass, and never move far enough in one tick to read as a cut.
+var drifter = new DepthState { Now = 0.5, Target = 0.5 };
+double shallowest = 2, deepest = -1, worstDepthStep = 0, depthTravel = 0, lastDepth = drifter.Now;
+int depthChanges = 0;
+double lastTarget = drifter.Target;
+for (int i = 0; i < 30 * 3600; i++)
+{
+    Depths.Tick(drifter, dRng, 1.0 / 30);
+    shallowest = Math.Min(shallowest, drifter.Now);
+    deepest = Math.Max(deepest, drifter.Now);
+    worstDepthStep = Math.Max(worstDepthStep, Math.Abs(drifter.Now - lastDepth));
+    depthTravel += Math.Abs(drifter.Now - lastDepth);
+    lastDepth = drifter.Now;
+    if (Math.Abs(drifter.Target - lastTarget) > 1e-9) { depthChanges++; lastTarget = drifter.Target; }
+}
+Check("an hour of drifting stays inside the glass",
+      shallowest >= 0 && deepest <= 1 && double.IsFinite(drifter.Now),
+      $"{shallowest:F2}..{deepest:F2}");
+Check("it does not settle in one plane", depthTravel > 4 && deepest - shallowest > 0.4,
+      $"travelled {depthTravel:F1}, range {deepest - shallowest:F2}");
+Check("it changes depth every minute or two, not every few seconds",
+      depthChanges is >= 30 and <= 110, $"{depthChanges} changes in an hour");
+Check("no change of depth reads as a cut", worstDepthStep < 0.01,
+      $"worst {worstDepthStep:F4} per tick");
+
+var rubbish = new DepthState { Now = double.NaN, Target = double.NaN };
+Depths.Tick(rubbish, dRng, 1.0 / 30);
+Check("a depth that has gone bad is put back rather than spreading",
+      double.IsFinite(rubbish.Now) && rubbish.Now is >= 0 and <= 1, $"{rubbish.Now:F2}");
+
+var tankOfFive = Enumerable.Range(0, 5).Select(_ => new DepthState()).ToList();
+Depths.Spread(tankOfFive);
+Check("the debug spread covers the whole range, back to front",
+      Math.Abs(tankOfFive[0].Now) < 1e-9 && Math.Abs(tankOfFive[^1].Now - 1) < 1e-9 &&
+      tankOfFive.Zip(tankOfFive.Skip(1), (a, b) => b.Now - a.Now).All(g => g > 0.2),
+      string.Join(",", tankOfFive.Select(x => $"{x.Now:F2}")));
+var tankOfOne = new List<DepthState> { new() };
+Depths.Spread(tankOfOne);
+Check("spreading a tank of one does not divide by zero",
+      double.IsFinite(tankOfOne[0].Now) && tankOfOne[0].Now is >= 0 and <= 1);
+
 Console.WriteLine(failed == 0 ? "\nALL PASS" : $"\n{failed} FAILED");
 return failed;
 

@@ -23,6 +23,13 @@ public sealed class PetVisual
     public required System.Windows.Shapes.Rectangle Tint { get; init; }
     public required SolidColorBrush TintFill { get; init; }
     public required ImageBrush TintMask { get; init; }
+    /// <summary>
+    /// The water between you and the animal, painted over the whole body. Flat on
+    /// purpose: this is distance, not a pattern.
+    /// </summary>
+    public required System.Windows.Shapes.Rectangle Haze { get; init; }
+    public required SolidColorBrush HazeFill { get; init; }
+    public required ImageBrush HazeMask { get; init; }
     /// <summary>Iridescent sheen that drifts across the skin.</summary>
     public required System.Windows.Shapes.Rectangle Sheen { get; init; }
     public required ImageBrush SheenFill { get; init; }
@@ -177,6 +184,15 @@ public sealed class SpriteRenderer
         var sheen = new System.Windows.Shapes.Rectangle
         { Fill = sheenFill, OpacityMask = sheenMask, IsHitTestVisible = false };
 
+        // Same shape as the tint: a flat colour clipped to the body's silhouette.
+        // Its colour is set per tick from whatever the pet last read off the
+        // desktop behind it, so distance washes the animal toward its background
+        // rather than toward a blue nobody's screen actually is.
+        var hazeFill = new SolidColorBrush(Colors.Transparent);
+        var hazeMask = new ImageBrush { Stretch = Stretch.Fill };
+        var haze = new System.Windows.Shapes.Rectangle
+        { Fill = hazeFill, OpacityMask = hazeMask, IsHitTestVisible = false };
+
         var eye = NewImage();
         eye.HorizontalAlignment = HorizontalAlignment.Left;
         eye.VerticalAlignment = VerticalAlignment.Top;
@@ -216,6 +232,10 @@ public sealed class SpriteRenderer
         root.Children.Add(sheen);
         root.Children.Add(camo);
         root.Children.Add(eye);
+        // Over the eye as well. The eye is deliberately the one thing camouflage
+        // never hides, but water is water: an animal at the back of the tank with
+        // a crisp eye on a washed-out body reads as a compositing fault.
+        root.Children.Add(haze);
 
         _overlay.PetCanvas.Children.Add(root);
         return new PetVisual
@@ -225,6 +245,7 @@ public sealed class SpriteRenderer
             SkinPrev = skinPrev, SkinPrevFill = skinPrevFill, SkinPrevMask = skinPrevMask,
             Tint = tint, TintFill = tintFill, TintMask = tintMask,
             Sheen = sheen, SheenFill = sheenFill, SheenMask = sheenMask,
+            Haze = haze, HazeFill = hazeFill, HazeMask = hazeMask,
             Camo = camo, CamoMask = camoMask, Eye = eye, Flip = flip, Swing = swing,
             TentacleEdge = tentacleEdge, Tentacle = tentacle,
         };
@@ -265,8 +286,22 @@ public sealed class SpriteRenderer
 
         v.Root.Width = w;
         v.Root.Height = h;
-        // Glassy when idle, solid when displaying; Fade dissolves it away entirely.
-        v.Root.Opacity = Math.Clamp(pet.BodyOpacity * pet.Fade, 0, 1);
+        // Glassy when idle, solid when displaying; Fade dissolves it away entirely,
+        // and distance takes a little off the top of all of it.
+        v.Root.Opacity = Math.Clamp(
+            pet.BodyOpacity * pet.Fade * Depths.OpacityAt(pet.Depth), 0, 1);
+
+        // Draw order from depth, so animals pass in front of and behind each other
+        // and in among the dust. Only written when it actually changes: setting a
+        // ZIndex re-sorts the canvas's children, and doing that for every animal
+        // every tick costs more than the whole depth model does.
+        int z = Depths.ZFor(pet.Depth);
+        if (Panel.GetZIndex(v.Root) != z)
+        {
+            Panel.SetZIndex(v.Root, z);
+            Panel.SetZIndex(v.Tentacle, z - 1);
+            Panel.SetZIndex(v.TentacleEdge, z - 1);
+        }
         Canvas.SetLeft(v.Root, tl.X);
         Canvas.SetTop(v.Root, tl.Y + pet.VisualBob * k);
 
@@ -330,6 +365,17 @@ public sealed class SpriteRenderer
             v.Tint.Opacity = 0;
             v.SkinPrev.Opacity = 0;
         }
+        // The water in front of it, in the colour of what is behind it. Falls back
+        // to the shaded water colour until this one has read its surroundings --
+        // which is a second or two after it hatches and no longer than that.
+        double haze = Depths.HazeAt(pet.Depth);
+        if (haze > 0.02)
+        {
+            v.HazeFill.Color = pet.Camo?.Dominant ?? WaterLook.Haze;
+            v.HazeMask.ImageSource = frame;
+        }
+        v.Haze.Opacity = haze;
+
         v.SkinMask.ImageSource = frame;
         v.SheenMask.ImageSource = frame;
         v.Sheen.Opacity = pet.SheenStrength * skinVisible;
@@ -341,6 +387,7 @@ public sealed class SpriteRenderer
         Show(v.SkinPrev);
         Show(v.Tint);
         Show(v.Sheen);
+        Show(v.Haze);
 
         // Camouflage layer: background capture masked by the current frame's alpha.
         v.Camo.Opacity = pet.CamoOpacity;
@@ -419,7 +466,7 @@ public sealed class SpriteRenderer
         var a = _overlay.PhysToDiu(mouth);
         var b = _overlay.PhysToDiu(pet.StrikeTip);
         var dir = new Vector(b.X - a.X, b.Y - a.Y);
-        double club = 4.3 * pet.Scale * k;
+        double club = 4.3 * pet.Scale * pet.DepthScale * k;
 
         var group = new GeometryGroup();
         var figure = new PathFigure { StartPoint = a, IsClosed = false, IsFilled = false };
@@ -438,8 +485,8 @@ public sealed class SpriteRenderer
 
         v.Tentacle.Data = group;
         v.TentacleEdge.Data = group;
-        v.Tentacle.StrokeThickness = 2.6 * pet.Scale * k;
-        v.TentacleEdge.StrokeThickness = 4.3 * pet.Scale * k;
+        v.Tentacle.StrokeThickness = 2.6 * pet.Scale * pet.DepthScale * k;
+        v.TentacleEdge.StrokeThickness = 4.3 * pet.Scale * pet.DepthScale * k;
         v.Tentacle.Opacity = 0.92 * pet.Fade;
         v.TentacleEdge.Opacity = 0.55 * pet.Fade;
         v.Tentacle.Visibility = Visibility.Visible;

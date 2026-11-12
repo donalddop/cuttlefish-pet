@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Windows;
 using CuttlefishPet.Behaviors;
 
@@ -44,7 +44,7 @@ public sealed partial class PetManager
         {
             var b = p.Bounds;
             var a = p.Anim.Current;
-            double s = Pet.RenderScale * p.Scale;
+            double s = p.DrawScale;
             // Where a rider's seat is: the top of the mantle, not of the sprite frame.
             double back = p.Pos.Y - (a.Anchor.Y - a.BackTop(p.Anim.FrameIndex)) * s + p.VisualBob;
             return new

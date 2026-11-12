@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -44,6 +44,9 @@ Render("water-shafts.png", Background.Split, warmUp: 120, trails: 0, covered: tr
 Render("water-shafts-loud.png", Background.Split, warmUp: 120, trails: 0, covered: true,
        dust: false, light: 4);
 Zoom("water-zoom.png");
+// The depth pass. A still cannot show speed, so the one thing that cannot be read
+// off this image is drawn as a ruler underneath each animal.
+Depths5("depth.png");
 Console.WriteLine($"written to {outDir}");
 return 0;
 
@@ -78,6 +81,86 @@ void Zoom(string name)
     using var fs = File.Create(Path.Combine(outDir, name));
     enc.Save(fs);
     Console.WriteLine($"{name}: far..near at {Z}x on dark (top) and light (bottom)");
+}
+
+// Five animals at five depths, the same animal five times, over deep water and
+// over a page of text. The questions: does the size difference read as distance
+// rather than as five different animals, and does the haze take contrast away on
+// both surfaces instead of adding a blue smear to the light one?
+//
+// Offscreen rather than on the desktop for a reason learned the hard way today: a
+// live screenshot catches whatever Donald happens to have open -- a cartoon at
+// full screen, in the event -- and the animals camouflage themselves against it,
+// so the one thing you can see is the one thing you were not measuring.
+void Depths5(string name)
+{
+    // Pet.RenderScale and a grown adult. Copied rather than referenced: pulling
+    // Pet.cs in here would drag the behaviour machine and the sprite library with
+    // it, and this tool exists to stay small enough to run in a second.
+    const double Render = 1.7, Grown = 0.9;
+    const int Rows = 5, Cell = 300;
+    int w = Cell * Rows, h = 760;
+
+    var sheet = new BitmapImage();
+    sheet.BeginInit();
+    sheet.UriSource = new Uri(Path.GetFullPath(Path.Combine(
+        "CuttlefishPet", "Assets", "sprites", "swim.png")));
+    sheet.CacheOption = BitmapCacheOption.OnLoad;
+    sheet.EndInit();
+    var frame = new CroppedBitmap(sheet, new Int32Rect(2 * 64, 0, 64, 64));
+
+    var dv = new DrawingVisual();
+    using (var dc = dv.RenderOpen())
+    {
+        Background.Deep.Draw(dc, w, h / 2);
+        dc.PushTransform(new TranslateTransform(0, h / 2.0));
+        Background.Page.Draw(dc, w, h / 2);
+        dc.Pop();
+
+        for (int i = 0; i < Rows; i++)
+        {
+            double d = i / (double)(Rows - 1);
+            double s = Render * Grown * Depths.ScaleAt(d);
+            for (int band = 0; band < 2; band++)
+            {
+                // The colour the camouflage sampler would come back with on this
+                // background, which is what the renderer washes the body toward.
+                var behind = band == 0 ? Color.FromRgb(7, 18, 28) : Color.FromRgb(252, 251, 249);
+                var c = new Point(Cell * i + Cell / 2.0, h / 4.0 + band * h / 2.0);
+                var box = new Rect(c.X - 32 * s, c.Y - 32 * s, 64 * s, 64 * s);
+
+                dc.PushOpacity(0.62);          // Pet.BodyOpacity at rest
+                dc.PushOpacity(Depths.OpacityAt(d));
+                dc.DrawImage(frame, box);
+                dc.PushOpacityMask(new ImageBrush(frame));
+                dc.PushOpacity(Depths.HazeAt(d));
+                dc.DrawRectangle(new SolidColorBrush(behind), null, box);
+                dc.Pop(); dc.Pop(); dc.Pop(); dc.Pop();
+
+                // One second of swimming at 90px/s, the pace of an unhurried
+                // cuttlefish. This is the only way a still shows that a far animal
+                // crosses less screen than a near one at the same real speed.
+                var rule = new Pen(new SolidColorBrush(
+                    band == 0 ? Color.FromArgb(150, 220, 120, 120)
+                              : Color.FromArgb(150, 170, 40, 40)), 2);
+                double run = 90 * Depths.SpeedAt(d);
+                double y = box.Bottom + 26;
+                dc.DrawLine(rule, new Point(c.X - run / 2, y), new Point(c.X + run / 2, y));
+                dc.DrawLine(rule, new Point(c.X - run / 2, y - 5), new Point(c.X - run / 2, y + 5));
+                dc.DrawLine(rule, new Point(c.X + run / 2, y - 5), new Point(c.X + run / 2, y + 5));
+            }
+        }
+    }
+
+    var rtb = new RenderTargetBitmap(w, h, 96, 96, PixelFormats.Pbgra32);
+    rtb.Render(dv);
+    var enc = new PngBitmapEncoder();
+    enc.Frames.Add(BitmapFrame.Create(rtb));
+    using var fs = File.Create(Path.Combine(outDir, name));
+    enc.Save(fs);
+    Console.WriteLine($"{name}: depth 0..1 over deep water (top) and a page (bottom); " +
+                      $"size x{Depths.ScaleAt(0):F2}..x{Depths.ScaleAt(1):F2}, " +
+                      $"one second of swimming drawn under each");
 }
 
 void Render(string name, Background bg, double warmUp, double trails, bool covered,

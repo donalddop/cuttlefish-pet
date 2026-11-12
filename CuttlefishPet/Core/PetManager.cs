@@ -258,6 +258,8 @@ public sealed partial class PetManager
             pet.Nourishment = saved.Nourishment;
             pet.Scale = pet.GrownScale;
             pet.ScaleTarget = pet.GrownScale;
+            pet.Deep.Now = pet.Deep.Target = Depths.Roll(_rng);
+            pet.Deep.ChangeIn = _rng.NextDouble() * Depths.HoldMax;
             pet.HomePalette = pet.Genome.Chroma;
             pet.SkinPattern = pet.Genome.Pattern;
             pet.Palette = pet.FromPalette = Palettes.Glass;
@@ -311,6 +313,8 @@ public sealed partial class PetManager
                                  : (26 + _rng.NextDouble() * 24) * 60;
         pet.GrowUpSeconds = pet.Lifespan * (hatchling ? 0.40 : 0.12);
         pet.Scale = pet.BirthScale;
+        pet.Deep.Now = pet.Deep.Target = Depths.Roll(_rng);
+        pet.Deep.ChangeIn = _rng.NextDouble() * Depths.HoldMax;
         pet.Id = ++_nextId;
         pet.Name = Names.Pick(_rng, _pets.ConvertAll(p => p.Name));
         pet.Genome = inherit?.Genome ?? Genome.Random(_rng);
@@ -397,6 +401,8 @@ public sealed partial class PetManager
                       $"nieuwsgierig {g.Curiosity:F2}");
         sb.AppendLine($"rusteloos {g.Restlessness:F2}  stofwisseling {g.Metabolism:F2}");
         sb.AppendLine($"overtuiging {pet.Memory.Conviction:F2}  houding {pet.Carriage:+0.00;-0.00; 0.00}");
+        sb.AppendLine($"diepte {pet.Depth:F2} -> {pet.Deep.Target:F2}  " +
+                      $"({pet.DepthScale * 100:F0}% groot, {Depths.SpeedAt(pet.Depth) * 100:F0}% snel)");
 
         var views = pet.Memory.Learned.Where(kv => Math.Abs(kv.Value) > 0.05)
                        .OrderByDescending(kv => Math.Abs(kv.Value)).Take(3).ToList();
@@ -620,11 +626,14 @@ public sealed partial class PetManager
             // behaviour that ends mid-strike can never leave tentacles hanging.
             pet.Striking = false;
             ReactToNewWindows(pet);
+            Depths.Tick(pet.Deep, _rng, dt);
+            var wasAt = pet.Pos;
             pet.Machine.Tick(dt);
             PhysicsEngine.Tick(pet, _world, dt);
             // Environmental, so it applies even while a behaviour is steering.
             if (pet.Surface == null) PhysicsEngine.ApplyScrollCurrent(pet, _world, dt);
             AvoidRecycleBin(pet, dt);
+            SlowWithDistance(pet, wasAt);
             pet.Anim.Tick(dt);
             AgeAndRetire(pet, dt);
             UpdateDrives(pet, dt);
@@ -664,6 +673,33 @@ public sealed partial class PetManager
             _overlay.EnsureTopmost();
             LogDebug();
         }
+    }
+
+    /// <summary>
+    /// Take this tick's movement back toward where it started, by however much
+    /// distance says it should. Something at the back of the tank covers fewer
+    /// screen pixels per second than something at the glass does at the same real
+    /// speed, and without this a small far animal skating across the screen at
+    /// full speed reads as a rendering fault rather than as distance.
+    ///
+    /// Done once, here, over the finished step, rather than in the eighty-odd
+    /// places that move a pet: nearly every behaviour steers the animal itself,
+    /// and a factor that has to be remembered in eighty places is a factor that
+    /// will be forgotten in the eighty-first.
+    ///
+    /// Three things are left alone. A dragged pet must stay under the cursor, or
+    /// it feels like the mouse is slipping. A pet riding a window has not moved
+    /// through the water at all -- the window did. And a jump of more than a few
+    /// hundred pixels is a placement, not a swim, so scaling it would land the
+    /// animal somewhere nobody asked for.
+    /// </summary>
+    private static void SlowWithDistance(Pet pet, Point wasAt)
+    {
+        if (pet.Surface != null || pet.Machine.Current is DragBehavior) return;
+        var step = pet.Pos - wasAt;
+        if (step.LengthSquared > 220 * 220 || step.LengthSquared < 1e-6) return;
+        double f = Depths.SpeedAt(pet.Depth);
+        pet.Pos = wasAt + step * f;
     }
 
     /// <summary>
@@ -734,6 +770,40 @@ public sealed partial class PetManager
     /// → off, and jumps the current on a few minutes so a reversal can be seen
     /// without sitting and waiting for one.
     /// </summary>
+    /// <summary>
+    /// Debug: fan the tank out over the whole range of depths and hold it there,
+    /// back to front, so the parallax can be read off a single screenshot. Press
+    /// again to let them go and drift on their own clocks.
+    ///
+    /// Worth the twenty lines for the same reason as every other debug command
+    /// here: depth changes on a clock of tens of seconds and most animals sit in
+    /// the front half by design, so the arrangement that shows whether this works
+    /// at all is one that will not happen by itself for several minutes.
+    /// </summary>
+    public void CycleDepth()
+    {
+        try
+        {
+            _depthHeld = !_depthHeld;
+            if (_depthHeld)
+            {
+                Depths.Spread(_pets.ConvertAll(p => p.Deep));
+            }
+            else
+            {
+                foreach (var p in _pets) p.Deep.ChangeIn = _rng.NextDouble() * 4;
+            }
+
+            foreach (var p in _pets) _renderer.Update(p);
+            Log($"diepte: {(_depthHeld ? "uitgewaaierd" : "losgelaten")}, " +
+                string.Join(", ", _pets.OrderBy(p => p.Depth).Select(p =>
+                    $"#{p.Id} d={p.Depth:F2} x{p.DepthScale:F2} z={Depths.ZFor(p.Depth)}")));
+        }
+        catch (Exception ex) { Log($"diepte: {ex.Message}"); }
+    }
+
+    private bool _depthHeld;
+
     public void CycleWater()
     {
         _snow.Brightness = _snow.Brightness switch

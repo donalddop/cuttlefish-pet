@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
@@ -23,9 +23,6 @@ namespace CuttlefishPet.Rendering;
 /// </summary>
 public sealed class MarineSnowLayer
 {
-    /// <summary>Behind the animals and their tentacles, which sit at the default 0.</summary>
-    private const int ZBehindEverything = -5;
-
     private readonly OverlayWindow _overlay;
     private readonly MarineSnow _field;
     private readonly List<Ellipse> _dots = new();
@@ -51,7 +48,12 @@ public sealed class MarineSnowLayer
         while (_dots.Count < flakes.Count)
         {
             var dot = new Ellipse { Fill = _brush, IsHitTestVisible = false };
-            Panel.SetZIndex(dot, ZBehindEverything);
+            // In among the animals rather than behind all of them: a mote takes its
+            // draw order from its own depth, out of the same table the animals use,
+            // so near dust drifts in front of a far cuttlefish and far dust behind a
+            // near one. Set once, like the size and the brush -- a mote's depth
+            // never changes. The -1 is the tie-break: at equal depth the animal wins.
+            Panel.SetZIndex(dot, Depths.ZFor(flakes[_dots.Count].Depth) - 1);
             _overlay.PetCanvas.Children.Add(dot);
             _dots.Add(dot);
             Resize(dot, flakes[_dots.Count - 1]);

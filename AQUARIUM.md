@@ -23,7 +23,9 @@ het is en wat het moet worden, en het is puur sfeer: precies wat je wil terwijl
 je iets anders aan het doen bent.
 
 **Er is geen diepte.** Alles zit op één vlak, even groot en even scherp. Het is
-een vel stickers, geen volume.
+een vel stickers, geen volume. *(Grotendeels verholpen op 12 nov: dieren hebben
+een z-waarde waar formaat, waas, snelheid en tekenvolgorde uit volgen. Wat nog
+ontbreekt is het roofdier dat uit de diepte komt.)*
 
 **Er is geen regie.** Elk gedrag vuurt op zijn eigen timer. Het resultaat is óf
 drie dingen tegelijk óf tien minuten niets. Een echte scène heeft iemand die
@@ -67,9 +69,23 @@ waar je in zit te lezen. Subtiliteit ís de functie.
 
 ### 2. Diepte
 
-- Een z-waarde per dier: schaal, waas, snelheid en tekenvolgorde volgen eruit.
-- Dieren wisselen af en toe van diepte.
+- ~~Een z-waarde per dier: schaal, waas, snelheid en tekenvolgorde volgen eruit.~~
+  **Af** (12 nov). 0 = achterin de waas, 1 = tegen het glas, dezelfde kant op als
+  het stof. Daaruit volgen vier dingen tegelijk: formaat ×0,70 tot ×1,06, snelheid
+  in schermpixels ×0,70 tot ×1,08 (dezelfde verhouding, anders leest het als
+  schaatsen), een waas in de kleur van wat er áchter het dier zit (niet in
+  aquariumblauw — afstand haalt contrast weg, een blauwe sluier op een witte
+  pagina voegt het juist toe), en de tekenvolgorde. Die volgorde loopt door de
+  waterlagen heen: het stof pakt zijn z nu uit zijn eigen diepte, dus een mot
+  drijft vóór een verre zeekat langs en achter een nabije. `Core/Depths.cs`,
+  debug-commando `depth`, meetbeeld `preview/depth.png` uit `Tools/WaterPreview`.
+- ~~Dieren wisselen af en toe van diepte.~~ **Af** (12 nov). Elk dier houdt een
+  diepte 35 tot 110 seconden vast en drijft er dan in een seconde of zeven naar
+  een andere toe. Niet opgeslagen in de tank: diepte is waar een dier vanmiddag
+  toevallig zwemt, geen eigenschap.
 - Het roofdier komt uit de diepte aanzetten in plaats van van opzij.
+- Dieren zetten zich schuin tegen de stroming in (`WorldState.Drift` ligt klaar;
+  dit verandert hoe ze sturen).
 
 ### 3. De regisseur
 
@@ -152,6 +168,22 @@ Deze zijn duur geleerd. Ze gelden elke dag.
 ## Logboek
 
 Nieuwste bovenaan. Eén regel per dag: wat er gebeurde, en wat het leerde.
+
+- **12 nov (2)** — Diepte: één z-waarde per dier, en formaat, snelheid, waas en
+  tekenvolgorde die er alle vier uit volgen. Geleerd: op een live schermafdruk
+  valt hier niets aan te zien — er stond een tekenfilm schermvullend aan en de
+  dieren camoufleren zich dáártegen, dus het enige wat je ziet is precies niet wat
+  je meet. Daarom staat de meetopstelling nu offscreen in `Tools/WaterPreview`
+  (`depth.png`: vijf keer hetzelfde dier op vijf dieptes, boven diep water en
+  boven een pagina tekst, met onder elk dier één seconde zwemmen als liniaal,
+  want snelheid kun je in een stilstaand beeld niet zien). Daarop gemeten:
+  piekcontrast op diep water 69 → 134 van 255 van achter naar voren, en op de
+  pagina juist lichter in plaats van blauwer. En: de processormeting op een
+  bureaublad dat video afspeelt heeft een spreiding van twaalf procentpunt, dus
+  daar valt een verschil van een paar punten niet in te zien — in plaats van
+  dóórmeten is de waas afgekapt op de achterste helft (de laag bestaat dan voor
+  de meeste dieren niet) en wordt de tekenvolgorde alleen geschreven als hij
+  echt verandert. Opnieuw nameten hoort op een stil bureaublad.
 
 - **12 nov** — Waterlijn langs de bovenrand; thema 1 af. Geleerd: míjn ogen op
   een schermafdruk zijn geen meetinstrument voor iets van 20 op 255 — twee keer

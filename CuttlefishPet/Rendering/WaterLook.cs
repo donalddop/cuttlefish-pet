@@ -1,4 +1,4 @@
-using System.Windows.Media;
+﻿using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
 namespace CuttlefishPet.Rendering;
@@ -42,6 +42,14 @@ public static class WaterLook
         g.Freeze();
         return g;
     }
+
+    /// <summary>
+    /// The water an animal at the back of the tank is seen through, for the
+    /// moment before it has read what is actually behind it. Deliberately a dim
+    /// grey-green rather than an aquarium blue: it is only ever a stand-in, and a
+    /// saturated one would announce itself on the one or two frames it is used.
+    /// </summary>
+    public static readonly Color Haze = Color.FromRgb(96, 112, 116);
 
     /// <summary>The beam colour, and the colour of the water shaded beside it.</summary>
     private static readonly Color Pale = Color.FromRgb(212, 236, 248);
