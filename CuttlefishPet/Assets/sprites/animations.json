@@ -561,7 +561,7 @@
     "file": "shark.png",
     "frameW": 240,
     "frameH": 240,
-    "frames": 4,
+    "frames": 6,
     "fps": 7,
     "loop": true,
     "anchor": [
@@ -574,7 +574,7 @@
     "file": "dolphin.png",
     "frameW": 240,
     "frameH": 240,
-    "frames": 4,
+    "frames": 6,
     "fps": 7,
     "loop": true,
     "anchor": [

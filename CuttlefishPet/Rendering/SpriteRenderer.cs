@@ -506,21 +506,44 @@ public sealed class SpriteRenderer
     /// Multiplied onto the animation's own scale. A cuttlebone uses it to come
     /// out the size of the animal that left it; everything else leaves it at 1.
     /// </param>
+    /// <param name="bank">
+    /// Degrees of nose-down tilt. Only the hunter uses it, and it is the second
+    /// half of the animation fix: a shark diving at something below it used to
+    /// slide down the screen perfectly level, which is the one thing that gave
+    /// away that it was a picture being moved rather than a fish swimming. The
+    /// rotation is applied before the mirror, so a left-facing animal tips the
+    /// right way round for free -- doing it after meant a dive to the left came
+    /// out as a climb, which took an embarrassingly long time to spot.
+    /// </param>
     public void UpdateProp(Image img, string animName, Point physPos, double t,
-        bool facingRight = true, double scale = 1)
+        bool facingRight = true, double scale = 1, double bank = 0)
     {
         var anim = _library[animName];
         double k = _overlay.DeviceToDiu;
         double s = anim.Scale * scale;
         int i = (int)(t * anim.Fps);
         i = anim.Loop ? i % anim.Frames.Length : Math.Min(i, anim.Frames.Length - 1);
+        if (i < 0) i = 0;   // a clock that has gone bad must not throw on the UI thread
 
         img.Source = anim.Frames[i];
         img.Width = anim.FrameW * s * k;
         img.Height = anim.FrameH * s * k;
-        img.RenderTransform = facingRight
-            ? null
-            : new ScaleTransform(-1, 1, anim.FrameW * s * k / 2, 0);
+        double w = anim.FrameW * s * k, h = anim.FrameH * s * k;
+        bool tilted = double.IsFinite(bank) && Math.Abs(bank) > 0.35;
+        var mirror = facingRight ? null : new ScaleTransform(-1, 1, w / 2, 0);
+        if (tilted)
+        {
+            var spin = new RotateTransform(bank, w / 2, h / 2);
+            if (mirror == null) img.RenderTransform = spin;
+            else
+            {
+                var both = new TransformGroup();
+                both.Children.Add(spin);
+                both.Children.Add(mirror);
+                img.RenderTransform = both;
+            }
+        }
+        else img.RenderTransform = mirror;
         var tl = _overlay.PhysToDiu(new Point(physPos.X - anim.Anchor.X * s,
                                               physPos.Y - anim.Anchor.Y * s));
         Canvas.SetLeft(img, tl.X);

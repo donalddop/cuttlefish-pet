@@ -9,6 +9,12 @@ void Check(string name, bool ok, string detail = "")
 }
 var rng = new Random(20260902);
 
+// Predator.cs itself cannot come into this runner -- it holds a WPF Image and a
+// Pet -- so its two speeds are restated. If they drift apart in Predator.cs the
+// numbers below stop describing the real animal, which is why they are named.
+const double Predator_Cruise = 305;
+const double Predator_Burst = 760;
+
 // ---------- genome (S1) ----------
 var founders = Enumerable.Range(0, 400).Select(_ => Genome.Random(rng)).ToList();
 Check("founders vary", founders.Select(g => Math.Round(g.Boldness, 2)).Distinct().Count() > 50);
@@ -714,6 +720,177 @@ var tankOfOne = new List<DepthState> { new() };
 Depths.Spread(tankOfOne);
 Check("spreading a tank of one does not divide by zero",
       double.IsFinite(tankOfOne[0].Now) && tankOfOne[0].Now is >= 0 and <= 1);
+
+
+// ---------- the hunt (S2) ----------
+// The pacing is the only part of a visit that can be checked without a screen,
+// and it is the part that is easy to get wrong by a factor of three: the old
+// hunt was a 0.8s run-up and nobody noticed for weeks that there was no suspense
+// in it. Drive it at 30fps, the same rate the app runs at.
+const double tick = 1.0 / 30;
+
+// One attack from entry to recovery, with the quarry holding still 420px off.
+// Records how long each phase lasted and how fast it was going in each.
+var h = new HuntState();
+var spent = new Dictionary<HuntPhase, double>();
+var fastest = new Dictionary<HuntPhase, double>();
+double hgap = 420, burstAt = -1, totalT = 0;
+int commits = 0;
+var order = new List<HuntPhase> { h.Phase };
+for (int i = 0; i < 30 * 12; i++)
+{
+    double f = h.Phase == HuntPhase.Burst ? Predator_Burst : Predator_Cruise * Hunt.CruiseFactor(h, hgap);
+    spent[h.Phase] = spent.GetValueOrDefault(h.Phase) + tick;
+    fastest[h.Phase] = Math.Max(fastest.GetValueOrDefault(h.Phase), f);
+    hgap = Math.Max(14, hgap - f * tick);        // it closes; the quarry sits there
+    if (Hunt.Advance(h, tick, true, hgap)) { commits++; if (burstAt < 0) burstAt = totalT; }
+    totalT += tick;
+    if (order[^1] != h.Phase) order.Add(h.Phase);
+    // One attack only. Left running it simply hunts again, which is correct
+    // behaviour and makes nonsense of the per-phase totals -- the first cut of
+    // this test measured three runs stacked on top of each other and read as a
+    // four-second stalk.
+    if (h.Phase == HuntPhase.Recover) break;
+}
+Check("a visit runs cross, stalk, coil, burst, recover and no other way",
+      order.SequenceEqual(new[] { HuntPhase.Crossing, HuntPhase.Stalk, HuntPhase.Coil,
+                                  HuntPhase.Burst, HuntPhase.Recover }),
+      string.Join(" -> ", order));
+Check("it commits exactly once per run", commits == 1, $"{commits} bursts");
+Check("the stalk is slower than crossing and the burst is in another gear",
+      fastest[HuntPhase.Stalk] < Predator_Cruise * 0.8 &&
+      fastest[HuntPhase.Burst] > Predator_Cruise * 2.2,
+      $"stalk {fastest[HuntPhase.Stalk]:F0}, cruise {Predator_Cruise:F0}, burst {fastest[HuntPhase.Burst]:F0} px/s");
+Check("the tension is seconds and the strike is a fraction of one",
+      spent[HuntPhase.Stalk] > 1.0 && spent[HuntPhase.Stalk] < 4.0 &&
+      spent[HuntPhase.Burst] < 0.95 && burstAt > 1.2,
+      $"stalk {spent[HuntPhase.Stalk]:F2}s, coil {spent[HuntPhase.Coil]:F2}s, " +
+      $"burst {spent[HuntPhase.Burst]:F2}s, commit at {burstAt:F2}s");
+Check("it holds its breath before it goes", spent[HuntPhase.Coil] > 0.25 && spent[HuntPhase.Coil] < 0.6,
+      $"{spent[HuntPhase.Coil]:F2}s");
+
+// A quarry that keeps running must not leave it stalking at half speed forever.
+var runner = new HuntState();
+double fleeing = 500, stalked = 0;
+for (int i = 0; i < 30 * 10; i++)
+{
+    fleeing += 40 * tick;                         // drifting away faster than it closes
+    if (runner.Phase == HuntPhase.Stalk) stalked += tick;
+    if (Hunt.Advance(runner, tick, true, fleeing)) break;
+}
+Check("a quarry that keeps walking away still gets lunged at",
+      stalked <= Hunt.StalkMax + 0.1 && runner.Phase == HuntPhase.Burst,
+      $"stalked {stalked:F2}s then {runner.Phase}");
+
+// The bite gate, which is the thing that stops the hunt being a teleport again.
+var gate = new HuntState();
+Check("nothing can be bitten while crossing", !Hunt.CanBite(gate));
+Hunt.Advance(gate, tick, true, 120);
+Check("nothing can be bitten while stalking", gate.Phase == HuntPhase.Stalk && !Hunt.CanBite(gate));
+for (int i = 0; i < 30 * 5 && gate.Phase != HuntPhase.Burst; i++) Hunt.Advance(gate, tick, true, 60);
+Check("only a committed run can bite", Hunt.CanBite(gate));
+Hunt.Spend(gate);
+Check("a spent strike cannot bite again and cannot re-aim",
+      !Hunt.CanBite(gate) && !Hunt.CanLock(gate), $"{gate.Phase}");
+for (int i = 0; i < 30 * 3; i++) Hunt.Advance(gate, tick, false, 1e4);
+Check("recovery ends by itself and it may hunt again",
+      gate.Phase == HuntPhase.Crossing && Hunt.CanLock(gate));
+
+// Losing sight mid-stalk costs nothing; losing it mid-burst still costs the run.
+var lost = new HuntState();
+Hunt.Advance(lost, tick, true, 300);
+Hunt.Advance(lost, tick, false, 1e4);
+Check("a quarry lost while stalking is no loss", lost.Phase == HuntPhase.Crossing);
+
+// Found live, twice over, on the second run: a shark swapped quarry a second
+// into its approach and lunged on the spot, because the stalk clock ran straight
+// through the swap. A stalk belongs to one animal.
+var swapper = new HuntState();
+for (int i = 0; i < 20; i++) Hunt.Advance(swapper, tick, true, 300);
+double banked = swapper.In;
+Hunt.Requarry(swapper);
+Check("changing its mind costs it the approach it had banked",
+      banked > 0.5 && swapper.In == 0 && swapper.Phase == HuntPhase.Stalk,
+      $"{banked:F2}s banked, then {swapper.In:F2}s");
+for (int i = 0; i < 90; i++) Hunt.Advance(swapper, tick, true, 300);
+Check("but it cannot keep changing its mind: late in an approach it is committed",
+      !Hunt.CanLock(swapper), $"{swapper.Phase} after {swapper.In:F2}s");
+
+// And the other half of that bug: it has to arrive at the hold mark and wait
+// there, not creep through it. A burst that starts on top of the animal has no
+// run in it at all.
+var creeper = new HuntState { Phase = HuntPhase.Stalk };
+double creepGap = Hunt.HoldGap;
+for (int i = 0; i < 30; i++)
+    creepGap -= Predator_Cruise * Hunt.CruiseFactor(creeper, creepGap) * tick;
+Check("it waits at the hold mark instead of creeping onto the animal",
+      creepGap > Hunt.HoldGap * 0.55,
+      $"{Hunt.HoldGap:F0}px -> {creepGap:F0}px over a second of holding");
+
+Check("the tank only notices it once it commits",
+      Hunt.AlarmRadius(new HuntState { Phase = HuntPhase.Stalk }) < 110 &&
+      Hunt.AlarmRadius(new HuntState { Phase = HuntPhase.Coil }) < 110 &&
+      Hunt.AlarmRadius(new HuntState { Phase = HuntPhase.Burst }) > 250,
+      $"stalk {Hunt.AlarmRadius(new HuntState { Phase = HuntPhase.Stalk }):F0}px, " +
+      $"burst {Hunt.AlarmRadius(new HuntState { Phase = HuntPhase.Burst }):F0}px");
+
+// ---------- the hunter's animation ----------
+Check("a drifting fish still sculls and a sprinting one does not beat four times as fast",
+      Hunt.BeatRate(0, Predator_Cruise) > 0.3 &&
+      Hunt.BeatRate(Predator_Burst, Predator_Cruise) < Hunt.BeatRate(Predator_Cruise, Predator_Cruise) * 2.2 &&
+      Hunt.BeatRate(Predator_Burst, Predator_Cruise) > Hunt.BeatRate(Predator_Cruise * 0.46, Predator_Cruise) * 1.4,
+      $"still {Hunt.BeatRate(0, Predator_Cruise):F2}, stalk {Hunt.BeatRate(Predator_Cruise * 0.46, Predator_Cruise):F2}, " +
+      $"cruise {Hunt.BeatRate(Predator_Cruise, Predator_Cruise):F2}, burst {Hunt.BeatRate(Predator_Burst, Predator_Cruise):F2} /s");
+
+// Two hunters, one stalking and one bursting, over the same second: the sprite
+// clock has to pull visibly apart or the fix did nothing.
+var slow = new HuntState(); var quick = new HuntState();
+for (int i = 0; i < 30; i++)
+{
+    Hunt.Animate(slow, tick, Predator_Cruise * 0.46, Predator_Cruise, 140, 0);
+    Hunt.Animate(quick, tick, Predator_Burst, Predator_Cruise, 760, 0);
+}
+Check("the tail beats at the speed the animal is going", quick.Beat > slow.Beat * 1.5,
+      $"{slow.Beat:F2} vs {quick.Beat:F2} beats in a second");
+
+var coiled = new HuntState { Phase = HuntPhase.Coil, Beat = 3.0 };
+Hunt.Animate(coiled, tick, 30, Predator_Cruise, 30, 0);
+Check("the tail stops while it is coiled", Math.Abs(coiled.Beat - 3.0) < 1e-9);
+
+// Bank: it has to reach a real tilt on a dive, stay inside its limit, and lag.
+var diving = new HuntState();
+for (int i = 0; i < 30; i++) Hunt.Animate(diving, tick, 400, Predator_Cruise, 300, 300);
+var climbing = new HuntState();
+for (int i = 0; i < 30; i++) Hunt.Animate(climbing, tick, 400, Predator_Cruise, 300, -300);
+Check("a dive tips nose-down and a climb tips nose-up, both within the limit",
+      diving.Bank > 20 && climbing.Bank < -20 &&
+      Math.Abs(diving.Bank) <= Hunt.BankMax && Math.Abs(climbing.Bank) <= Hunt.BankMax,
+      $"dive +{diving.Bank:F1}deg, climb {climbing.Bank:F1}deg, limit {Hunt.BankMax:F0}");
+var snapped = new HuntState();
+Hunt.Animate(snapped, tick, 400, Predator_Cruise, 300, 900);
+Check("a body has mass: one tick does not get all the way there",
+      snapped.Bank < diving.Bank * 0.5, $"{snapped.Bank:F1}deg after one tick");
+var straightening = new HuntState { Bank = 30 };
+for (int i = 0; i < 60; i++) Hunt.Animate(straightening, tick, 300, Predator_Cruise, 300, 0);
+Check("it levels out again", Math.Abs(straightening.Bank) < 1.0, $"{straightening.Bank:F2}deg");
+
+// Nothing that has gone bad may escape: a hunter is drawn on the UI thread, and
+// a NaN reaching a RotateTransform is the kind of thing that has killed the tank.
+var junk = new HuntState { Beat = double.NaN, Bank = double.NaN, In = double.NaN };
+Hunt.Animate(junk, double.NaN, double.NaN, double.NaN, double.NaN, double.NaN);
+Hunt.Advance(junk, double.NaN, true, double.NaN);
+double junkSpeed = Hunt.CruiseFactor(junk, double.NaN);
+Check("rubbish numbers are put back rather than drawn",
+      double.IsFinite(junk.Beat) && double.IsFinite(junk.Bank) && double.IsFinite(junk.In) &&
+      double.IsFinite(junkSpeed) && Math.Abs(junk.Bank) <= Hunt.BankMax,
+      $"beat {junk.Beat:F2}, bank {junk.Bank:F2}, factor {junkSpeed:F2}");
+
+// A long visit must not let the sprite clock grow until single frames get skipped
+// by floating-point error in the renderer's cast to int.
+var marathon = new HuntState { Beat = 99999.5 };
+for (int i = 0; i < 300; i++) Hunt.Animate(marathon, tick, Predator_Cruise, Predator_Cruise, 300, 0);
+Check("the sprite clock wraps instead of growing forever", marathon.Beat < 1e5,
+      $"{marathon.Beat:F1}");
 
 Console.WriteLine(failed == 0 ? "\nALL PASS" : $"\n{failed} FAILED");
 return failed;

@@ -966,16 +966,33 @@ def _shark_frames(n, gapes=None):
         img = Image.new("RGBA", (big, big), (0, 0, 0, 0))
         d = ImageDraw.Draw(img)
         beat = math.sin(i / n * 6.283)
-        cx, cy = 250, 252
+        # 260, not 250. At 250 the tip of the upper tail lobe sat twelve pixels
+        # off the left edge of the canvas and came out of the resize cut flat,
+        # with no outline on that side -- a blunt stump that you only see once
+        # you magnify a frame, and then cannot stop seeing. The tail tip comes
+        # in ten pixels as well, so there is margin at both ends instead of a
+        # fit that the next change to the silhouette would break again.
+        # Predator.Mouth is offset to match; the two move together.
+        cx, cy = 260, 252
 
-        def A(pts, amp=18.0):
+        def A(pts, amp=18.0, head=0.34):
             """Bend toward the tail by the beat, then place on the canvas.
+
             The whole animal flexes; a shark that only waggles one fin looks
-            like a fish on a stick."""
+            like a fish on a stick. The head yaws the *other* way at a third of
+            the amplitude, which is the difference between a waving flag and an
+            S running down a body: a real swimmer's snout swings against its
+            tail, and without it the six-frame strip read as the old four-frame
+            one with more steps in it rather than as something alive. Small --
+            about five pixels at the snout -- because any more and it reads as
+            the animal shaking its head.
+            """
             res = []
             for x, y in pts:
                 u = max(0.0, min(1.0, (-x - 20) / 160.0))
-                res.append((cx + x, cy + y + beat * amp * u * u))
+                v = max(0.0, min(1.0, (x - 30) / 190.0))
+                res.append((cx + x,
+                            cy + y + beat * amp * u * u - beat * amp * head * v * v))
             return res
 
         top = [(222, 8), (214, -8), (200, -26), (180, -40), (152, -52),
@@ -989,8 +1006,8 @@ def _shark_frames(n, gapes=None):
         line = [(100, 28), (110, 40), (134, 44), (172, 34), (206, 16)]
         pivot = (100, 28)
 
-        tail = [(-140, -16), (-206, -58), (-262, -112), (-236, -50),
-                (-196, -14), (-224, 20), (-240, 58), (-208, 26), (-166, 6),
+        tail = [(-140, -16), (-204, -56), (-252, -108), (-230, -48),
+                (-194, -14), (-220, 20), (-236, 56), (-206, 26), (-166, 6),
                 (-140, 12)]
         dors1 = [(56, -62), (28, -112), (-6, -176), (-36, -100), (-58, -50)]
         dors2 = [(-84, -44), (-96, -84), (-118, -52), (-134, -36)]
@@ -1051,7 +1068,7 @@ def _shark_frames(n, gapes=None):
     return out, small
 
 
-def prop_shark(n=4):
+def prop_shark(n=6):
     """A shark that actually reads as a shark, and still could not frighten a
     six-year-old.
 
@@ -1068,6 +1085,13 @@ def prop_shark(n=4):
     wider, the curve smooths off the snout and the tail wrist and hands back
     an ellipse. The fins stay plain polygons, because a closed spline pinches
     a thin triangle into a splinter. Both were learned the hard way.
+
+    Six frames rather than four, since the hunter's tail now beats at the speed
+    it is actually swimming (Core/Hunt.cs) instead of at a fixed rate. Four was
+    just about acceptable at one speed; sampled slowly for a stalk it stepped,
+    and sped up for a burst it strobed. Six at 7fps keeps a cruising beat at
+    very nearly the old rate, so the animal you already know still looks like
+    itself.
     """
     return _shark_frames(n)
 
@@ -1097,11 +1121,15 @@ def _dolphin_frames(n, gapes=None):
         beat = math.sin(i / n * 6.283)
         cx, cy = 248, 250
 
-        def A(pts, amp=18.0):
+        def A(pts, amp=18.0, head=0.34):
+            # Same counter-yaw at the beak as the shark gets at the snout; see
+            # _shark_frames for why it is there and why it is this small.
             res = []
             for x, y in pts:
                 u = max(0.0, min(1.0, (-x - 20) / 160.0))
-                res.append((cx + x, cy + y + beat * amp * u * u))
+                v = max(0.0, min(1.0, (x - 30) / 190.0))
+                res.append((cx + x,
+                            cy + y + beat * amp * u * u - beat * amp * head * v * v))
             return res
 
         top = [(258, 15), (244, 8), (226, 3), (208, 0), (194, -2), (186, -18),
@@ -1170,7 +1198,7 @@ def _dolphin_frames(n, gapes=None):
     return out, small
 
 
-def prop_dolphin(n=4):
+def prop_dolphin(n=6):
     """The other one, and the better documented of the two: bottlenose dolphins
     work cuttlefish over thoroughly before eating them.
 

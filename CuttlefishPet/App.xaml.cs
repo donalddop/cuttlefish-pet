@@ -95,6 +95,10 @@ public partial class App : Application
             case "hunter": _manager.SummonHunter(); break;
             case "bones": _manager.DropTestBones(); break;
             case "strike": _manager.SummonHunter(sure: true); break;
+            // The pacing one: it stalks, coils, bursts, misses, and does the whole
+            // thing again, which is what you want when the shape of the hunt is
+            // the thing you are looking at.
+            case "stalk": _manager.SummonHunter(miss: true); break;
             case "reach": _manager.ReachOut(); break;
             case "decoy": _manager.DropDecoy(); break;
             case "ammonite": _manager.SummonAmmonite(); break;

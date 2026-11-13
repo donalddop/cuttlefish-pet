@@ -82,7 +82,10 @@ public sealed class Predator
     /// Anything being swallowed heads for this point, so it has to sit inside
     /// the mouth or a cuttlefish would vanish into thin water just short of it.
     /// </summary>
-    public Point Mouth => new(Pos.X + (FacingRight ? 74 : -74), Pos.Y + 12);
+    /// 79 rather than 74 since the shark was shifted ten canvas pixels right in
+    /// its frame to stop the resize cutting its tail tip off flat -- about five
+    /// drawn pixels, and the mouth has to travel with the face it is part of.
+    public Point Mouth => new(Pos.X + (FacingRight ? 79 : -79), Pos.Y + 12);
 
     public bool Expired => Age > 75;
 
@@ -95,6 +98,35 @@ public sealed class Predator
     /// </summary>
     public const double Cruise = 305;
     public const double Lunge = 470;
+
+    /// <summary>
+    /// The committed run, and the one speed in the app that is meant to feel out
+    /// of scale with everything else. The old lunge at 470 was only 1.5x cruising,
+    /// so the strike looked like the same fish going slightly faster; at 760 it
+    /// reads as a different gear. It is only ever on for about a quarter of a
+    /// second (see <see cref="Hunt.BurstLen"/>), which is why it can be this fast
+    /// without the animal becoming something that lives on your desktop.
+    /// </summary>
+    public const double Burst = 760;
+
+    /// <summary>
+    /// Where this attack is in its arc, plus the tail-beat clock and the bank.
+    /// Readonly and never replaced: the phase machine is the one thing in the
+    /// visit that several bits of TickPredator read in the same tick.
+    /// </summary>
+    public readonly HuntState Hunt = new();
+
+    /// <summary>
+    /// The phase the debug log has already been told about. Only here so a phase
+    /// change writes one line instead of thirty a second -- the log is the only
+    /// instrument there is for timing an event that lasts three seconds and
+    /// happens twice in an eight-minute visit.
+    /// </summary>
+    public HuntPhase Logged = HuntPhase.Crossing;
+
+    /// <summary>Speed the current phase wants, in screen pixels per second.</summary>
+    public double WantSpeed(double gap) =>
+        Hunt.Phase == HuntPhase.Burst ? Burst : Cruise * Core.Hunt.CruiseFactor(Hunt, gap);
 
     /// <summary>
     /// How much this animal stands out to something hunting it. Colour is most of

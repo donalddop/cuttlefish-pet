@@ -87,6 +87,35 @@ waar je in zit te lezen. Subtiliteit ís de functie.
 - Dieren zetten zich schuin tegen de stroming in (`WorldState.Drift` ligt klaar;
   dit verandert hoe ze sturen).
 
+#### De jacht zelf
+
+- ~~De jacht heeft een vorm: kruisen, sluipen, stilstaan, uitvallen, bijkomen.~~
+  **Af** (13 nov). `Core/Hunt.cs` is een losse rekenklasse zoals `Depths`, dus de
+  hele pacing is zonder scherm te draaien in DriveTests. Het dier *vertraagt*
+  naar 0,46× kruissnelheid om de laatste 170px te sluipen, staat dan een derde
+  seconde bijna stil, en gaat pas dán — op 760px/s, over ongeveer een vijfde
+  seconde. Ongeveer twee seconden spanning, een fractie strijd. Debug-commando
+  `stalk`: een roofdier dat gegarandeerd mist, zodat je de vorm twee keer per
+  bezoek kunt bekijken.
+- ~~De prooi weet het pas als hij uitvalt.~~ **Af** (13 nov). De alarmstraal
+  krimpt van 300 naar 95px tijdens het sluipen en klapt open bij de uitval. Dit
+  was de echte fout: de prooi kreeg het vluchtbevel op het moment van
+  vastzetten, dus er bestond geen seconde waarin het roofdier dichtbij was en het
+  dier het nog niet wist — en dat is het enige enge moment dat er is. De
+  dubbelganger (inkt) gaat nu ook pas op het moment van uitvallen weg.
+- ~~De staartslag hoort bij de snelheid, en het lijf kantelt in de duik.~~
+  **Af** (13 nov). De spriteklok liep op `Age`, dus een sluipende haai sloeg zijn
+  staart even snel als een sprintende. Nu 0,45 tot 2,2 slagen per seconde naar
+  snelheid (wortel, geen recht verband), en de staart stáát stil tijdens het
+  coilen. Plus een helling tot 38° naar de koersrichting, met vertraging, zodat
+  een duik ook als duik leest in plaats van als een plaatje dat schuin wegglijdt.
+- ~~Zes zwemframes in plaats van vier, kop draait tegen de staart in, staartpunt
+  niet meer afgesneden.~~ **Af** (13 nov).
+- De vangkans is met opzet niet aangeraakt. Een besloop dier is nu kansloos en
+  hoort makkelijker te pakken te zijn, maar de vangkans bepaalt wie er voortplant
+  — dat verander je op een dag dat je `uv run Tools/graveyard.py` voor en na
+  draait, niet terwijl je naar een animatie zit te kijken.
+
 ### 3. De regisseur
 
 Een laag boven de gedragsmachine die het ritme stuurt:
@@ -169,6 +198,22 @@ Deze zijn duur geleerd. Ze gelden elke dag.
 
 Nieuwste bovenaan. Eén regel per dag: wat er gebeurde, en wat het leerde.
 
+- **13 nov** — De jacht kreeg een vorm (sluipen, stilstaan, uitvallen) en de
+  roofdieren kregen een animatie die bij hun snelheid hoort. Geleerd: snel is
+  niet hetzelfde als spannend — de oude jacht was één versnelling en 0,8s
+  aanloop, en de oplossing was níet harder maar eerst *langzamer*. De echte fout
+  zat trouwens niet in de snelheid maar in één regel die de prooi liet vluchten
+  op het moment van vastzetten; daardoor bestond het enige spannende moment
+  simpelweg niet. Verder: twee bugs kwamen alleen boven water door het écht te
+  draaien en niet door de tests — bij wisselen van prooi liep de sluipklok door
+  (haai zag iets dichterbij en viel ter plekke uit, zonder aanloop), en een te
+  vroege `return` bij een geslaagde dubbelganger sloeg de hele uitvalfase uit het
+  logboek, waardoor ik een run lang dacht dat hij niet gebeurd was. Beide zitten
+  nu als test in DriveTests. En bij het vergroten van één frame bleek de
+  staartpunt van de haai al die tijd vlak afgesneden tegen de canvasrand — op
+  ware grootte zie je dat niet, in de alfawaarde van de randkolom wel (255 =
+  hard afgekapt, nu 0). Tank: 13 zeekatten voor, 12 na; die ene stierf van
+  ouderdom, niet door mij — `stalk` kan niet doden.
 - **12 nov (2)** — Diepte: één z-waarde per dier, en formaat, snelheid, waas en
   tekenvolgorde die er alle vier uit volgen. Geleerd: op een live schermafdruk
   valt hier niets aan te zien — er stond een tekenfilm schermvullend aan en de

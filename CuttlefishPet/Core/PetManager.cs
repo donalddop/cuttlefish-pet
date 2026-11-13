@@ -1674,16 +1674,26 @@ public sealed partial class PetManager
             Log($"tentakel uit bij #{pet.Id} op ({pet.Pos.X:F0},{pet.Pos.Y:F0}) schaal={pet.Scale:F2}");
     }
 
-    public void SummonHunter(bool sure = false)
+    public void SummonHunter(bool sure = false, bool miss = false)
     {
         if (_world.Hunter != null) return;
         _hunterIn = 0;
         _summonAimed = true;
         _summonSure = sure;
+        _summonMiss = miss;
     }
 
     private bool _summonAimed;
     private bool _summonSure;
+
+    /// <summary>
+    /// Debug: the summoned one cannot catch anything. The counterpart to
+    /// <c>strike</c>, and the more useful of the two for watching the pacing --
+    /// a visit that ends in a kill is over after one run, while one that misses
+    /// gives you the stalk, the held beat and the burst twice, and leaves the
+    /// cuttlefish alive to do it to again.
+    /// </summary>
+    private bool _summonMiss;
 
     /// <summary>Seconds to the next visit, and which of the two comes next.</summary>
     private double _hunterIn = 240 + 420 * 0.5;
@@ -1740,14 +1750,27 @@ public sealed partial class PetManager
         // Pick something to go for. Conspicuousness decides, which is the point:
         // a pet flaring at a rival is advertising, and one sitting still wearing
         // the desktop is very nearly invisible.
-        if (!hunter.Leaving && hunter.Decoy == null && hunter.LookIn <= 0)
+        if (!hunter.Leaving && hunter.Decoy == null && hunter.LookIn <= 0
+            && Hunt.CanLock(hunter.Hunt))
         {
             hunter.LookIn = 0.5;
-            Pet? best = null;
+            Pet? best = hunter.Target is { Dying: false } held ? held : null;
             double bestScore = 0.55;          // below this it simply does not register
+            if (best != null)
+            {
+                // Hysteresis, and it is load-bearing rather than tidy. Switching
+                // quarry restarts the stalk clock (Hunt.Requarry), so a hunter
+                // that re-picks the best of two near-identical animals every half
+                // second would reset its own approach forever and never commit.
+                // A new one has to be a quarter again as worth having.
+                double d0 = (best.Pos - hunter.Pos).Length;
+                bestScore = Math.Max(bestScore,
+                    Predator.Conspicuousness(best) * (1 - d0 / 900) * 1.25);
+                if (d0 > 520) { best = null; bestScore = 0.55; }
+            }
             foreach (var pet in _pets)
             {
-                if (pet.Dying) continue;
+                if (pet.Dying || ReferenceEquals(pet, hunter.Target)) continue;
                 double d = (pet.Pos - hunter.Pos).Length;
                 if (d > 520) continue;
                 double score = Predator.Conspicuousness(pet) * (1 - d / 900);
@@ -1758,14 +1781,15 @@ public sealed partial class PetManager
                 hunter.Target = best;
                 hunter.Lock = 0;
                 hunter.DecoyRolled = false;
-                // A chase only reads as a chase if the quarry runs. Everything
-                // nearby is already alarmed; the one actually being aimed at is
-                // told outright, so the two of them move across the screen as a
-                // pair instead of the hunter closing on something oblivious.
-                if (best != null && best.Machine.Current.Interruptible
-                    && best.CamoOpacity <= 0.5
-                    && best.Machine.Current is not (ThreatBehavior or FleeBehavior))
-                    best.Machine.Force(new FleeBehavior());
+                if (best == null) Hunt.Reset(hunter.Hunt);
+                else Hunt.Requarry(hunter.Hunt);
+                // What used to be here was the worst line in the hunt: the quarry
+                // was told to flee the instant it was fixed on. It meant there was
+                // never a moment in the whole event where the predator was close
+                // and the animal did not know -- and that moment is the only part
+                // of a hunt that is frightening. The flight is now forced at the
+                // start of the burst instead, in TickPredator, where it reads as
+                // being caught out rather than as a chase starting politely.
             }
         }
 
@@ -1786,6 +1810,7 @@ public sealed partial class PetManager
                 hunter.Decoy = null;
                 hunter.Target = null;
                 hunter.LookIn = 3.5;
+                Hunt.Spend(hunter.Hunt);
                 if (hunter.Tries >= 2) hunter.Leaving = true;
                 Log($"{hunter.Kind} hapt in de dubbelganger");
             }
@@ -1796,24 +1821,48 @@ public sealed partial class PetManager
             var to = quarry.Pos - hunter.Pos;
             double gap = to.Length;
 
-            // A run-up, then the burst. Coming straight in at full speed meant
-            // the strike landed the moment anything was noticed, which is not
-            // a hunt -- it is a result. The first second is a pursuit you can
-            // follow, and only then does it commit.
-            double speed = hunter.Lock < 0.8 ? Predator.Cruise * 1.15 : Predator.Lunge;
+            // Cross, stalk, coil, burst, recover -- see Core/Hunt.cs for why the
+            // speed now goes down before it goes up. Everything dramatic in the
+            // visit hangs off the one tick this returns true on.
+            bool committing = Hunt.Advance(hunter.Hunt, dt, true, gap);
+            double speed = hunter.WantSpeed(gap);
             var want = gap < 1 ? hunter.Vel : to / gap * speed;
-            hunter.Vel += (want - hunter.Vel) * Math.Min(1, dt * 1.8);
+            // A burst has to arrive, not accelerate: at the old 1.8 ease it spent
+            // its whole quarter-second getting up to speed and crossed about half
+            // the distance it was supposed to. The stalk keeps the slow ease,
+            // because that is what makes the approach read as deliberate.
+            double ease = hunter.Hunt.Phase == HuntPhase.Burst ? 9.0 : 1.8;
+            hunter.Vel += (want - hunter.Vel) * Math.Min(1, dt * ease);
 
-            // One chance per quarry: close enough to be worth the ink, far
-            // enough that the swap is not simply watched happening.
             bool decoyed = false;
-            if (!hunter.DecoyRolled && gap < 155)
+            if (committing)
             {
-                hunter.DecoyRolled = true;
-                decoyed = TryPseudomorph(hunter, quarry);
+                Log($"{hunter.Kind} valt uit op #{quarry.Id} {quarry.Name} op {gap:F0}px " +
+                    $"na {hunter.Lock:F1}s sluipen");
+                _sound.Play("squirt", 0.35);
+                // The ink goes out as the predator commits, not when it first
+                // looks over. One chance per quarry, and this is the moment it is
+                // worth spending: a pseudomorph dropped during the stalk was
+                // thrown away on a fish that had not decided anything yet.
+                if (!hunter.DecoyRolled)
+                {
+                    hunter.DecoyRolled = true;
+                    decoyed = TryPseudomorph(hunter, quarry);
+                }
+                // And now it knows. Being told at the top of the burst rather
+                // than at the lock is the whole difference between a scramble and
+                // an orderly chase across the screen.
+                if (!decoyed && quarry.Machine.Current.Interruptible
+                    && quarry.Machine.Current is not (ThreatBehavior or FleeBehavior))
+                    quarry.Machine.Force(new FleeBehavior());
             }
 
-            if (!decoyed && gap < 62 && hunter.Lock > 0.6 && hunter.BiteT < 0)
+            // Falling out of the method here instead of returning, which is what
+            // the first cut did: the early exit skipped the move, the alarm and
+            // the phase log for that tick, so a burst that ended in a decoy never
+            // appeared in the log at all and I spent a run thinking the burst had
+            // not happened.
+            if (!decoyed && Hunt.CanBite(hunter.Hunt) && gap < 62 && hunter.BiteT < 0)
             {
                 // The jaw opens whatever happens next. A snap at empty water
                 // is worth as much to watch as a hit, and it is most of what
@@ -1826,14 +1875,22 @@ public sealed partial class PetManager
                 // that comes to roughly one visit in five ending badly for somebody,
                 // nearly always somebody who was easy to see. That ratio is the
                 // entire point of the animal.
-                double slip = _summonSure
-                    ? -1
+                // Unchanged on purpose. A stalked animal is oblivious until the
+                // burst and by rights ought to be easier to catch, but the catch
+                // rate is what decides who breeds, and moving it would quietly
+                // rewrite the tank's population while I was busy looking at an
+                // animation. Measure it with Tools/graveyard.py on a day when
+                // that is the thing being changed.
+                double slip = _summonMiss ? 2
+                    : _summonSure ? -1
                     : 0.90 + (1 - Math.Min(1, Predator.Conspicuousness(quarry))) * 0.09;
                 hunter.Tries++;
                 if (_rng.NextDouble() < slip)
                 {
                     hunter.Target = null;
                     hunter.LookIn = 3.5;
+                    Hunt.Spend(hunter.Hunt);
+                    Log($"{hunter.Kind} mist, poging {hunter.Tries}");
                     if (hunter.Tries >= 2) hunter.Leaving = true;
                 }
                 else
@@ -1841,6 +1898,7 @@ public sealed partial class PetManager
                     _summonSure = false;
                     quarry.Fate = "opgegeten";
                     quarry.Machine.Force(new EatenBehavior());
+                    Hunt.Spend(hunter.Hunt);
                     hunter.Leaving = true;
                     Log($"{hunter.Kind} pakt #{quarry.Id} {quarry.Name} na {hunter.Lock:F1}s jacht");
                 }
@@ -1848,14 +1906,33 @@ public sealed partial class PetManager
         }
         else
         {
-            // Nothing worth chasing: level out and carry on across.
+            // Nothing worth chasing: level out and carry on across. The phase
+            // clock still runs, so a recovery finishes whether or not there is
+            // anything left to look at.
+            Hunt.Advance(hunter.Hunt, dt, false, 1e4);
             double straight = hunter.FacingRight ? Predator.Cruise : -Predator.Cruise;
             hunter.Vel += (new Vector(straight, Math.Sin(hunter.Age * 0.7) * 26) - hunter.Vel)
                           * Math.Min(1, dt * 1.2);
         }
 
         hunter.Pos += hunter.Vel * dt;
-        if (Math.Abs(hunter.Vel.X) > 12) hunter.FacingRight = hunter.Vel.X > 0;
+        // A burst turns the animal round in one tick if it is allowed to: the
+        // threshold was 12px/s, which any sideways drift clears, and a shark that
+        // flips to face left for two frames mid-lunge is unwatchable. During a
+        // committed run the heading is left alone unless it is properly reversed.
+        double flipAt = hunter.Hunt.Phase == HuntPhase.Burst ? 90 : 12;
+        if (Math.Abs(hunter.Vel.X) > flipAt) hunter.FacingRight = hunter.Vel.X > 0;
+
+        Hunt.Animate(hunter.Hunt, dt, hunter.Vel.Length, Predator.Cruise,
+                     hunter.Vel.X, hunter.Vel.Y);
+
+        if (hunter.Hunt.Phase != hunter.Logged)
+        {
+            hunter.Logged = hunter.Hunt.Phase;
+            Log($"{hunter.Kind} -> {hunter.Hunt.Phase} op {hunter.Age:F1}s " +
+                $"snelheid={hunter.Vel.Length:F0}px/s helling={hunter.Hunt.Bank:F0}gr " +
+                $"doel={(hunter.Target == null ? "geen" : "#" + hunter.Target.Id)}");
+        }
 
         // Everything close by knows it is there, and each reacts in its own way.
         AlarmAt(hunter);
@@ -1870,7 +1947,8 @@ public sealed partial class PetManager
         // The bite strip runs on its own clock so it plays once through
         // rather than being sampled at whatever point the visit has reached.
         _renderer.UpdateProp(hunter.Visual, hunter.Anim, hunter.Pos,
-                             hunter.Biting ? hunter.BiteT : hunter.Age, hunter.FacingRight);
+                             hunter.Biting ? hunter.BiteT : hunter.Hunt.Beat,
+                             hunter.FacingRight, bank: hunter.Hunt.Bank);
     }
 
     /// <summary>
@@ -1931,11 +2009,16 @@ public sealed partial class PetManager
     /// </summary>
     private void AlarmAt(Predator hunter)
     {
+        // A stalking predator is trying not to be noticed, and a tank that bolts
+        // while it is still sneaking takes the whole point of the stalk away. The
+        // radius collapses to about one body length while it closes, and opens to
+        // its full 300px the moment it commits.
+        double notice = Hunt.AlarmRadius(hunter.Hunt);
         foreach (var pet in _pets)
         {
             if (pet.Dying || !pet.Machine.Current.Interruptible) continue;
             double d = (pet.Pos - hunter.Pos).Length;
-            if (d > 300) continue;
+            if (d > notice) continue;
 
             pet.Drives.Fear = 1;
             pet.Alarmed = true;
