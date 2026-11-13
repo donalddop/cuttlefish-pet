@@ -1931,7 +1931,14 @@ public sealed partial class PetManager
             hunter.Logged = hunter.Hunt.Phase;
             Log($"{hunter.Kind} -> {hunter.Hunt.Phase} op {hunter.Age:F1}s " +
                 $"snelheid={hunter.Vel.Length:F0}px/s helling={hunter.Hunt.Bank:F0}gr " +
-                $"doel={(hunter.Target == null ? "geen" : "#" + hunter.Target.Id)}");
+                $"doel={(hunter.Target == null ? "geen" : "#" + hunter.Target.Id)} " +
+                // The gap is the one number worth having here: a burst has to
+                // begin somewhere near the hold distance, and a line saying it
+                // began at 816px is how the give-up guard came to exist. Not
+                // Hunt.In -- a phase change has just zeroed it, so it is always
+                // 0.00 on this line and says nothing.
+                $"gat={(hunter.Target == null ? -1 : (hunter.Target.Pos - hunter.Pos).Length):F0}px " +
+                $"sluiptijd={hunter.Lock:F2}s");
         }
 
         // Everything close by knows it is there, and each reacts in its own way.

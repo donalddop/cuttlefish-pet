@@ -111,6 +111,13 @@ waar je in zit te lezen. Subtiliteit ís de functie.
   een duik ook als duik leest in plaats van als een plaatje dat schuin wegglijdt.
 - ~~Zes zwemframes in plaats van vier, kop draait tegen de staart in, staartpunt
   niet meer afgesneden.~~ **Af** (13 nov).
+- ~~Raakt hij zijn prooi kwijt tijdens het sluipen, dan geeft hij op.~~ **Af**
+  (13 nov, `Hunt.GiveUpAt`). Eén live bezoek viel uit vanaf 816px — vijf keer de
+  bedoelde afstand — na een wissel van prooi halverwege, en vier pogingen om het
+  te herhalen kwamen schoon terug. Niet kunnen afleiden, niet kunnen uitlokken;
+  wel zeker dat zo'n sprong geen jacht is maar een dier dat naar niets sprint.
+  Voorbij tweemaal de wachtafstand breekt hij het sluipen nu af. Daarna zeven
+  jachten achter elkaar met de uitval tussen 86 en 134px.
 - De vangkans is met opzet niet aangeraakt. Een besloop dier is nu kansloos en
   hoort makkelijker te pakken te zijn, maar de vangkans bepaalt wie er voortplant
   — dat verander je op een dag dat je `uv run Tools/graveyard.py` voor en na

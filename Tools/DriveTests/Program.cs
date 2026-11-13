@@ -769,18 +769,31 @@ Check("the tension is seconds and the strike is a fraction of one",
 Check("it holds its breath before it goes", spent[HuntPhase.Coil] > 0.25 && spent[HuntPhase.Coil] < 0.6,
       $"{spent[HuntPhase.Coil]:F2}s");
 
-// A quarry that keeps running must not leave it stalking at half speed forever.
+// A quarry that keeps running must not leave it stalking at half speed forever,
+// and must not be lunged at from across the screen either. One live visit burst
+// from 816px after a mid-stalk swap and would not reproduce; whatever the path,
+// a sprint at something five hold-distances away is not a hunt.
 var runner = new HuntState();
 double fleeing = 500, stalked = 0;
-for (int i = 0; i < 30 * 10; i++)
+for (int i = 0; i < 30 * 10 && runner.Phase != HuntPhase.Crossing || i == 0; i++)
 {
     fleeing += 40 * tick;                         // drifting away faster than it closes
     if (runner.Phase == HuntPhase.Stalk) stalked += tick;
-    if (Hunt.Advance(runner, tick, true, fleeing)) break;
+    Hunt.Advance(runner, tick, true, fleeing);
 }
-Check("a quarry that keeps walking away still gets lunged at",
-      stalked <= Hunt.StalkMax + 0.1 && runner.Phase == HuntPhase.Burst,
-      $"stalked {stalked:F2}s then {runner.Phase}");
+Check("a quarry that outruns the approach is given up on, not lunged at",
+      stalked <= Hunt.StalkMax + 0.1 && runner.Phase == HuntPhase.Crossing,
+      $"stalked {stalked:F2}s from {fleeing:F0}px, then {runner.Phase}");
+
+// But one that is merely a little short of the mark when the clock runs out
+// still gets its lunge -- the timeout is there so an approach cannot stall.
+var nearly = new HuntState();
+for (int i = 0; i < 30 * 5; i++)
+{
+    if (Hunt.Advance(nearly, tick, true, Hunt.HoldGap * 1.4)) break;
+}
+Check("one that is nearly in range when the clock runs out is still lunged at",
+      nearly.Phase == HuntPhase.Burst, $"{nearly.Phase}");
 
 // The bite gate, which is the thing that stops the hunt being a teleport again.
 var gate = new HuntState();

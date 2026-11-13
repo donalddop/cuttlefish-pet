@@ -90,6 +90,21 @@ public static class Hunt
     public const double StalkMin = 1.1, StalkMax = 3.4;
 
     /// <summary>
+    /// How far past the hold mark a quarry may be when the stalk times out and
+    /// still be worth going for, as a multiple of <see cref="HoldGap"/>.
+    ///
+    /// This is a guard rather than a feature. One live visit ended with a burst
+    /// launched from 816px -- five times the hold distance -- after a mid-stalk
+    /// change of quarry, and four attempts to reproduce it came out clean, so I
+    /// could neither derive the path nor trigger it. What is certain is that a
+    /// lunge from that far away is not a hunt however it got there: it is an
+    /// animal sprinting at nothing. Beyond this the stalk is abandoned and it
+    /// goes back to crossing, which is also the better behaviour on its own
+    /// merits -- a predator whose quarry has outrun the approach has lost it.
+    /// </summary>
+    public const double GiveUpAt = 2.0;
+
+    /// <summary>
     /// The held beat. A third of a second: long enough to read as a decision,
     /// short enough that it is not a fish stopping for a think. At 0.8s in the
     /// first cut it read as a bug.
@@ -194,7 +209,8 @@ public static class Hunt
                 // rather than into recovery: nothing was spent, so nothing is owed.
                 if (!hasQuarry) { Enter(h, HuntPhase.Crossing); break; }
                 if (h.In >= StalkMin && gap <= HoldGap) { Enter(h, HuntPhase.Coil); break; }
-                if (h.In >= StalkMax) Enter(h, HuntPhase.Coil);
+                if (h.In >= StalkMax)
+                    Enter(h, gap > HoldGap * GiveUpAt ? HuntPhase.Crossing : HuntPhase.Coil);
                 break;
 
             case HuntPhase.Coil:
