@@ -658,6 +658,7 @@ public sealed partial class PetManager
         TickPredator(dt);
         TickBones(dt);
         TickAmmonite(dt);
+        TickSquid(dt);
         TickTreats(dt);
         TickProps(dt);
         CheckSocial(dt);
@@ -1663,6 +1664,83 @@ public sealed partial class PetManager
         _world.Ammonite = arrival;
         _sound.Play("bubble", 0.22);
         Log($"een ammoniet komt langs bij {_pets.Count} zeekatten op ({arrival.Pos.X:F0},{arrival.Pos.Y:F0})");
+    }
+
+    // ---- the squid school ----
+
+    private SquidSchool? _squid;
+    private readonly List<System.Windows.Controls.Image> _squidImgs = new();
+    /// <summary>Seconds of running time until the next school; -1 until first set.</summary>
+    private double _squidIn = -1;
+
+    /// <summary>
+    /// Every so often a school of squid drifts through the open water above the
+    /// tank -- the Monterey Bay footage, more or less: a dozen pale torpedoes in
+    /// loose formation, pulsing and coasting, sometimes coming through tail first.
+    /// Far more common than the ammonite (a few times an hour rather than once a
+    /// day) and it asks nothing of anyone: the cuttlefish nearby only follow it
+    /// with their eyes. It sits at the back of the tank, behind the animals.
+    /// </summary>
+    private void TickSquid(double dt)
+    {
+        if (_squidIn < 0) _squidIn = 150 + _rng.NextDouble() * 210;
+
+        if (_squid == null)
+        {
+            _squidIn -= dt;
+            if (_squidIn > 0 || _pets.Count == 0) return;
+            _squidIn = SquidGap();
+            SpawnSquid();
+            return;
+        }
+
+        _squid.Step(dt, _rng);
+        for (int i = 0; i < _squid.Members.Count; i++)
+        {
+            var m = _squid.Members[i];
+            var img = _squidImgs[i];
+            _renderer.UpdateProp(img, "squid", m.Pos, m.Flap, m.FacingRight,
+                                 Depths.ScaleAt(m.Depth) * m.Size, m.Bank);
+            img.Opacity = Depths.OpacityAt(m.Depth) * 0.92;
+            int z = Depths.ZFor(m.Depth);
+            if (System.Windows.Controls.Panel.GetZIndex(img) != z)
+                System.Windows.Controls.Panel.SetZIndex(img, z);
+        }
+
+        // Whoever is close enough watches it go by. Only the eyes: a school of
+        // squid is scenery, not an event, and it must not interrupt anything.
+        var lead = _squid.Members[_squid.Members.Count / 2].Pos;
+        foreach (var pet in _pets)
+        {
+            if (pet.Dying || pet.GlanceFor > 0.3) continue;
+            if ((pet.Pos - lead).Length > 900) continue;
+            pet.GlanceTarget = lead;
+            pet.GlanceFor = 1.2;
+        }
+
+        if (_squid.Gone)
+        {
+            foreach (var img in _squidImgs) _renderer.RemoveProp(img);
+            _squidImgs.Clear();
+            _squid = null;
+            Log("de squid zijn voorbij");
+        }
+    }
+
+    private double SquidGap() => (14 + _rng.NextDouble() * 22) * 60;
+
+    /// <summary>Debug, and the tray item: send a school through now.</summary>
+    public void SummonSquid()
+    {
+        if (_squid == null) _squidIn = 0;
+    }
+
+    private void SpawnSquid()
+    {
+        _squid = SquidSchool.Create(_world.VirtualScreen, _rng);
+        foreach (var _ in _squid.Members) _squidImgs.Add(_renderer.CreateProp("squid"));
+        Log($"een school van {_squid.Members.Count} squid komt langs" +
+            (_squid.TailFirst ? " (staart eerst)" : ""));
     }
 
     /// <summary>Debug: the three biggest hold their tentacles out for a few seconds.</summary>

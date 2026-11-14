@@ -6,12 +6,58 @@ using System.Windows.Media.Imaging;
 
 namespace CuttlefishPet.Rendering;
 
+/// <summary>
+/// Every chromatophore variant of one action, worked out the first time it is asked
+/// for rather than all up front. The strips are drawn at twice their logical size
+/// now, and fourteen palettes of every frame of every action came to a couple of
+/// hundred megabytes -- for colours most animals never wear. A palette row is a few
+/// milliseconds of pixel work, once, the first time something turns that colour.
+/// </summary>
+public sealed class PaletteFrames
+{
+    private readonly BitmapSource[] _art;
+    private readonly BitmapSource[]?[] _rows;
+
+    public PaletteFrames(BitmapSource[] art)
+    {
+        _art = art;
+        _rows = new BitmapSource[]?[Rendering.Palettes.All.Length];
+        _rows[0] = art;
+    }
+
+    public int Length => _rows.Length;
+
+    public BitmapSource[] this[int palette]
+    {
+        get
+        {
+            if ((uint)palette >= (uint)_rows.Length) palette = 0;
+            var row = Volatile.Read(ref _rows[palette]);
+            if (row != null) return row;
+            row = new BitmapSource[_art.Length];
+            for (int i = 0; i < _art.Length; i++)
+                row[i] = Rendering.Palettes.Apply(_art[i], Rendering.Palettes.All[palette]);
+            // The warm-up thread may have got there first; whichever row lands
+            // first is the one everybody uses. Both are frozen, so either is fine.
+            return Interlocked.CompareExchange(ref _rows[palette], row, null) ?? row;
+        }
+    }
+
+    /// <summary>Work a palette out now, off the UI thread, so nobody waits for it later.</summary>
+    public void Warm(int palette) => _ = this[palette];
+}
+
 public sealed class SpriteAnim
 {
     public required string Name { get; init; }
     /// <summary>[palette][frame]. Index 0 is the art as drawn.</summary>
-    public required BitmapSource[][] Palettes { get; init; }
+    public required PaletteFrames Palettes { get; init; }
     public BitmapSource[] Frames => Palettes[0];
+    /// <summary>
+    /// Bitmap pixels per logical frame pixel. FrameW/H, Anchor and the eye are all in
+    /// logical pixels, so only code that reads the bitmap itself needs to know this.
+    /// </summary>
+    public int Res { get; init; } = 1;
     public required double Fps { get; init; }
     public required bool Loop { get; init; }
     /// <summary>Foot/contact point within a frame, in frame pixels.</summary>
@@ -52,11 +98,12 @@ public sealed class SpriteAnim
         var px = new byte[stride * h];
         src.CopyPixels(px, stride, 0);
         int half = Math.Max(2, (int)(w * 0.12));
-        int x0 = Math.Clamp((int)Anchor.X - half, 0, w - 1);
-        int x1 = Math.Clamp((int)Anchor.X + half, 0, w - 1);
+        int ax = (int)(Anchor.X * Res);
+        int x0 = Math.Clamp(ax - half, 0, w - 1);
+        int x1 = Math.Clamp(ax + half, 0, w - 1);
         for (int y = 0; y < h; y++)
             for (int x = x0; x <= x1; x++)
-                if (px[y * stride + x * 4 + 3] > 140) return y;
+                if (px[y * stride + x * 4 + 3] > 140) return (double)y / Res;
         return Anchor.Y;
     }
 }
@@ -107,6 +154,7 @@ public static class SpriteLibrary
             int fw = m.GetProperty("frameW").GetInt32();
             int fh = m.GetProperty("frameH").GetInt32();
             int count = m.GetProperty("frames").GetInt32();
+            int res = m.TryGetProperty("res", out var r) ? Math.Max(1, r.GetInt32()) : 1;
 
             var strip = new BitmapImage();
             strip.BeginInit();
@@ -118,21 +166,12 @@ public static class SpriteLibrary
             var frames = new BitmapSource[count];
             for (int i = 0; i < count; i++)
             {
-                var f = new CroppedBitmap(strip, new Int32Rect(i * fw, 0, fw, fh));
+                var f = new CroppedBitmap(strip, new Int32Rect(i * fw * res, 0, fw * res, fh * res));
                 f.Freeze();
                 frames[i] = f;
             }
 
-            // Every chromatophore variant of this action, built once up front.
-            var palettes = new BitmapSource[Rendering.Palettes.All.Length][];
-            palettes[0] = frames;
-            for (int p = 1; p < palettes.Length; p++)
-            {
-                var variant = new BitmapSource[count];
-                for (int i = 0; i < count; i++)
-                    variant[i] = Rendering.Palettes.Apply(frames[i], Rendering.Palettes.All[p]);
-                palettes[p] = variant;
-            }
+            var palettes = new PaletteFrames(frames);
 
             var anchor = m.GetProperty("anchor");
             Point? eyeCenter = null;
@@ -147,6 +186,7 @@ public static class SpriteLibrary
             {
                 Name = prop.Name,
                 Palettes = palettes,
+                Res = res,
                 Fps = m.GetProperty("fps").GetDouble(),
                 Loop = m.GetProperty("loop").GetBoolean(),
                 Anchor = new Point(anchor[0].GetDouble(), anchor[1].GetDouble()),
@@ -157,6 +197,19 @@ public static class SpriteLibrary
                 EyeRadius = eyeRadius,
             };
         }
+
+        // Glass is what a resting cuttlefish wears most of the time, so it is worth
+        // having ready before anybody asks: otherwise the first animal to go pale
+        // pays twenty-odd milliseconds of pixel work in the middle of a frame.
+        var all = result.Values.ToArray();
+        Task.Run(() =>
+        {
+            foreach (var a in all)
+            {
+                try { a.Palettes.Warm(Rendering.Palettes.Glass); }
+                catch { /* a warm-up that fails just means it happens on demand */ }
+            }
+        });
         return result;
     }
 }

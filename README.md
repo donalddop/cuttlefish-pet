@@ -205,6 +205,17 @@ doodstil -- wat meteen het meest werkt. Dit is de enige selectiedruk in de tank:
 tot nu toe ging iedereen dood aan ouderdom, en dan valt er aan het kerkhof niets af
 te lezen.
 
+**En soms drijft er een school squid voorbij**
+
+Naar de squid-beelden van het Monterey Bay Aquarium: om de kwartier tot drie kwartier
+glijdt er een school van acht tot veertien bleke, doorschijnende squid door het open
+water boven de tank, achter de zeekatten langs. Ze zwemmen als een echte school
+(afstand houden, meedraaien, bij elkaar blijven), bewegen in stoten -- mantel knijpt,
+lang uitglijden -- en hun chromatoforen knipperen aan en uit. Een op de drie scholen
+komt staart-eerst binnen, en een school die koprecht zwemt stopt soms even en deinst
+achteruit; omdraaien doen ze nooit. De zeekatten in de buurt kijken ze na. In het
+tray-menu staat **Squid school** om er meteen een langs te sturen.
+
 ## Structuur
 
 - `CuttlefishPet/Core` — Pet, aquarium-physics, PetManager, WorldState, garnalen, props, roofdieren, commandoserver

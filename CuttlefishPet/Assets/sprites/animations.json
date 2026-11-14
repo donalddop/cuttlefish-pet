@@ -3,13 +3,14 @@
     "file": "idle.png",
     "frameW": 64,
     "frameH": 64,
-    "frames": 6,
-    "fps": 3.5,
+    "frames": 16,
+    "fps": 8,
     "loop": true,
     "anchor": [
       30,
       55
     ],
+    "res": 2,
     "eye": [
       39.24,
       40.58,
@@ -20,13 +21,14 @@
     "file": "swim.png",
     "frameW": 64,
     "frameH": 64,
-    "frames": 8,
-    "fps": 6,
+    "frames": 16,
+    "fps": 12,
     "loop": true,
     "anchor": [
       30,
       55
     ],
+    "res": 2,
     "eye": [
       39.6,
       40.2,
@@ -37,13 +39,14 @@
     "file": "fall.png",
     "frameW": 64,
     "frameH": 64,
-    "frames": 4,
-    "fps": 5,
+    "frames": 8,
+    "fps": 10,
     "loop": true,
     "anchor": [
       30,
       55
     ],
+    "res": 2,
     "eye": [
       39.12,
       41.38,
@@ -54,13 +57,14 @@
     "file": "drag.png",
     "frameW": 64,
     "frameH": 64,
-    "frames": 4,
-    "fps": 4,
+    "frames": 8,
+    "fps": 8,
     "loop": true,
     "anchor": [
       30,
       55
     ],
+    "res": 2,
     "eye": [
       38.83,
       39.29,
@@ -78,6 +82,7 @@
       32,
       50
     ],
+    "res": 2,
     "eye": [
       33.38,
       33.75,
@@ -88,13 +93,14 @@
     "file": "sit.png",
     "frameW": 64,
     "frameH": 64,
-    "frames": 4,
-    "fps": 2,
+    "frames": 8,
+    "fps": 4,
     "loop": true,
     "anchor": [
       30,
       55
     ],
+    "res": 2,
     "eye": [
       40.03,
       43.08,
@@ -111,7 +117,8 @@
     "anchor": [
       30,
       55
-    ]
+    ],
+    "res": 2
   },
   "mimic_icon": {
     "file": "mimic_icon.png",
@@ -123,7 +130,8 @@
     "anchor": [
       30,
       55
-    ]
+    ],
+    "res": 2
   },
   "ink": {
     "file": "ink.png",
@@ -135,19 +143,21 @@
     "anchor": [
       30,
       55
-    ]
+    ],
+    "res": 2
   },
   "jump": {
     "file": "jump.png",
     "frameW": 64,
     "frameH": 64,
-    "frames": 4,
-    "fps": 6,
+    "frames": 8,
+    "fps": 12,
     "loop": true,
     "anchor": [
       30,
       55
     ],
+    "res": 2,
     "eye": [
       40.0,
       37.5,
@@ -158,13 +168,14 @@
     "file": "wiggle.png",
     "frameW": 64,
     "frameH": 64,
-    "frames": 6,
-    "fps": 7,
+    "frames": 12,
+    "fps": 14,
     "loop": true,
     "anchor": [
       30,
       55
     ],
+    "res": 2,
     "eye": [
       39.41,
       41.11,
@@ -182,6 +193,7 @@
       30,
       55
     ],
+    "res": 2,
     "eye": [
       38.69,
       38.83,
@@ -192,13 +204,14 @@
     "file": "hunt.png",
     "frameW": 64,
     "frameH": 64,
-    "frames": 6,
-    "fps": 4,
+    "frames": 12,
+    "fps": 8,
     "loop": true,
     "anchor": [
       30,
       55
     ],
+    "res": 2,
     "eye": [
       40.05,
       40.66,
@@ -216,6 +229,7 @@
       30,
       55
     ],
+    "res": 2,
     "eye": [
       40.14,
       39.82,
@@ -226,13 +240,14 @@
     "file": "zebra.png",
     "frameW": 64,
     "frameH": 64,
-    "frames": 4,
-    "fps": 6,
+    "frames": 8,
+    "fps": 12,
     "loop": true,
     "anchor": [
       30,
       55
     ],
+    "res": 2,
     "eye": [
       39.44,
       39.44,
@@ -243,13 +258,14 @@
     "file": "happy.png",
     "frameW": 64,
     "frameH": 64,
-    "frames": 6,
-    "fps": 7,
+    "frames": 12,
+    "fps": 14,
     "loop": true,
     "anchor": [
       30,
       55
     ],
+    "res": 2,
     "eye": [
       39.24,
       40.58,
@@ -260,13 +276,14 @@
     "file": "eat.png",
     "frameW": 64,
     "frameH": 64,
-    "frames": 4,
-    "fps": 5,
+    "frames": 8,
+    "fps": 10,
     "loop": true,
     "anchor": [
       30,
       55
     ],
+    "res": 2,
     "eye": [
       39.55,
       41.57,
@@ -284,6 +301,7 @@
       30,
       55
     ],
+    "res": 2,
     "eye": [
       39.84,
       42.48,
@@ -294,13 +312,14 @@
     "file": "peek.png",
     "frameW": 64,
     "frameH": 64,
-    "frames": 4,
-    "fps": 2.5,
+    "frames": 8,
+    "fps": 5,
     "loop": true,
     "anchor": [
       30,
       55
     ],
+    "res": 2,
     "eye": [
       39.38,
       45.0,
@@ -311,13 +330,14 @@
     "file": "ceiling.png",
     "frameW": 64,
     "frameH": 64,
-    "frames": 6,
-    "fps": 4,
+    "frames": 12,
+    "fps": 8,
     "loop": true,
     "anchor": [
       30,
       9
     ],
+    "res": 2,
     "eye": [
       39.24,
       35.26,
@@ -328,13 +348,14 @@
     "file": "hang.png",
     "frameW": 64,
     "frameH": 64,
-    "frames": 4,
-    "fps": 2.5,
+    "frames": 8,
+    "fps": 5,
     "loop": true,
     "anchor": [
       30,
       9
     ],
+    "res": 2,
     "eye": [
       38.93,
       35.1,
@@ -352,6 +373,7 @@
       32,
       50
     ],
+    "res": 2,
     "eye": [
       27.25,
       33.75,
@@ -369,6 +391,7 @@
       30,
       55
     ],
+    "res": 2,
     "eye": [
       39.72,
       42.1,
@@ -379,13 +402,14 @@
     "file": "ghost.png",
     "frameW": 64,
     "frameH": 64,
-    "frames": 4,
-    "fps": 3,
+    "frames": 8,
+    "fps": 6,
     "loop": true,
     "anchor": [
       30,
       55
-    ]
+    ],
+    "res": 2
   },
   "shock": {
     "file": "shock.png",
@@ -398,6 +422,7 @@
       30,
       55
     ],
+    "res": 2,
     "eye": [
       38.64,
       38.68,
@@ -414,7 +439,8 @@
     "anchor": [
       30,
       55
-    ]
+    ],
+    "res": 2
   },
   "mimic_fish": {
     "file": "mimic_fish.png",
@@ -427,6 +453,7 @@
       30,
       55
     ],
+    "res": 2,
     "eye": [
       39.12,
       40.2,
@@ -444,6 +471,7 @@
       30,
       55
     ],
+    "res": 2,
     "eye": [
       39.0,
       39.82,
@@ -461,6 +489,7 @@
       30,
       55
     ],
+    "res": 2,
     "eye": [
       40.0,
       39.52,
@@ -478,6 +507,7 @@
       30,
       55
     ],
+    "res": 2,
     "eye": [
       40.14,
       39.82,
@@ -488,13 +518,14 @@
     "file": "hypnose.png",
     "frameW": 64,
     "frameH": 64,
-    "frames": 8,
-    "fps": 11,
+    "frames": 16,
+    "fps": 22,
     "loop": true,
     "anchor": [
       30,
       55
     ],
+    "res": 2,
     "eye": [
       39.65,
       40.35,
@@ -505,13 +536,14 @@
     "file": "court.png",
     "frameW": 64,
     "frameH": 64,
-    "frames": 6,
-    "fps": 4,
+    "frames": 12,
+    "fps": 8,
     "loop": true,
     "anchor": [
       30,
       55
     ],
+    "res": 2,
     "eye": [
       39.35,
       39.74,
@@ -699,5 +731,18 @@
       24.0
     ],
     "scale": 1.5
+  },
+  "squid": {
+    "file": "squid.png",
+    "frameW": 128,
+    "frameH": 128,
+    "frames": 12,
+    "fps": 10,
+    "loop": true,
+    "anchor": [
+      64.0,
+      64.0
+    ],
+    "scale": 1.0
   }
 }

@@ -102,6 +102,7 @@ public partial class App : Application
             case "reach": _manager.ReachOut(); break;
             case "decoy": _manager.DropDecoy(); break;
             case "ammonite": _manager.SummonAmmonite(); break;
+            case "squid": _manager.SummonSquid(); break;
             case "lurk": _manager.LurkNow(); break;
             case "shove": _manager.ShoveTest(); break;
             case "water": _manager.CycleWater(); break;
@@ -178,6 +179,7 @@ public partial class App : Application
         menu.Items.Add("Remove one", null, (_, _) => RunCommand("remove"));
         menu.Items.Add("Thin them out", null, (_, _) => RunCommand("cull"));
         menu.Items.Add("Toss a shrimp", null, (_, _) => RunCommand("shrimp"));
+        menu.Items.Add("Squid school", null, (_, _) => RunCommand("squid"));
         var mute = new System.Windows.Forms.ToolStripMenuItem("Mute sounds") { CheckOnClick = true, Checked = true };
         mute.CheckedChanged += (_, _) => _sound.Muted = mute.Checked;
         _muteItem = mute;

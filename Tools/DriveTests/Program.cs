@@ -905,6 +905,9 @@ for (int i = 0; i < 300; i++) Hunt.Animate(marathon, tick, Predator_Cruise, Pred
 Check("the sprite clock wraps instead of growing forever", marathon.Beat < 1e5,
       $"{marathon.Beat:F1}");
 
+// ---------- squid school, palette cost ----------
+SquidTests.Run(Check);
+
 Console.WriteLine(failed == 0 ? "\nALL PASS" : $"\n{failed} FAILED");
 return failed;
 

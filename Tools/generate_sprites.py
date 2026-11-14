@@ -26,7 +26,13 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter
 OUT = os.path.join(os.path.dirname(__file__), "..", "CuttlefishPet", "Assets", "sprites")
 PREVIEW = os.path.join(os.path.dirname(__file__), "preview.png")
 BIG = 256      # supersample canvas
-S = 64         # final frame size
+S = 64         # logical frame size: what anchors, eyes and the app's maths are in
+# Pixels per logical pixel in the action strips. The app draws a frame at well over
+# its own size (1.7x, and 3.4x as Desktop Dude's steed), so 64px frames were being
+# blown up into soft blocks. The coordinates in animations.json stay logical, and
+# the app divides by this, so nothing that measures a pose has to change.
+RES = 2
+TAU = 2 * math.pi
 BOTTOM = 216   # ground line on the big canvas
 
 OUTLINE = (92, 58, 41, 255)
@@ -63,7 +69,9 @@ def curve(p0, p1, p2, n=14):
 
 
 def tapered(d, p0, p1, p2, w0, w1, color):
-    pts = curve(p0, p1, p2)
+    # Dense enough that the beads of the old stroke cannot be seen at double
+    # resolution; an arm should read as one muscle, not a string of pearls.
+    pts = curve(p0, p1, p2, n=30)
     for i, (x, y) in enumerate(pts):
         r = w0 + (w1 - w0) * (i / (len(pts) - 1))
         d.ellipse([x - r, y - r, x + r, y + r], fill=color)
@@ -82,6 +90,24 @@ def masked_overlay(img, painter, mask_shape):
     painter(ImageDraw.Draw(layer))
     mask = Image.new("L", (BIG, BIG), 0)
     ImageDraw.Draw(mask).ellipse(mask_shape, fill=255)
+    layer.putalpha(ImageChops.multiply(layer.split()[3], mask))
+    img.alpha_composite(layer)
+
+
+def soft_fill(img, box, color, clip, blur=0.0, inset=4):
+    """A soft-edged ellipse of one colour, kept inside the mantle.
+
+    Only the alpha is blurred: the layer is filled with the colour everywhere, so
+    the edge fades out instead of darkening towards the black of an empty pixel,
+    which is what a straight GaussianBlur on RGBA does.
+    """
+    layer = Image.new("RGBA", (BIG, BIG), color[:3] + (0,))
+    ImageDraw.Draw(layer).ellipse(box, fill=color)
+    if blur:
+        layer = layer.filter(ImageFilter.GaussianBlur(blur))
+    mask = Image.new("L", (BIG, BIG), 0)
+    ImageDraw.Draw(mask).ellipse((clip[0] + inset, clip[1] + inset,
+                                  clip[2] - inset, clip[3] - inset), fill=255)
     layer.putalpha(ImageChops.multiply(layer.split()[3], mask))
     img.alpha_composite(layer)
 
@@ -211,14 +237,28 @@ def draw_cuttlefish(
             d.ellipse([tip[0] - 11, tip[1] - 8, tip[0] + 11, tip[1] + 8],
                       fill=ARM, outline=OUTLINE, width=3)
 
-    # skirt fin
-    fin_pts = []
-    for k in range(72):
-        th = k / 72 * 2 * math.pi
+    # Skirt fin. Thin and gauzy in life -- you can see through it, and it is ribbed
+    # with fine muscle rays -- so it goes on its own layer at part alpha, with the
+    # rays drawn across it and a pale rim along the edge where the light catches.
+    # The wave runs round the body (five crests); the actions advance its phase a
+    # whole number of turns per loop so the ripple never jumps at the seam.
+    fin_pts, fin_root = [], []
+    for k in range(96):
+        th = k / 96 * 2 * math.pi
         wave = fin_amp * math.sin(5 * th + fin_phase)
         fin_pts.append((cx + (w / 2 + 12 + wave) * math.cos(th),
                         cy + (h / 2 + 10 + wave * 0.7) * math.sin(th)))
-    d.polygon(fin_pts, fill=fin_col, outline=fin_edge_col, width=5)
+        fin_root.append((cx + (w / 2 - 6) * math.cos(th),
+                         cy + (h / 2 - 6) * math.sin(th)))
+    fin_layer = Image.new("RGBA", (BIG, BIG), (0, 0, 0, 0))
+    fd = ImageDraw.Draw(fin_layer)
+    fd.polygon(fin_pts, fill=fin_col[:3] + (min(fin_col[3], 210),))
+    for k in range(0, 96, 3):
+        fd.line([fin_root[k], fin_pts[k]], fill=fin_edge_col[:3] + (30,), width=1)
+    fd.line(fin_pts + fin_pts[:1], fill=fin_edge_col[:3] + (210,), width=3,
+            joint="curve")
+    fd.line(fin_pts + fin_pts[:1], fill=(255, 248, 238, 110), width=2, joint="curve")
+    img.alpha_composite(fin_layer)
 
     if papillae:
         # Going to ground: the skin lifts into irregular points that break the
@@ -235,16 +275,36 @@ def draw_cuttlefish(
                       outline=OUTLINE, width=5)
 
     # mantle
-    d.ellipse(body, fill=base_dark, outline=OUTLINE, width=7)
-    d.ellipse((body[0] + 4, body[1] + h * 0.18, body[2] - 4, body[3] - 2), fill=base)
-    # Counter-shading: a soft pale underside, not a big flat white patch, plus a
-    # darker back so the body reads as round instead of a sticker.
-    blend(img, lambda ld: ld.ellipse(
-        (body[0] + 26, body[1] + h * 0.66, body[2] - 34, body[3] - 6),
-        fill=(belly[0], belly[1], belly[2], 165)))
-    blend(img, lambda ld: ld.ellipse(
-        (body[0] + 6, body[1] + 3, body[2] - 6, body[1] + h * 0.55),
-        fill=(28, 16, 20, 46)))
+    d.ellipse(body, fill=base)
+    # Counter-shading as gradients rather than stacked flat ellipses: a darker back
+    # fading into the flank, a pale belly fading up, and a cool opalescent glint
+    # along the top where the light lands. Hard-edged bands are what made it read
+    # as a sticker; soft ones are what make it read as a living, wet body.
+    soft_fill(img, (body[0] - 12, body[1] - 16, body[2] + 12, body[1] + h * 0.46),
+              base_dark, body, blur=11)
+    soft_fill(img, (body[0] + 22, body[1] + h * 0.62, body[2] - 30, body[3] + 8),
+              (belly[0], belly[1], belly[2], 185), body, blur=9)
+    soft_fill(img, (body[0] + 8, body[1] + 2, body[2] - 8, body[1] + h * 0.50),
+              (28, 16, 20, 34), body, blur=8)
+    soft_fill(img, (body[0] + w * 0.16, body[1] + h * 0.10, body[2] - w * 0.26,
+                    body[1] + h * 0.30), (236, 244, 255, 92), body, blur=6)
+    # The pale line of spots a cuttlefish carries along the root of its fin, top
+    # and bottom. Small, but it is one of the things that says cuttlefish rather
+    # than "brown oval".
+    # Irregular on purpose: evenly spaced and sized they read as stitching.
+    def fin_line(ld):
+        jit = random.Random(5)
+        for k in range(11):
+            for top, a in ((True, 125), (False, 60)):
+                th = math.pi * ((1.12 + k * 0.068) if top else (0.14 + k * 0.068))
+                th += jit.uniform(-0.03, 0.03)
+                inset = 15 + jit.uniform(0, 6)
+                px = cx + (w / 2 - inset) * math.cos(th)
+                py = cy + (h / 2 - inset * 0.8) * math.sin(th)
+                r = jit.uniform(1.6, 3.6)
+                ld.ellipse([px - r, py - r, px + r, py + r], fill=(255, 250, 240, a))
+    masked_overlay(img, fin_line, body)
+    d.ellipse(body, outline=OUTLINE, width=6)
 
     # No baked-in mottling: the app lays a skin pattern over the body at runtime, so
     # the art stays a clean canvas for whatever chromatophore pattern is active.
@@ -408,7 +468,7 @@ def draw_cuttlefish(
 
 
 def finish(img):
-    return img.resize((S, S), Image.LANCZOS)
+    return img.resize((S * RES, S * RES), Image.LANCZOS)
 
 
 def build(frames):
@@ -432,24 +492,33 @@ def zzz(img, phase):
 
 # ---------------- actions ----------------
 
-def a_idle(n=6):
-    return [draw_cuttlefish(fin_phase=i / n * 6.28, arm_sway=i / n * 4.4,
-                            squash=0.05 + 0.03 * math.sin(i / n * 6.28)) for i in range(n)]
+# Every looping action below advances each of its cycles a whole number of turns
+# per loop (multiples of TAU), so the last frame runs straight into the first. The
+# old strips mostly did not -- an arm sway of 4.4 radians a loop jumps back 1.9 at
+# the seam -- and at a couple of frames a second that jump was half of why the
+# animal looked like a slideshow. Twice the frames at twice the rate keeps every
+# loop the same length as before, so behaviours timed against them are unchanged.
+
+def a_idle(n=16):
+    # The mantle breathes: a cuttlefish at rest pumps water through it all the time.
+    return [draw_cuttlefish(fin_phase=i / n * TAU, arm_sway=i / n * TAU,
+                            squash=0.05 + 0.035 * math.sin(i / n * TAU)) for i in range(n)]
 
 
-def a_swim(n=8):
-    return [draw_cuttlefish(fin_phase=i / n * 12.6, arm_sway=i / n * 6.28, arm_splay=-0.3,
-                            stretch_x=1.05, fin_amp=9) for i in range(n)]
+def a_swim(n=16):
+    return [draw_cuttlefish(fin_phase=i / n * 2 * TAU, arm_sway=i / n * TAU, arm_splay=-0.3,
+                            stretch_x=1.05 + 0.02 * math.sin(i / n * 2 * TAU),
+                            fin_amp=9) for i in range(n)]
 
 
-def a_fall(n=4):
-    return [draw_cuttlefish(fin_phase=i / n * 18.8, arms_up=True, arm_sway=i / n * 12.6,
-                            squash=-0.08, tilt=-10 + 6 * math.sin(i / n * 6.28),
+def a_fall(n=8):
+    return [draw_cuttlefish(fin_phase=i / n * 3 * TAU, arms_up=True, arm_sway=i / n * 2 * TAU,
+                            squash=-0.08, tilt=-10 + 6 * math.sin(i / n * TAU),
                             fin_amp=11, wide_eye=True) for i in range(n)]
 
 
-def a_drag(n=4):
-    return [draw_cuttlefish(fin_phase=i / n * 6.28, arms_dangle=True, arm_sway=i / n * 6.28,
+def a_drag(n=8):
+    return [draw_cuttlefish(fin_phase=i / n * TAU, arms_dangle=True, arm_sway=i / n * TAU,
                             squash=-0.12, fin_amp=5) for i in range(n)]
 
 
@@ -459,9 +528,10 @@ def a_climb(n=6):
                             tilt=55, fin_amp=6) for i in range(n)]
 
 
-def a_sit(n=4):
-    return [draw_cuttlefish(fin_phase=i / n * 3.14, squash=0.38 + 0.02 * math.sin(i / n * 6.28),
-                            arm_splay=0.5, arm_sway=i / n * 1.9, fin_amp=4) for i in range(n)]
+def a_sit(n=8):
+    return [draw_cuttlefish(fin_phase=i / n * TAU, squash=0.38 + 0.02 * math.sin(i / n * TAU),
+                            arm_splay=0.5, arm_sway=0.9 * math.sin(i / n * TAU), fin_amp=4)
+            for i in range(n)]
 
 
 def a_sleep(n=4):
@@ -514,15 +584,15 @@ def a_ink(n=6):
     return out
 
 
-def a_jump(n=4):
-    return [draw_cuttlefish(fin_phase=i / n * 18.8, stretch_x=1.18, squash=-0.15,
-                            arm_splay=-0.6, arm_sway=i / n * 6.28, fin_amp=4, puff=True,
+def a_jump(n=8):
+    return [draw_cuttlefish(fin_phase=i / n * 3 * TAU, stretch_x=1.18, squash=-0.15,
+                            arm_splay=-0.6, arm_sway=i / n * TAU, fin_amp=4, puff=True,
                             tilt=8) for i in range(n)]
 
 
-def a_wiggle(n=6):
-    return [draw_cuttlefish(fin_phase=i / n * 12.6, arm_sway=i / n * 15.7, arm_splay=1.1,
-                            squash=0.12 + 0.08 * math.sin(i / n * 12.6), wide_eye=True,
+def a_wiggle(n=12):
+    return [draw_cuttlefish(fin_phase=i / n * 2 * TAU, arm_sway=i / n * 3 * TAU, arm_splay=1.1,
+                            squash=0.12 + 0.08 * math.sin(i / n * 2 * TAU), wide_eye=True,
                             fin_amp=10) for i in range(n)]
 
 
@@ -531,9 +601,10 @@ def a_startle(n=2):
                             wide_eye=True, fin_amp=13) for i in range(n)]
 
 
-def a_hunt(n=6):
+def a_hunt(n=12):
     """Passing-cloud display: dark bands sweep along the body while stalking."""
-    return [draw_cuttlefish(fin_phase=i / n * 6.28, arm_splay=-0.5, arm_sway=i / n * 3.1,
+    return [draw_cuttlefish(fin_phase=i / n * TAU, arm_splay=-0.5,
+                            arm_sway=0.8 * math.sin(i / n * TAU),
                             stretch_x=1.08, squash=0.06, fin_amp=5, wide_eye=True,
                             cloud=[(i / n + k / 3) % 1.0 for k in range(3)]) for i in range(n)]
 
@@ -545,7 +616,7 @@ def a_strike(n=4):
                             fin_amp=6, wide_eye=True, tentacles=ext[i]) for i in range(n)]
 
 
-def a_hypnose(n=8):
+def a_hypnose(n=16):
     """The passing cloud at full strength, held on a fish at close range.
 
     Cuttlefish run dark bands forward along the mantle while closing on prey, and
@@ -553,7 +624,8 @@ def a_hypnose(n=8):
     turned all the way up: more bands, wider, darker, and moving faster than the
     faint version they stalk with -- a thing you are meant to notice happening.
     """
-    return [draw_cuttlefish(fin_phase=i * 0.8, arm_splay=0.35, arm_sway=i * 0.4,
+    return [draw_cuttlefish(fin_phase=i / n * TAU, arm_splay=0.35,
+                            arm_sway=0.6 * math.sin(i / n * TAU),
                             stretch_x=1.05, squash=0.02, fin_amp=4, wide_eye=True,
                             cloud=[(i / n + k / 4) % 1.0 for k in range(4)],
                             cloud_bold=True) for i in range(n)]
@@ -631,23 +703,25 @@ def a_miss(n=6):
         arms_dangle=i >= 4) for i in range(n)]
 
 
-def a_zebra(n=4):
+def a_zebra(n=8):
     """Rival display: high-contrast stripes, arms flared wide."""
-    return [draw_cuttlefish(fin_phase=i / n * 6.28, arm_splay=1.8, arm_sway=i / n * 6.28,
+    return [draw_cuttlefish(fin_phase=i / n * TAU, arm_splay=1.8, arm_sway=i / n * TAU,
                             squash=-0.1, stretch_x=1.06, fin_amp=12, wide_eye=True,
                             zebra=True) for i in range(n)]
 
 
-def a_happy(n=6):
+def a_happy(n=12):
     """Pink flush and a bouncy arm flourish — being petted or a good meal."""
-    return [draw_cuttlefish(fin_phase=i / n * 12.6, arms_up=(i % 2 == 0), arm_splay=1.2,
-                            arm_sway=i / n * 12.6, squash=0.05 + 0.12 * math.sin(i / n * 12.6),
+    # arms_up flips every second frame now, not every frame: same flourish rate
+    # at the doubled frame rate.
+    return [draw_cuttlefish(fin_phase=i / n * 2 * TAU, arms_up=(i // 2 % 2 == 0), arm_splay=1.2,
+                            arm_sway=i / n * 2 * TAU, squash=0.05 + 0.12 * math.sin(i / n * 2 * TAU),
                             fin_amp=11, flush=True) for i in range(n)]
 
 
-def a_eat(n=4):
-    return [draw_cuttlefish(fin_phase=i / n * 6.28, arms_to_mouth=True, arm_sway=i * 2.2,
-                            squash=0.18 + 0.1 * math.sin(i / n * 12.6), fin_amp=6)
+def a_eat(n=8):
+    return [draw_cuttlefish(fin_phase=i / n * TAU, arms_to_mouth=True, arm_sway=i / n * 2 * TAU,
+                            squash=0.18 + 0.1 * math.sin(i / n * 2 * TAU), fin_amp=6)
             for i in range(n)]
 
 
@@ -659,21 +733,22 @@ def a_stretch(n=4):
             for i in range(n)]
 
 
-def a_peek(n=4):
+def a_peek(n=8):
     """Leaning over an edge, arms gripping down, looking below."""
-    return [draw_cuttlefish(fin_phase=i / n * 4.7, arms_dangle=True, arm_sway=i / n * 3.1,
+    return [draw_cuttlefish(fin_phase=i / n * TAU, arms_dangle=True,
+                            arm_sway=0.8 * math.sin(i / n * TAU),
                             squash=0.12, tilt=-22, fin_amp=5) for i in range(n)]
 
 
-def a_ceiling(n=6):
+def a_ceiling(n=12):
     """Upside-down along the ceiling, six arms walking hand-over-hand."""
-    return [draw_cuttlefish(fin_phase=i / n * 9.4, arm_sway=i / n * 6.28, grip=6,
+    return [draw_cuttlefish(fin_phase=i / n * 2 * TAU, arm_sway=i / n * TAU, grip=6,
                             squash=0.05, fin_amp=6) for i in range(n)]
 
 
-def a_hang(n=4):
+def a_hang(n=8):
     """Dangling from a ledge by two arms."""
-    return [draw_cuttlefish(fin_phase=i / n * 4.7, arm_sway=i / n * 3.1, grip=2,
+    return [draw_cuttlefish(fin_phase=i / n * TAU, arm_sway=0.8 * math.sin(i / n * TAU), grip=2,
                             squash=-0.08, fin_amp=5) for i in range(n)]
 
 
@@ -692,9 +767,10 @@ def a_burrow(n=5):
             for i in range(n)]
 
 
-def a_ghost(n=4):
+def a_ghost(n=8):
     """Translucent spirit drifting upward."""
-    return [draw_cuttlefish(fin_phase=i / n * 6.28, arms_dangle=True, arm_sway=i / n * 3.1,
+    return [draw_cuttlefish(fin_phase=i / n * TAU, arms_dangle=True,
+                            arm_sway=0.8 * math.sin(i / n * TAU),
                             squash=-0.1, fin_amp=9, ghost=True, baked_eye="closed")
             for i in range(n)]
 
@@ -706,11 +782,11 @@ def a_shock(n=2):
             for i in range(n)]
 
 
-def a_court(n=6):
+def a_court(n=12):
     """Courtship: arms thrown up in a fan while colour ripples along the mantle."""
     # No passing-cloud here: the app flashes the palette during courtship, and bands
     # on top of that just read as a smudge.
-    return [draw_cuttlefish(fin_phase=i / n * 9.4, arm_sway=i / n * 4.7,
+    return [draw_cuttlefish(fin_phase=i / n * 2 * TAU, arm_sway=i / n * TAU,
                             display_arms=0.65 + 0.35 * math.sin(i / n * 3.14),
                             squash=-0.06, stretch_x=1.04, fin_amp=14, wide_eye=True)
             for i in range(n)]
@@ -1407,6 +1483,139 @@ def prop_decoy(n=8):
     return out, S
 
 
+def _soft_in(img, shape, box, color, blur):
+    """A soft ellipse of one colour, clipped to a polygon silhouette."""
+    lay = Image.new("RGBA", img.size, color[:3] + (0,))
+    ImageDraw.Draw(lay).ellipse(box, fill=color)
+    if blur:
+        lay = lay.filter(ImageFilter.GaussianBlur(blur))
+    mask = Image.new("L", img.size, 0)
+    ImageDraw.Draw(mask).polygon(shape, fill=255)
+    lay.putalpha(ImageChops.multiply(lay.split()[3], mask))
+    img.alpha_composite(lay)
+
+
+def prop_squid(n=12):
+    """A squid, for the school that now and then drifts through the tank.
+
+    Drawn from the Monterey Bay Aquarium's squid footage: slim torpedo mantle,
+    see-through and pearly, a dark spindle of gut showing through it, orange
+    and brown chromatophores winking on and off over the skin, a big silver
+    eye, the arms held together in a bundle out front and an arrowhead of fin
+    at the back. The two fin lobes beat against each other, which is what
+    makes the back end look like it is sculling rather than flapping.
+
+    Everything that moves does a whole number of turns per loop -- the fins
+    once, the arm sway once, each chromatophore once or twice -- so the strip
+    loops without a seam. Head to the right, like everything else here.
+    """
+    big, small = 512, 128
+    rng = random.Random(23)
+    # Pearly and nearly opaque: against dark water the real ones glow, and at
+    # less than this they go grey over any background that is not white.
+    body_c = (246, 232, 226, 218)
+    head_c = (244, 224, 216, 228)
+    edge = (170, 120, 112, 210)
+    fin_c = (248, 238, 232, 180)
+    arm_a, arm_b = (242, 218, 208, 225), (228, 198, 188, 230)
+    cy = 256
+    x_tail, x_collar = 52, 336
+    span = x_collar - x_tail
+
+    def half(t):
+        t = max(0.0, min(1.0, t))
+        return 50 * (t ** 0.62) * (1 - 0.10 * t)
+
+    top = [(x_tail + span * k / 40, cy - half(k / 40)) for k in range(41)]
+    bot = [(x_tail + span * k / 40, cy + half(k / 40) * 0.94) for k in range(41)]
+    cap = [(x_collar + math.sin(math.pi * k / 10) * 8,
+            cy - half(1) + (half(1) * 1.94) * k / 10) for k in range(1, 10)]
+    mantle = top + cap + bot[::-1]
+
+    spots = [(rng.random(), rng.uniform(-0.85, 0.85), rng.uniform(2.4, 5.2),
+              rng.random() * TAU, 1 + (k % 3 == 0), rng.random() < 0.3)
+             for k in range(54)]
+
+    out = []
+    for i in range(n):
+        ph = i / n * TAU
+        img = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+        d = ImageDraw.Draw(img)
+
+        # tentacles and arms first: they sit behind the head
+        sway = math.sin(ph)
+        for s in (-1, 1):
+            p0 = (380, cy + s * 4)
+            tip = (498, cy + s * 9 + sway * 7)
+            tapered(d, p0, (440, cy + s * 7 + sway * 3), tip, 4.2, 2.0, arm_b)
+            d.ellipse([tip[0] - 7, tip[1] - 4, tip[0] + 5, tip[1] + 4], fill=arm_b)
+        for j in range(8):
+            u = (j - 3.5) / 3.5
+            p0 = (384, cy + u * 26)
+            p1 = (432, cy + u * 17 + math.sin(ph + j * 0.6) * 4)
+            p2 = (478 - abs(u) * 12, cy + u * 10 + math.sin(ph + j * 0.6 + 0.8) * 7)
+            tapered(d, p0, p1, p2, 8.5, 2.4, arm_a if j % 2 else arm_b)
+
+        # head, then the mantle overlapping its back edge
+        d.ellipse([326, cy - 37, 400, cy + 35], fill=head_c, outline=edge, width=4)
+
+        # fins: an arrowhead at the tail, lobes beating in opposition
+        lay = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+        fd = ImageDraw.Draw(lay)
+        for s, k in ((-1, 0.0), (1, math.pi)):
+            lift = 0.62 + 0.38 * math.sin(ph + k)
+            lobe = _spline([(x_tail - 6, cy),
+                            (x_tail + 26, cy + s * (16 + 26 * lift)),
+                            (x_tail + 70, cy + s * (half(0.25) + 50 * lift)),
+                            (x_tail + 112, cy + s * (half(0.39) + 18 * lift)),
+                            (x_tail + 128, cy + s * half(0.45) * 0.7),
+                            (x_tail + 60, cy + s * 4)], steps=10)
+            fd.polygon(lobe, fill=fin_c)
+            for r in range(1, 6):
+                a = (x_tail + 20 + r * 18, cy + s * 4)
+                b = (x_tail + 14 + r * 17, cy + s * (half(0.2 + r * 0.04) + 34 * lift))
+                fd.line([a, b], fill=edge[:3] + (18,), width=2)
+            fd.line(lobe + lobe[:1], fill=edge, width=4, joint="curve")
+        img.alpha_composite(lay)
+
+        d.polygon(mantle, fill=body_c)
+        # what shows through: a dark spindle of gut, a pale belly, a cool sheen
+        _soft_in(img, mantle, (150, cy - 15, 312, cy + 17), (150, 96, 104, 62), 8)
+        _soft_in(img, mantle, (120, cy + 8, 346, cy + 60), (255, 252, 250, 110), 9)
+        _soft_in(img, mantle, (104, cy - 50, 330, cy - 20), (240, 250, 255, 150), 8)
+
+        # chromatophores, each pulsing on its own clock
+        def chroma(ld):
+            for u, v, r, p, f, red in spots:
+                t = 0.08 + u * 0.92
+                x = x_tail + span * t
+                y = cy + v * half(t) * 0.86
+                pulse = 0.5 + 0.5 * math.sin(ph * f + p)
+                rr = r * (0.55 + 0.6 * pulse)
+                col = (182, 72, 62) if red else (204, 116, 70)
+                ld.ellipse([x - rr, y - rr, x + rr, y + rr],
+                           fill=col + (int(50 + 165 * pulse),))
+        lay = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+        chroma(ImageDraw.Draw(lay))
+        mask = Image.new("L", (big, big), 0)
+        ImageDraw.Draw(mask).polygon(mantle, fill=255)
+        lay.putalpha(ImageChops.multiply(lay.split()[3], mask))
+        img.alpha_composite(lay)
+        d = ImageDraw.Draw(img)
+        d.line(mantle + mantle[:1], fill=edge, width=5, joint="curve")
+
+        # the eye: big, silver, and the one solid thing on the animal
+        ex, ey = 368, cy - 5
+        d.ellipse([ex - 23, ey - 23, ex + 23, ey + 23], fill=(228, 234, 240, 255),
+                  outline=(112, 104, 108, 255), width=3)
+        d.ellipse([ex - 17, ey - 17, ex + 17, ey + 17], fill=(178, 190, 204, 255))
+        d.ellipse([ex - 11, ey - 11, ex + 11, ey + 11], fill=(22, 20, 30, 255))
+        d.ellipse([ex - 12, ey - 15, ex - 3, ey - 6], fill=(255, 255, 255, 240))
+        d.ellipse([ex + 4, ey + 4, ex + 8, ey + 8], fill=(255, 255, 255, 170))
+        out.append(img.resize((small, small), Image.LANCZOS))
+    return out, small
+
+
 def prop_bubble(n=4):
     big, small = 64, 16
     out = []
@@ -1427,39 +1636,39 @@ def prop_bubble(n=4):
 # Frame rates are deliberately unhurried: at a couple of frames a second you can
 # actually read each pose instead of watching a blur.
 ACTIONS = {
-    "idle":       (a_idle,        3.5, True),
-    "swim":       (a_swim,        6,   True),
-    "fall":       (a_fall,        5,   True),
-    "drag":       (a_drag,        4,   True),
+    "idle":       (a_idle,        8,   True),
+    "swim":       (a_swim,       12,   True),
+    "fall":       (a_fall,       10,   True),
+    "drag":       (a_drag,        8,   True),
     "climb":      (a_climb,       4.5, True),
-    "sit":        (a_sit,         2,   True),
+    "sit":        (a_sit,         4,   True),
     "conceal":    (a_conceal,     4,   False),
     # No sleep action: dozing off is dull to watch, so they never do it.
     "mimic_icon": (a_mimic_icon,  1,   True),
     "ink":        (a_ink,         8,   False),
-    "jump":       (a_jump,        6,   True),
-    "wiggle":     (a_wiggle,      7,   True),
+    "jump":       (a_jump,       12,   True),
+    "wiggle":     (a_wiggle,     14,   True),
     "startle":    (a_startle,     5,   True),
-    "hunt":       (a_hunt,        4,   True),
+    "hunt":       (a_hunt,        8,   True),
     "strike":     (a_strike,      7,   False),
-    "zebra":      (a_zebra,       6,   True),
-    "happy":      (a_happy,       7,   True),
-    "eat":        (a_eat,         5,   True),
+    "zebra":      (a_zebra,      12,   True),
+    "happy":      (a_happy,      14,   True),
+    "eat":        (a_eat,        10,   True),
     "stretch":    (a_stretch,     3,   False),
-    "peek":       (a_peek,        2.5, True),
-    "ceiling":    (a_ceiling,     4,   True),
-    "hang":       (a_hang,        2.5, True),
+    "peek":       (a_peek,        5,   True),
+    "ceiling":    (a_ceiling,     8,   True),
+    "hang":       (a_hang,        5,   True),
     "slide":      (a_slide,       5,   True),
     "burrow":     (a_burrow,      4,   False),
-    "ghost":      (a_ghost,       3,   True),
+    "ghost":      (a_ghost,       6,   True),
     "shock":      (a_shock,      10,   True),
     "sleep":      (a_sleep,       3,   True),
     "mimic_fish":   (a_mimic_fish,   7, False),
     "mimic_shrimp": (a_mimic_shrimp, 7, False),
     "threat":     (a_threat,      6,   False),
     "miss":       (a_miss,        9,   False),
-    "hypnose":    (a_hypnose,    11,   True),
-    "court":      (a_court,       4,   True),
+    "hypnose":    (a_hypnose,    22,   True),
+    "court":      (a_court,       8,   True),
 }
 
 # Contact point per action; default is the foot. Ceiling/ledge poses hang from
@@ -1515,6 +1724,7 @@ PROP_SCALE = {
     "dolphinbite": 1.0,
     "bubble": 1.0,
     "eye": 1.0,
+    "squid": 1.0,
 }
 
 
@@ -1532,10 +1742,11 @@ def main():
 
     for name, (fn, fps, loop) in ACTIONS.items():
         frames, eye = build(fn())
-        sheets.append((name, save_strip(name, frames, S)))
+        sheets.append((name, save_strip(name, frames, S * RES)))
         meta[name] = {
             "file": f"{name}.png", "frameW": S, "frameH": S, "frames": len(frames),
             "fps": fps, "loop": loop, "anchor": ANCHORS.get(name, [30, 55]),
+            "res": RES,
         }
         if eye:
             meta[name]["eye"] = [round(eye[0], 2), round(eye[1], 2), round(eye[2], 2)]
@@ -1555,6 +1766,7 @@ def main():
         ("sharkbite", prop_sharkbite(), 16, False),
         ("dolphinbite", prop_dolphinbite(), 16, False),
         ("bone", prop_bone(), 2, True),
+        ("squid", prop_squid(), 10, True),
     ):
         sheets.append((name, save_strip(name, frames, size)))
         # Things that rest on a ledge hang from their base; free swimmers and
@@ -1573,12 +1785,14 @@ def main():
         json.dump(meta, f, indent=2)
 
     maxw = max(s.width for _, s in sheets)
-    sheet = Image.new("RGBA", (maxw + 100, len(sheets) * (S + 8) + 6), (58, 58, 66, 255))
+    total = sum(s.height + 8 for _, s in sheets) + 6
+    sheet = Image.new("RGBA", (maxw + 100, total), (58, 58, 66, 255))
     d = ImageDraw.Draw(sheet)
-    for row, (name, strip) in enumerate(sheets):
-        y = row * (S + 8) + 3
-        d.text((6, y + S // 2 - 6), name, fill=(240, 240, 240, 255))
+    y = 3
+    for name, strip in sheets:
+        d.text((6, y + strip.height // 2 - 6), name, fill=(240, 240, 240, 255))
         sheet.paste(strip, (100, y), strip)
+        y += strip.height + 8
     sheet.save(PREVIEW)
     icon = make_icon()
     print(f"wrote {len(meta)} strips + animations.json + {os.path.basename(icon)}; "

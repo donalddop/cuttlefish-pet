@@ -12,3 +12,6 @@ __pycache__/
 # Output of Tools/WaterPreview: regenerate it, do not keep it.
 preview/
 
+
+# reference stills and comparison sheets, local only
+.ref/
