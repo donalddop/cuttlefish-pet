@@ -1724,7 +1724,8 @@ PROP_SCALE = {
     "dolphinbite": 1.0,
     "bubble": 1.0,
     "eye": 1.0,
-    "squid": 1.0,
+    # Life-size beside a cuttlefish: in the footage a squid is a good deal longer.
+    "squid": 1.8,
 }
 
 

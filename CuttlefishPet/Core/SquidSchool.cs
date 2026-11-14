@@ -58,8 +58,8 @@ public sealed class SquidSchool
     private double _laneDrift;
     private double _nextBackOff;
 
-    public const double SeparationRadius = 70;
-    public const double NeighbourRadius = 240;
+    public const double SeparationRadius = 115;
+    public const double NeighbourRadius = 330;
     public const double MaxBank = 22;
     /// <summary>Hard stop on a crossing that has somehow stalled, in seconds.</summary>
     public const double MaxAge = 150;
@@ -87,7 +87,7 @@ public sealed class SquidSchool
             var sq = new Squid
             {
                 Pos = new Point(left ? tank.Left - back : tank.Right + back,
-                                s._laneY + (rng.NextDouble() - 0.5) * 230),
+                                s._laneY + (rng.NextDouble() - 0.5) * 300),
                 FacingRight = facing,
                 Size = 0.78 + rng.NextDouble() * 0.40,
                 Depth = 0.12 + rng.NextDouble() * 0.45,
@@ -151,7 +151,7 @@ public sealed class SquidSchool
             {
                 align /= near;
                 var c = new Point(coh.X / near, coh.Y / near);
-                acc += (align - m.Vel) * 0.45 + (c - m.Pos) * 0.06;
+                acc += (align - m.Vel) * 0.45 + (c - m.Pos) * 0.035;
             }
 
             // The jet: a sharp shove along the line of travel, then a coast.
