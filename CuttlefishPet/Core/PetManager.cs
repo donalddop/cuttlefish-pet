@@ -1071,7 +1071,7 @@ public sealed partial class PetManager
         // Size is age plus whatever eating has added, with a brief puff on top of a
         // fresh meal. Eased rather than snapped, so it reads as swelling.
         pet.Swell = Math.Max(0, pet.Swell - dt * 0.26);
-        pet.ScaleTarget = pet.GrownScale + pet.Swell;
+        pet.ScaleTarget = (pet.GrownScale + pet.Swell) * pet.RideBoost;
         pet.Scale += (pet.ScaleTarget - pet.Scale) * Math.Min(1, dt * 1.9);
 
         if (pet.Age >= pet.Lifespan && pet.Machine.Current.Interruptible)

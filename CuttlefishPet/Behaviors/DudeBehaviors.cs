@@ -88,11 +88,20 @@ public sealed class DudeRideBehavior : BehaviorBase
     private double _t, _turnIn;
     private Vector _dir = new(1, 0);
 
+    /// <summary>
+    /// Drawn size a ridden cuttlefish puffs up to (sprite pixels x this): about the
+    /// length of a horse under a rider of Desktop Dude's height. An adult at the
+    /// glass draws at ~1.8, so it roughly doubles; a hatchling or a far one more.
+    /// </summary>
+    public const double SteedDrawScale = 3.4;
+
     public DudeRideBehavior(double seconds) => _duration = Math.Clamp(seconds, 3, 20);
 
     public override void Enter(BehaviorContext c)
     {
         var pet = c.Pet;
+        double own = Pet.RenderScale * (pet.GrownScale + pet.Swell) * pet.DepthScale;
+        pet.RideBoost = Math.Clamp(SteedDrawScale / Math.Max(0.2, own), 1, 4);
         pet.Anim.Play("jump", restart: true);
         pet.Surface = null;
         pet.Pestered += 1;
@@ -130,4 +139,7 @@ public sealed class DudeRideBehavior : BehaviorBase
         Next = new AngryBehavior();
         Done = true;
     }
+
+    // Bucked him off, or something else took over: back to its own size (eased, so it deflates).
+    public override void Exit(BehaviorContext c) => c.Pet.RideBoost = 1;
 }

@@ -206,6 +206,11 @@ public sealed class Pet
     public double GrowUpSeconds = 1;
     /// <summary>Size the body is swelling toward; Scale eases up to meet it.</summary>
     public double ScaleTarget = 1;
+    /// <summary>
+    /// Extra size while Desktop Dude rides it: the cuttlefish puffs itself up into a
+    /// steed big enough for him, and shrinks back when he falls off. 1 = no rider.
+    /// </summary>
+    public double RideBoost = 1;
     /// <summary>Extra size earned by eating. A well-fed cuttlefish is a big one.</summary>
     public double Nourishment;
 
