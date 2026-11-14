@@ -48,6 +48,19 @@ public sealed class PetVisual
     /// </summary>
     public required System.Windows.Shapes.Path TentacleEdge { get; init; }
     public required System.Windows.Shapes.Path Tentacle { get; init; }
+
+    /// <summary>
+    /// The live arms, for actions that do not paint them: two paths (the crown
+    /// alternates two tones) in one container, so the body's opacity applies to
+    /// the arms as a group -- overlapping arms at 60% each would otherwise come
+    /// out darker where they cross than the body they grow out of.
+    /// </summary>
+    public required Canvas Arms { get; init; }
+    public required System.Windows.Shapes.Path ArmsLight { get; init; }
+    public required System.Windows.Shapes.Path ArmsDark { get; init; }
+    public readonly ArmPhysics ArmSim = new();
+    public bool? ArmFacing;
+    public double ArmLast;
 }
 
 /// <summary>Draws pets (body + tracking pupil), props and one-shot effects.</summary>
@@ -237,9 +250,21 @@ public sealed class SpriteRenderer
         // a crisp eye on a washed-out body reads as a compositing fault.
         root.Children.Add(haze);
 
+        // Before the body, so at the same depth the arms come out from under the
+        // front of the mantle and the eye stays clear of them.
+        var armsLight = new System.Windows.Shapes.Path
+            { Fill = new SolidColorBrush(ArmColor), IsHitTestVisible = false };
+        var armsDark = new System.Windows.Shapes.Path
+            { Fill = new SolidColorBrush(ArmDarkColor), IsHitTestVisible = false };
+        var arms = new Canvas { IsHitTestVisible = false, Visibility = Visibility.Collapsed };
+        arms.Children.Add(armsDark);
+        arms.Children.Add(armsLight);
+        _overlay.PetCanvas.Children.Add(arms);
         _overlay.PetCanvas.Children.Add(root);
+
         return new PetVisual
         {
+            Arms = arms, ArmsLight = armsLight, ArmsDark = armsDark,
             Root = root, Sprite = sprite, Shift = shift,
             Skin = skin, SkinFill = skinFill, SkinMask = skinMask,
             SkinPrev = skinPrev, SkinPrevFill = skinPrevFill, SkinPrevMask = skinPrevMask,
@@ -254,6 +279,7 @@ public sealed class SpriteRenderer
     public void RemoveVisual(PetVisual v)
     {
         _overlay.PetCanvas.Children.Remove(v.Root);
+        _overlay.PetCanvas.Children.Remove(v.Arms);
         _overlay.PetCanvas.Children.Remove(v.Tentacle);
         _overlay.PetCanvas.Children.Remove(v.TentacleEdge);
     }
@@ -299,6 +325,7 @@ public sealed class SpriteRenderer
         if (Panel.GetZIndex(v.Root) != z)
         {
             Panel.SetZIndex(v.Root, z);
+            Panel.SetZIndex(v.Arms, z);
             Panel.SetZIndex(v.Tentacle, z - 1);
             Panel.SetZIndex(v.TentacleEdge, z - 1);
         }
@@ -426,7 +453,146 @@ public sealed class SpriteRenderer
             v.Eye.Visibility = Visibility.Collapsed;
         }
 
+        UpdateArms(pet, v, anim, w, tl.X, tl.Y + pet.VisualBob * k);
         UpdateTentacles(pet, v);
+    }
+
+    // ---- live arms ----
+
+    private static readonly Color ArmColor = Color.FromRgb(216, 148, 106);
+    private static readonly Color ArmDarkColor = Color.FromRgb(196, 128, 90);
+    private readonly System.Diagnostics.Stopwatch _armClock = System.Diagnostics.Stopwatch.StartNew();
+
+    /// <summary>
+    /// Step this animal's arm chains and draw them. The rig is in the frame's own
+    /// logical pixels, so it goes through exactly the transform the body does --
+    /// mirror, carriage, tilt -- and stays attached whatever the body is doing.
+    /// </summary>
+    private void UpdateArms(Pet pet, PetVisual v, SpriteAnim anim, double w, double left, double top)
+    {
+        double now = _armClock.Elapsed.TotalSeconds;
+        double dt = v.ArmLast > 0 ? now - v.ArmLast : 0;
+        v.ArmLast = now;
+
+        var rig = anim.Arms;
+        // A camouflaged animal has the desktop painted over its whole silhouette,
+        // painted arms included, so live arms go with it.
+        double alpha = v.Root.Opacity * (1 - pet.CamoOpacity);
+        if (rig == null || alpha < 0.02 || w <= 0)
+        {
+            if (v.Arms.Visibility != Visibility.Collapsed) v.Arms.Visibility = Visibility.Collapsed;
+            v.ArmSim.Reset();
+            return;
+        }
+        // Turning round mirrors the pose; letting the chains swing across from the
+        // old side drags the arms through the body, so they start fresh.
+        if (v.ArmFacing != pet.FacingRight)
+        {
+            v.ArmSim.Reset();
+            v.ArmFacing = pet.FacingRight;
+        }
+
+        double s = w / anim.FrameW;
+        var m = v.Root.RenderTransform.Value;
+        Point ToScreen(Point p)
+        {
+            var q = m.Transform(new Point(p.X * s, p.Y * s));
+            return new Point(q.X + left, q.Y + top);
+        }
+        v.ArmSim.Step(dt, rig, ToScreen, s);
+        if (!v.ArmSim.Ready) return;
+
+        var light = new StreamGeometry();
+        var dark = new StreamGeometry();
+        using (var cl = light.Open())
+        using (var cd = dark.Open())
+        {
+            for (int a = 0; a < rig.Count; a++)
+                TraceArm(a % 2 == 1 ? cl : cd, v.ArmSim.Pos[a], rig.RootWidth * s, rig.TipWidth * s);
+        }
+        light.Freeze();
+        dark.Freeze();
+        v.ArmsLight.Data = light;
+        v.ArmsDark.Data = dark;
+        ((SolidColorBrush)v.ArmsLight.Fill).Color = ArmTone(pet, ArmColor);
+        ((SolidColorBrush)v.ArmsDark.Fill).Color = ArmTone(pet, ArmDarkColor);
+        v.Arms.Opacity = Math.Clamp(alpha, 0, 1);
+        if (v.Arms.Visibility != Visibility.Visible) v.Arms.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>The arm colour as the body is wearing it right now.</summary>
+    private static Color ArmTone(Pet pet, Color art)
+    {
+        var all = Palettes.All;
+        var to = Palettes.Tint(art, all[Math.Clamp(pet.Palette, 0, all.Length - 1)]);
+        var c = to;
+        if (pet.PaletteBlend < 1)
+        {
+            var from = Palettes.Tint(art, all[Math.Clamp(pet.FromPalette, 0, all.Length - 1)]);
+            c = Mix(from, to, Math.Clamp(pet.PaletteBlend, 0, 1));
+        }
+        // Wearing its surroundings, the body takes on the background's dominant
+        // colour; the arms follow, or they float there in the old colour.
+        if (pet.Camo != null && pet.Vividness < 0.6)
+            c = Mix(c, pet.Camo.Dominant, 0.5 * (1 - pet.Vividness));
+        double haze = Depths.HazeAt(pet.Depth);
+        if (haze > 0.02) c = Mix(c, pet.Camo?.Dominant ?? WaterLook.Haze, haze);
+        return c;
+    }
+
+    private static Color Mix(Color a, Color b, double t) => Color.FromRgb(
+        (byte)(a.R + (b.R - a.R) * t), (byte)(a.G + (b.G - a.G) * t), (byte)(a.B + (b.B - a.B) * t));
+
+    private static readonly List<Point> _mid = new(), _left = new(), _right = new();
+
+    /// <summary>
+    /// One arm as a filled, tapering outline: a Catmull-Rom curve through the chain,
+    /// offset either side by a radius that narrows to the tip, closed with a round
+    /// cap. The root end is left square; it sits inside the mantle.
+    /// </summary>
+    private static void TraceArm(StreamGeometryContext ctx, Point[] p, double r0, double r1)
+    {
+        _mid.Clear(); _left.Clear(); _right.Clear();
+        int n = p.Length;
+        const int sub = 3;
+        for (int i = 0; i < n - 1; i++)
+        {
+            var p0 = p[Math.Max(0, i - 1)]; var p1 = p[i];
+            var p2 = p[i + 1]; var p3 = p[Math.Min(n - 1, i + 2)];
+            for (int s = 0; s < sub; s++)
+            {
+                double t = (double)s / sub, t2 = t * t, t3 = t2 * t;
+                _mid.Add(new Point(
+                    0.5 * (2 * p1.X + (-p0.X + p2.X) * t + (2 * p0.X - 5 * p1.X + 4 * p2.X - p3.X) * t2 + (-p0.X + 3 * p1.X - 3 * p2.X + p3.X) * t3),
+                    0.5 * (2 * p1.Y + (-p0.Y + p2.Y) * t + (2 * p0.Y - 5 * p1.Y + 4 * p2.Y - p3.Y) * t2 + (-p0.Y + 3 * p1.Y - 3 * p2.Y + p3.Y) * t3)));
+            }
+        }
+        _mid.Add(p[n - 1]);
+
+        int m = _mid.Count;
+        Vector lastN = new(0, 1);
+        for (int i = 0; i < m; i++)
+        {
+            var tan = _mid[Math.Min(m - 1, i + 1)] - _mid[Math.Max(0, i - 1)];
+            if (tan.Length > 1e-6) { tan.Normalize(); lastN = new Vector(-tan.Y, tan.X); }
+            double r = r0 + (r1 - r0) * i / (m - 1);
+            _left.Add(_mid[i] + lastN * r);
+            _right.Add(_mid[i] - lastN * r);
+        }
+
+        // Round tip: a half circle from the left edge round to the right.
+        var tip = _mid[m - 1];
+        double baseAng = Math.Atan2(lastN.Y, lastN.X);
+        for (int k = 1; k < 6; k++)
+        {
+            double ang = baseAng - Math.PI * k / 6;
+            _left.Add(new Point(tip.X + Math.Cos(ang) * r1, tip.Y + Math.Sin(ang) * r1));
+        }
+        for (int i = m - 1; i >= 0; i--) _left.Add(_right[i]);
+
+        ctx.BeginFigure(_left[0], true, true);
+        _left.RemoveAt(0);
+        ctx.PolyLineTo(_left, false, true);
     }
 
     private static void Show(UIElement e) =>

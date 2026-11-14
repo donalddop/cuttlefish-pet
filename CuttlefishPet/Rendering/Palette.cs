@@ -129,6 +129,15 @@ public static class Palettes
         return wb;
     }
 
+    /// <summary>One colour through a palette, exactly as Apply does it to a pixel.</summary>
+    public static Color Tint(Color c, Palette p)
+    {
+        if (p.IsIdentity) return c;
+        byte r = c.R, g = c.G, b = c.B;
+        Shift(ref r, ref g, ref b, p);
+        return Color.FromArgb(c.A, r, g, b);
+    }
+
     private static void Shift(ref byte rb, ref byte gb, ref byte bb, Palette p)
     {
         double r = rb / 255.0, g = gb / 255.0, b = bb / 255.0;

@@ -205,6 +205,15 @@ doodstil -- wat meteen het meest werkt. Dit is de enige selectiedruk in de tank:
 tot nu toe ging iedereen dood aan ouderdom, en dan valt er aan het kerkhof niets af
 te lezen.
 
+**Armen die meebewegen**
+
+In de meeste houdingen zijn de armen geen onderdeel van het plaatje maar zes touwtjes
+met veertjes, live doorgerekend: ze slepen na als een zeekat wegschiet of omhoog
+zwemt, zwiepen door als hij stopt, golven zacht als hij zweeft, en glijden van de ene
+houding in de volgende in plaats van te verspringen. Ze kleuren mee met huid,
+camouflage en diepte. Alleen waar ze zich ergens aan vasthouden (plafond, richel,
+ingraven) of weggevouwen zijn, staan ze nog in het plaatje getekend.
+
 **En soms drijft er een school squid voorbij**
 
 Naar de squid-beelden van het Monterey Bay Aquarium: om de kwartier tot drie kwartier

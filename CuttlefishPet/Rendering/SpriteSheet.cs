@@ -69,6 +69,8 @@ public sealed class SpriteAnim
     /// <summary>Eye centre in frame pixels; null when this action draws its own eye.</summary>
     public Point? EyeCenter { get; init; }
     public double EyeRadius { get; init; }
+    /// <summary>Set when the arms are drawn live rather than painted into the frames.</summary>
+    public ArmRig? Arms { get; init; }
     public double Duration => Frames.Length / Fps;
 
     private double[]? _backTop;
@@ -182,9 +184,33 @@ public static class SpriteLibrary
                 eyeRadius = eye[2].GetDouble();
             }
 
+            ArmRig? arms = null;
+            if (m.TryGetProperty("arms", out var ar))
+            {
+                var roots = ar.GetProperty("roots").EnumerateArray()
+                    .Select(p => new Point(p[0].GetDouble(), p[1].GetDouble())).ToArray();
+                var angles = ar.GetProperty("angles").EnumerateArray()
+                    .Select(a => a.GetDouble()).ToArray();
+                var wave = ar.GetProperty("wave");
+                var width = ar.GetProperty("width");
+                if (roots.Length > 0 && roots.Length == angles.Length)
+                    arms = new ArmRig
+                    {
+                        Roots = roots,
+                        Angles = angles,
+                        Length = ar.GetProperty("len").GetDouble(),
+                        Curl = ar.GetProperty("curl").GetDouble(),
+                        WaveAmp = wave[0].GetDouble(),
+                        WaveHz = wave[1].GetDouble(),
+                        RootWidth = width[0].GetDouble(),
+                        TipWidth = width[1].GetDouble(),
+                    };
+            }
+
             result[prop.Name] = new SpriteAnim
             {
                 Name = prop.Name,
+                Arms = arms,
                 Palettes = palettes,
                 Res = res,
                 Fps = m.GetProperty("fps").GetDouble(),

@@ -19,6 +19,8 @@
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="SquidTests.cs" />
+    <Compile Include="ArmTests.cs" />
+    <Compile Include="..\..\CuttlefishPet\Rendering\ArmPhysics.cs" />
     <Compile Include="..\..\CuttlefishPet\Core\Genome.cs" />
     <Compile Include="..\..\CuttlefishPet\Core\Breeding.cs" />
     <Compile Include="..\..\CuttlefishPet\Core\Settings.cs" />

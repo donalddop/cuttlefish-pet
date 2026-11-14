@@ -33,6 +33,70 @@ S = 64         # logical frame size: what anchors, eyes and the app's maths are 
 # the app divides by this, so nothing that measures a pose has to change.
 RES = 2
 TAU = 2 * math.pi
+
+# Live arms. For the actions in LIVE_ACTIONS the arm crown is not painted into the
+# frames at all: the app draws the arms itself as spring chains, so they trail when
+# the animal jets, swing through when it stops, and blend from one pose into the
+# next. What the strip carries instead is the rig -- where each arm is rooted and
+# which way it wants to lie -- captured from the first frame through RIG_SINK.
+# Poses where the arms hold on to something (ceilings, ledges, burrowing) or are
+# folded away keep them painted: a spring chain cannot grip.
+LIVE_ARMS_ON = False
+RIG_SINK = None
+LIVE_ACTIONS = {
+    "idle", "swim", "fall", "drag", "jump", "wiggle", "startle", "hunt", "strike",
+    "miss", "zebra", "happy", "eat", "stretch", "peek", "sit", "threat", "hypnose",
+    "court", "climb", "slide",
+}
+# Sway per action: (degrees of swing, cycles per second). A resting animal's arms
+# barely breathe; an excited one's flail.
+ARM_WAVE = {
+    "idle": (7, 0.5), "sit": (5, 0.4), "swim": (4, 0.9), "hunt": (3, 0.5),
+    "hypnose": (5, 0.7), "happy": (22, 2.2), "wiggle": (18, 2.8), "startle": (12, 4),
+    "zebra": (8, 1.2), "threat": (9, 1.0), "court": (11, 0.9), "eat": (12, 1.6),
+    "fall": (16, 1.8), "drag": (8, 0.8), "climb": (14, 1.5), "slide": (10, 2.0),
+    "peek": (6, 0.6), "stretch": (10, 0.8), "jump": (6, 1.2), "strike": (2, 0.5),
+    "miss": (6, 1.0),
+}
+
+
+def _arm_rig(cx, cy, w, h, arm_splay, arms_up, arms_dangle, arms_to_mouth, display_arms):
+    """Where the six arms root and which way each wants to lie, on the big canvas.
+
+    Angles are degrees in screen terms (y down): 0 is straight out in front, negative
+    is up. Curl is extra bend, in degrees, spread along the arm from root to tip.
+    These restate the painted crown below closely enough that switching an action
+    between painted and live arms does not change what the animal is doing.
+    """
+    base_x = cx + w / 2 - 8
+    roots, angles = [], []
+    length, curl = 50.0, 12.0
+    for i in range(6):
+        t = i / 5
+        fy = cy - h * 0.18 + i * (h * 0.42 / 5)
+        if display_arms > 0:
+            fy = cy - h * 0.2 + t * h * 0.35
+            ang = math.degrees(-1.45 + t * 1.15)
+        elif arms_to_mouth:
+            ang = 22 + i * 4
+        elif arms_dangle:
+            ang = 80 - i * 2 - (i % 3) * 3
+        elif arms_up:
+            ang = -56 - (i % 3) * 5
+        else:
+            splay = (i - 2.5) * (4 + arm_splay * 7)
+            ang = math.degrees(math.atan2(splay, 48))
+        roots.append((base_x, fy))
+        angles.append(ang)
+    if display_arms > 0:
+        length, curl = 64 * display_arms + 10, -18
+    elif arms_to_mouth:
+        length, curl = 26, 150
+    elif arms_dangle:
+        length, curl = 58, -8
+    elif arms_up:
+        length, curl = 52, 14
+    return {"roots": roots, "angles": angles, "len": length, "curl": curl}
 BOTTOM = 216   # ground line on the big canvas
 
 OUTLINE = (92, 58, 41, 255)
@@ -164,7 +228,7 @@ def draw_cuttlefish(
     tail=0.0, antennae=0.0, papillae=0.0,
     flush=False, tentacles=0.0,
     grip=0, canopy=False, scuff=False,
-    sink=0.0, shock=False, ghost=False, display_arms=0.0,
+    sink=0.0, shock=False, ghost=False, display_arms=0.0, live_arms=False,
 ):
     """One 256x256 frame, facing right. Returns (image, eye).
 
@@ -173,6 +237,7 @@ def draw_cuttlefish(
     """
     img = Image.new("RGBA", (BIG, BIG), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
+    live_arms = (live_arms or LIVE_ARMS_ON) and not grip
 
     base, base_dark, belly = MANTLE, MANTLE_DARK, BELLY
     if zebra or blanch:
@@ -390,7 +455,7 @@ def draw_cuttlefish(
                    fill=(255, 255, 255, 150), width=4)
 
     # Courtship display: the arms held up and spread in a showy fan.
-    if display_arms > 0:
+    if display_arms > 0 and not live_arms:
         base_x = cx + w / 2 - 10
         for i in range(8):
             t = i / 7
@@ -405,7 +470,7 @@ def draw_cuttlefish(
 
     # arm crown
     base_x = cx + w / 2 - 8
-    if not arms_tucked and not grip and display_arms == 0:
+    if not arms_tucked and not grip and display_arms == 0 and not live_arms:
         for i in range(6):
             fy = cy - h * 0.18 + i * (h * 0.42 / 5)
             sway = math.sin(arm_sway + i * 0.9) * 7
@@ -458,6 +523,16 @@ def draw_cuttlefish(
             ox = cx + sx * (w / 2 + 22)
             d.line([(ox, cy - 44), (ox + sx * 14, cy - 18), (ox - sx * 8, cy - 6),
                     (ox + sx * 18, cy + 26)], fill=(255, 244, 150, 240), width=5, joint="curve")
+
+    if live_arms and RIG_SINK is not None and not RIG_SINK and not arms_tucked:
+        rig = _arm_rig(cx, cy, w, h, arm_splay, arms_up, arms_dangle, arms_to_mouth,
+                       display_arms)
+        if tilt:
+            rig["roots"] = [tilt_point(p, (cx, cy), tilt) for p in rig["roots"]]
+            # Image.rotate turns anticlockwise on screen; in y-down degrees that
+            # is a subtraction.
+            rig["angles"] = [a - tilt for a in rig["angles"]]
+        RIG_SINK.append(rig)
 
     if tilt:
         img = img.rotate(tilt, center=(cx, cy), resample=Image.BICUBIC)
@@ -1738,11 +1813,16 @@ def save_strip(name, frames, size):
 
 
 def main():
+    global LIVE_ARMS_ON, RIG_SINK
     os.makedirs(OUT, exist_ok=True)
     meta, sheets = {}, []
 
     for name, (fn, fps, loop) in ACTIONS.items():
+        LIVE_ARMS_ON = name in LIVE_ACTIONS
+        RIG_SINK = []
         frames, eye = build(fn())
+        rig = RIG_SINK[0] if RIG_SINK else None
+        LIVE_ARMS_ON, RIG_SINK = False, None
         sheets.append((name, save_strip(name, frames, S * RES)))
         meta[name] = {
             "file": f"{name}.png", "frameW": S, "frameH": S, "frames": len(frames),
@@ -1751,6 +1831,18 @@ def main():
         }
         if eye:
             meta[name]["eye"] = [round(eye[0], 2), round(eye[1], 2), round(eye[2], 2)]
+        if rig:
+            k = S / BIG
+            amp, hz = ARM_WAVE.get(name, (6, 0.6))
+            meta[name]["arms"] = {
+                "roots": [[round(x * k, 2), round(y * k, 2)] for x, y in rig["roots"]],
+                "angles": [round(a, 1) for a in rig["angles"]],
+                "len": round(rig["len"] * k, 2),
+                "curl": rig["curl"],
+                "wave": [amp, hz],
+                # radius at root and tip, logical px: the painted crown's 7 and 2.4
+                "width": [round(7 * k, 2), round(2.4 * k, 2)],
+            }
 
     for name, (frames, size), fps, loop in (
         ("eye", prop_eye(), 1, False),

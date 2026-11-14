@@ -908,6 +908,9 @@ Check("the sprite clock wraps instead of growing forever", marathon.Beat < 1e5,
 // ---------- squid school, palette cost ----------
 SquidTests.Run(Check);
 
+// ---------- spring-chain arms ----------
+ArmTests.Run(Check);
+
 Console.WriteLine(failed == 0 ? "\nALL PASS" : $"\n{failed} FAILED");
 return failed;
 
