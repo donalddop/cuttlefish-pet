@@ -138,6 +138,16 @@ Een laag boven de gedragsmachine die het ritme stuurt:
 
 - Armhoudingen als vocabulaire: alert, ontspannen, etend, dreigend, baltsend —
   consequent gebruikt, zodat het één soort met één taal wordt.
+- ~~De armen zijn geen geschilderde krans meer.~~ **Af** (14 nov). Voor 21 acties
+  exporteert de generator een rig in plaats van geschilderde armen, en
+  `Rendering/ArmPhysics.cs` rekent per dier zes kettinkjes door: verlet met
+  waterweerstand, zachte poseveren (stevig bij de wortel, los bij de punt) en
+  linkjes die hun lengte houden. Daardoor slepen de armen na als het dier klimt
+  of draait, zwaaien ze door als het stopt, en vloeien ze van de ene pose in de
+  andere. Grijpende en gevouwen poses (plafond, hangen, graven, verstoppen,
+  mimicry, slapen) houden hun geschilderde armen. Let op: het *vocabulaire*
+  hierboven staat hiermee niet af — de armen bewégen nu, de houdingen zijn nog
+  niet per situatie consequent gekozen.
 - Camouflage die achterloopt: bij verplaatsing eerst even niet kloppen en dan
   bijtrekken. Dat naijlen is precies hoe het er in het echt uitziet.
 - Vinrimpeling gekoppeld aan snelheid; bij jetten een zichtbare trechterpuls met
@@ -204,6 +214,18 @@ Deze zijn duur geleerd. Ze gelden elke dag.
 ## Logboek
 
 Nieuwste bovenaan. Eén regel per dag: wat er gebeurde, en wat het leerde.
+
+- **14 nov** — Drie dingen op één dag: scherpere sprites op 2× met loops die
+  niet meer haperen aan de naad, een voorbijtrekkende pijlinktvisschool (8-14
+  boids, elke 14-36 minuten, achter de dieren langs, kijkende zeekatten) en
+  springende armen (zie thema 4). Geleerd: bestanden wegschrijven met relatieve
+  paden vanuit een los proces landt in de map van dat proces en niet in de repo,
+  dus de eerste versiebump kwam nooit aan en de binaries noemden zichzelf nog
+  2.10.2 — vandaar een tweede commit die hetzelfde nog eens goed doet. En: op 2×
+  zouden veertien kleurpaletten van álles een paar honderd MB kosten, dus
+  `PaletteFrames` rekent een variant pas uit bij eerste gebruik. Dit logboek
+  bleef die dag liggen; deze regel is op 16 nov nageschreven uit de commits, dus
+  hij vertelt wat er gebouwd is en niet wat er live te zien was.
 
 - **13 nov** — De jacht kreeg een vorm (sluipen, stilstaan, uitvallen) en de
   roofdieren kregen een animatie die bij hun snelheid hoort. Geleerd: snel is
