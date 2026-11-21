@@ -137,6 +137,12 @@ waar je in zit te lezen. Subtiliteit ís de functie.
   wel zeker dat zo'n sprong geen jacht is maar een dier dat naar niets sprint.
   Voorbij tweemaal de wachtafstand breekt hij het sluipen nu af. Daarna zeven
   jachten achter elkaar met de uitval tussen 86 en 134px.
+- **Gevonden op 21 nov, niet opgelost:** een roofdier wordt nergens binnen het
+  glas gehouden. Na een misgelopen duik zwom hij op Y=1344 van een scherm van 1080
+  verder en kruiste daar nog vijftien seconden onzichtbaar het beeld uit. Dat kost
+  niets en is onzichtbaar, maar het is wel vijftien seconden waarin het toneel bezet
+  is en er niets te zien valt. `ClampToTank` is voor dieren; het roofdier heeft
+  alleen een controle op links en rechts.
 - De vangkans is met opzet niet aangeraakt. Een besloop dier is nu kansloos en
   hoort makkelijker te pakken te zijn, maar de vangkans bepaalt wie er voortplant
   — dat verander je op een dag dat je `uv run Tools/graveyard.py` voor en na
