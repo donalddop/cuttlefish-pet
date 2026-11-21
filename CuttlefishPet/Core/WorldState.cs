@@ -50,7 +50,6 @@ public sealed class WorldState
     }
 
     /// <summary>Windows minimised since the last tick, by handle.</summary>
-    public List<IntPtr> MinimisedWindows { get; } = new();
     /// <summary>An open Recycle Bin window, which they give a wide berth.</summary>
     public Rect? RecycleBin { get; set; }
 

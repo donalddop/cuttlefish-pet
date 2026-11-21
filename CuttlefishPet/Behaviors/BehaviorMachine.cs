@@ -18,10 +18,10 @@ public sealed class BehaviorMachine
         ["climb"] = 8, ["climbDown"] = 5, ["slide"] = 5, ["leave"] = 12,
         // rare set pieces — kept low so they stay surprises
         ["burrow"] = 5, ["eggs"] = 16, ["blot"] = 4, ["nibble"] = 6,
-        ["inkBomb"] = 2, ["ghost"] = 1, ["shock"] = 2,
+        ["inkBomb"] = 2,
         // meddling with your desktop
         ["push"] = 6, ["tease"] = 5, ["clock"] = 4, ["caret"] = 12,
-        ["ride"] = 6, ["jet"] = 7,
+        ["jet"] = 7,
         // social and flourishes
         ["pile"] = 10, ["colourShow"] = 6, ["icon"] = 22, ["play"] = 9,
         ["handFeed"] = 30,
@@ -226,15 +226,12 @@ public sealed class BehaviorMachine
                 Add("chase", () => new ChaseCursorBehavior());
             if (SettleBehavior.Find(_ctx) is { } settle) Add("settle", () => settle);
             Add("inkBomb", () => new InkBombBehavior());
-            Add("shock", () => new ShockBehavior());
-            if (_ctx.World.PetCount > 1) Add("ghost", () => new GhostBehavior());
 
             // Meddling with the desktop itself.
             if (PushWindowBehavior.Find(_ctx) is { } push) Add("push", () => push);
             if (TeaseCloseBehavior.Find(_ctx) is { } tease) Add("tease", () => tease);
             if (CheckClockBehavior.Find(_ctx) is { } clock) Add("clock", () => clock);
             if (CaretChaseBehavior.Possible(_ctx)) Add("caret", () => new CaretChaseBehavior());
-            if (RideCursorBehavior.Possible(_ctx)) Add("ride", () => new RideCursorBehavior());
             if (WaterJetBehavior.Possible(_ctx)) Add("jet", () => new WaterJetBehavior());
 
             Add("colourShow", () => new ColourShowBehavior());
@@ -284,7 +281,6 @@ public sealed class BehaviorMachine
             if (NibbleBehavior.Possible(_ctx)) Add("nibble", () => new NibbleBehavior());
             if (LayEggsBehavior.Possible(_ctx))
                 Add("eggs", () => new LayEggsBehavior());
-            Add("shock", () => new ShockBehavior());
             if (HangBehavior.Possible(_ctx))
             {
                 Add("hang", () => new HangBehavior());

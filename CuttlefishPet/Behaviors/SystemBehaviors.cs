@@ -260,47 +260,6 @@ public sealed class CaretChaseBehavior : BehaviorBase
     public override void Exit(BehaviorContext c) => c.Pet.PupilTarget = null;
 }
 
-/// <summary>Grab hold of the mouse pointer and go wherever it goes.</summary>
-public sealed class RideCursorBehavior : BehaviorBase
-{
-    public override string Name => "ride";
-    public override bool OverridesPhysics => true;
-    private double _t;
-
-    public static bool Possible(BehaviorContext c) =>
-        (c.World.Cursor - c.Pet.Pos).Length < 260;
-
-    public override void Enter(BehaviorContext c)
-    {
-        c.Pet.Anim.Play("drag", restart: true);
-        c.Pet.Surface = null;
-        c.Sound.Play("blip", 0.2);
-    }
-
-    public override void Tick(BehaviorContext c, double dt)
-    {
-        var pet = c.Pet;
-        _t += dt;
-
-        // Hang off the pointer with a bit of lag so it swings when you move fast.
-        var grip = c.World.Cursor + new Vector(0, 34);
-        var to = grip - pet.Pos;
-        pet.Pos += to * Math.Min(1, 9 * dt);
-        pet.Rotation = Math.Clamp(-c.World.CursorVelocity.X * 0.02, -26, 26);
-        pet.FacingRight = c.World.CursorVelocity.X >= 0;
-
-        if (_t > 5 + c.Rng.NextDouble() * 5)
-        {
-            pet.Rotation = 0;
-            pet.Vel = c.World.CursorVelocity * 0.35;
-            Next = new DriftBehavior();
-            Done = true;
-        }
-    }
-
-    public override void Exit(BehaviorContext c) => c.Pet.Rotation = 0;
-}
-
 /// <summary>Squirt a jet of water at the cursor.</summary>
 public sealed class WaterJetBehavior : BehaviorBase
 {

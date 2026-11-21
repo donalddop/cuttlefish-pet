@@ -687,7 +687,6 @@ public sealed partial class PetManager
 
         TickStage(dt);
         SpreadAlarm();
-        RideMinimisedWindows();
         ChimeOnTheHour();
         ApplyArrivalsAndDepartures();
         TickPrey(dt);
@@ -987,24 +986,6 @@ public sealed partial class PetManager
                 pet.Machine.Force(look);
     }
 
-    /// <summary>A pet perched on a window that just got minimised rides it down.</summary>
-    private void RideMinimisedWindows()
-    {
-        if (_world.MinimisedWindows.Count == 0) return;
-        var taskbar = TaskbarLocator.GetSurface();
-
-        foreach (var pet in _pets)
-        {
-            if (pet.Surface == null || pet.Surface.Hwnd == IntPtr.Zero) continue;
-            if (!_world.MinimisedWindows.Contains(pet.Surface.Hwnd)) continue;
-
-            var spot = taskbar != null
-                ? new Point(Math.Clamp(pet.Pos.X, taskbar.X1, taskbar.X2), taskbar.Y + 16)
-                : new Point(pet.Pos.X, _world.VirtualScreen.Bottom - 20);
-            pet.Machine.Force(new RideMinimiseBehavior(spot));
-        }
-    }
-
     /// <summary>An open Recycle Bin is something to stay well clear of.</summary>
     private void AvoidRecycleBin(Pet pet, double dt)
     {
@@ -1290,7 +1271,7 @@ public sealed partial class PetManager
         double want = pet.Machine.Current.Name switch
         {
             "hunt" or "stalk" or "huntTreat" or "eat" or "strike" => 1.30,
-            "startle" or "flee" or "shock" or "fight" => 1.34,
+            "startle" or "flee" or "fight" => 1.34,
             "imitate" or "bone" or "inspect" or "icon" => 1.18,
             "camouflage" or "lurk" or "sit" or "idle" => 0.84,
             _ => 1.0,
@@ -2497,8 +2478,6 @@ public sealed partial class PetManager
         foreach (var w in _tracker.Windows)
             _world.WindowRects.Add(new Rect(w.Rect.Left, w.Rect.Top, w.Rect.Width, w.Rect.Height));
 
-        _world.MinimisedWindows.Clear();
-        _world.MinimisedWindows.AddRange(_tracker.TakeMinimised());
 
         // Scanning every window for the bin is not something to do 30 times a second.
         _binCheckIn -= dt;

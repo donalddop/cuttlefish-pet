@@ -204,47 +204,6 @@ public sealed class InkBombBehavior : BehaviorBase
     public override void Exit(BehaviorContext c) => c.Pet.Visual.Root.Visibility = Visibility.Visible;
 }
 
-/// <summary>
-/// Fade out as a pale spirit and leave the tank — then a fresh one swims in, so the
-/// crew size stays the same. Pure eSheep theatre.
-/// </summary>
-public sealed class GhostBehavior : BehaviorBase
-{
-    public override string Name => "ghost";
-    public override bool Interruptible => false;
-    public override bool OverridesPhysics => true;
-    private double _t;
-
-    public override void Enter(BehaviorContext c)
-    {
-        c.Pet.Anim.Play("ghost", restart: true);
-        c.Pet.Surface = null;
-        c.Pet.Vel = new Vector(0, 0);
-        c.Sound.Play("bubble", 0.2);
-    }
-
-    public override void Tick(BehaviorContext c, double dt)
-    {
-        var pet = c.Pet;
-        _t += dt;
-        pet.Pos = new Point(pet.Pos.X + Math.Sin(_t * 1.6) * 20 * dt, pet.Pos.Y - 85 * dt);
-        pet.Fade = Math.Max(0, 1 - _t / 4.5);
-
-        if (_t > 4.5)
-        {
-            pet.Fade = 1;
-            pet.Fate = "weggezwommen";
-            var t = c.World.VirtualScreen;
-            c.SpawnPet(new Point(t.Left + 140 + c.Rng.NextDouble() * (t.Width - 280),
-                                 t.Bottom - 200), hatchling: false);
-            c.RemovePet(pet);
-            Done = true;
-        }
-    }
-
-    public override void Exit(BehaviorContext c) => c.Pet.Fade = 1;
-}
-
 /// <summary>Leave a small ink blot behind, the way eSheep left droppings.</summary>
 public sealed class InkBlotBehavior : BehaviorBase
 {
@@ -292,28 +251,5 @@ public sealed class NibbleBehavior : BehaviorBase
         _t += dt;
         c.Pet.VisualBob = Math.Sin(_t * 11) * 1.5;
         if (_t > 2.5 + c.Rng.NextDouble() * 2) Done = true;
-    }
-}
-
-/// <summary>A static jolt out of nowhere: blanched white with bolts crackling.</summary>
-public sealed class ShockBehavior : BehaviorBase
-{
-    public override string Name => "shock";
-    public override bool NeedsPerch => false;   // plays out mid-water just fine
-    public override bool Interruptible => false;
-    private double _t;
-
-    public override void Enter(BehaviorContext c)
-    {
-        c.Pet.Anim.Play("shock", restart: true);
-        c.Pet.ShiftTo(Palettes.IndexOf("pearl"), 5);
-        c.Sound.Play("blip", 0.35);
-    }
-
-    public override void Tick(BehaviorContext c, double dt)
-    {
-        _t += dt;
-        c.Pet.VisualBob = Math.Sin(_t * 40) * 3;   // buzzing
-        if (_t > 0.9) Done = true;
     }
 }

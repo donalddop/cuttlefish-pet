@@ -6,8 +6,8 @@
     "",
     "Open water:  swimFree hover dart chase hunt settle",
     "On a perch:  patrol idle sit camouflage peek hang swing climb climbDown slide leave",
-    "Set pieces:  burrow eggs blot nibble inkBomb ghost shock",
-    "Desktop:     push tease clock caret ride jet",
+    "Set pieces:  burrow eggs blot nibble inkBomb",
+    "Desktop:     push tease clock caret jet",
     "Social:      pile colourShow imitate icon bone play read cross",
     "",
     "Example: { \"weights\": { \"eggs\": 0, \"camouflage\": 40 } }"

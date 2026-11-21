@@ -27,7 +27,6 @@ public sealed class WindowTracker
     private readonly List<TrackedWindow> _windows = new();
     private readonly HashSet<IntPtr> _known = new();
     private readonly List<System.Windows.Rect> _appeared = new();
-    private readonly List<IntPtr> _minimised = new();
     private readonly uint _ownPid = (uint)Environment.ProcessId;
     private int _tick;
     private bool _firstEnum = true;
@@ -40,17 +39,6 @@ public sealed class WindowTracker
     {
         var result = new List<System.Windows.Rect>(_appeared);
         _appeared.Clear();
-        return result;
-    }
-
-    /// <summary>
-    /// Windows that were minimised since the last call — distinct from ones that
-    /// closed, because a pet sitting on one can ride it down to the taskbar.
-    /// </summary>
-    public List<IntPtr> TakeMinimised()
-    {
-        var result = new List<IntPtr>(_minimised);
-        _minimised.Clear();
         return result;
     }
 
@@ -87,11 +75,12 @@ public sealed class WindowTracker
     {
         _windows.RemoveAll(w =>
         {
-            if (Win32.IsWindow(w.Hwnd) && Win32.IsIconic(w.Hwnd))
-            {
-                _minimised.Add(w.Hwnd);   // went to the taskbar rather than away
-                return true;
-            }
+            // Minimised counts as gone: the ledge is not there any more, and a
+            // pet perched on it goes back to swimming (PhysicsEngine). It used to
+            // be tracked separately so the pet could ride the window down to the
+            // taskbar, which was eSheep doing a trick with your desktop rather
+            // than an animal doing anything.
+            if (Win32.IsWindow(w.Hwnd) && Win32.IsIconic(w.Hwnd)) return true;
             if (!Win32.IsWindow(w.Hwnd) || !Win32.IsWindowVisible(w.Hwnd))
                 return true;
             if (!TryGetRect(w.Hwnd, out var rect))
