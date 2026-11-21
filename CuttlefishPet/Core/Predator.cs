@@ -25,6 +25,16 @@ public sealed class Predator
     public Vector Vel;
     public double Age;
     public bool FacingRight = true;
+
+    /// <summary>
+    /// How far back in the water it is, and the arrival and departure that go with
+    /// it. See <see cref="Approach"/>: a visit now starts as a shape in the haze
+    /// instead of a full-size fish sliding in off the edge of the screen.
+    /// </summary>
+    public readonly ApproachState Deep = new();
+
+    /// <summary>Size it is drawn at right now, which is only its distance.</summary>
+    public double DrawScale => Approach.ScaleAt(Deep.Depth);
     public Image Visual = null!;
 
     /// <summary>Who it has fixed on, once something has caught its eye.</summary>
@@ -85,7 +95,11 @@ public sealed class Predator
     /// 79 rather than 74 since the shark was shifted ten canvas pixels right in
     /// its frame to stop the resize cutting its tail tip off flat -- about five
     /// drawn pixels, and the mouth has to travel with the face it is part of.
-    public Point Mouth => new(Pos.X + (FacingRight ? 79 : -79), Pos.Y + 12);
+    /// Scaled by how far back it is, for the same reason the body is: an animal
+    /// being swallowed by a half-size hunter twenty planes back has to head for
+    /// that hunter's mouth and not for where the mouth would be if it were here.
+    public Point Mouth => new(Pos.X + (FacingRight ? 79 : -79) * DrawScale,
+                              Pos.Y + 12 * DrawScale);
 
     public bool Expired => Age > 75;
 

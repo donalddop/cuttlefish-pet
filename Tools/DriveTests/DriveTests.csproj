@@ -20,6 +20,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="SquidTests.cs" />
     <Compile Include="ArmTests.cs" />
+    <Compile Include="ApproachTests.cs" />
     <Compile Include="..\..\CuttlefishPet\Rendering\ArmPhysics.cs" />
     <Compile Include="..\..\CuttlefishPet\Core\Genome.cs" />
     <Compile Include="..\..\CuttlefishPet\Core\Breeding.cs" />
@@ -33,6 +34,7 @@
     <Compile Include="..\..\CuttlefishPet\Core\MarineSnow.cs" />
     <Compile Include="..\..\CuttlefishPet\Core\Depths.cs" />
     <Compile Include="..\..\CuttlefishPet\Core\Hunt.cs" />
+    <Compile Include="..\..\CuttlefishPet\Core\Approach.cs" />
     <Compile Include="..\..\CuttlefishPet\Core\SquidSchool.cs" />
     <Compile Include="..\..\CuttlefishPet\Core\LightShafts.cs" />
     <Compile Include="..\..\CuttlefishPet\Core\SurfaceShimmer.cs" />

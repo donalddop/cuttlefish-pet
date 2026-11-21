@@ -911,6 +911,9 @@ SquidTests.Run(Check);
 // ---------- spring-chain arms ----------
 ArmTests.Run(Check);
 
+// ---------- the hunter's approach out of the haze ----------
+ApproachTests.Run(Check);
+
 Console.WriteLine(failed == 0 ? "\nALL PASS" : $"\n{failed} FAILED");
 return failed;
 

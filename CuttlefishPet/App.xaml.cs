@@ -99,6 +99,12 @@ public partial class App : Application
             // thing again, which is what you want when the shape of the hunt is
             // the thing you are looking at.
             case "stalk": _manager.SummonHunter(miss: true); break;
+            // The approach one: it surfaces out of the haze at about half size and
+            // a third of its cover, comes forward as it picks someone, strikes in
+            // their plane and sinks back. Same guaranteed miss as `stalk`, plus a
+            // line in the log a few times a second -- the fade is 0.30 to 1.00 and
+            // that is not something to judge off a screenshot by eye.
+            case "rise": _manager.SummonHunter(miss: true, trace: true); break;
             case "reach": _manager.ReachOut(); break;
             case "decoy": _manager.DropDecoy(); break;
             case "ammonite": _manager.SummonAmmonite(); break;

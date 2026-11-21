@@ -1752,14 +1752,28 @@ public sealed partial class PetManager
             Log($"tentakel uit bij #{pet.Id} op ({pet.Pos.X:F0},{pet.Pos.Y:F0}) schaal={pet.Scale:F2}");
     }
 
-    public void SummonHunter(bool sure = false, bool miss = false)
+    public void SummonHunter(bool sure = false, bool miss = false, bool trace = false)
     {
         if (_world.Hunter != null) return;
         _hunterIn = 0;
         _summonAimed = true;
         _summonSure = sure;
         _summonMiss = miss;
+        _hunterTrace = trace;
+        _traceIn = 0;
     }
+
+    /// <summary>
+    /// How far in from its own edge a hunter may surface, as a fraction of the
+    /// screen. Tried in this order and the first one far enough from everybody
+    /// wins, so the usual arrival is a quarter of the way in and a crowded tank
+    /// pushes it further along rather than on top of someone.
+    /// </summary>
+    private static readonly double[] HunterInsets = [0.24, 0.36, 0.15, 0.46];
+
+    /// <summary>Debug: write the approach to the log, a few times a second.</summary>
+    private bool _hunterTrace;
+    private double _traceIn;
 
     private bool _summonAimed;
     private bool _summonSure;
@@ -1784,6 +1798,31 @@ public sealed partial class PetManager
     /// </summary>
     private void TickPredator(double dt)
     {
+        // Wrapped whole, like the water is, and for a harder reason: a visit is the
+        // busiest thing in the app -- phases, depth, a decoy, a bite, a swallow, a
+        // sprite name built from a string -- and it is the one subsystem that
+        // reaches into the behaviour machine of another animal while it runs. A
+        // throw here used to be the end of the tank, because nothing between this
+        // and the dispatcher catches anything. A shark is worth nothing and a tank
+        // is worth days, so the visit is abandoned and the animal removed rather
+        // than retried: a hunter left in a half-finished state would otherwise
+        // throw on every tick for the next seventy seconds.
+        try { TickPredatorCore(dt); }
+        catch (Exception ex)
+        {
+            Log($"roofdier: {ex.Message} -- bezoek afgebroken");
+            var broken = _world.Hunter;
+            _world.Hunter = null;
+            _hunterTrace = false;
+            if (broken != null)
+            {
+                try { _renderer.RemoveProp(broken.Visual); } catch { }
+            }
+        }
+    }
+
+    private void TickPredatorCore(double dt)
+    {
         var hunter = _world.Hunter;
         if (hunter == null)
         {
@@ -1798,22 +1837,64 @@ public sealed partial class PetManager
             var tank = _world.VirtualScreen;
             bool fromLeft = _rng.NextDouble() < 0.5;
             string kind = _dolphinNext ? "dolphin" : "shark";
-            double entryY = _summonAimed && _pets.Count > 0
-                ? _pets[_rng.Next(_pets.Count)].Pos.Y
-                : tank.Top + 160 + _rng.NextDouble() * (tank.Height - 420);
+
+            // A summoned visit aims at somebody. It used to borrow only that
+            // animal's height and leave the side to a coin toss, which is not
+            // aiming at all: the first traced run surfaced bottom-left, crossed
+            // the whole tank at the back without anything ever coming inside the
+            // 520px it locks on at, and left. Eight seconds of correct behaviour
+            // and nothing to look at. Now it comes up behind its mark, far enough
+            // back to show the deep crossing first.
+            Pet? aim = _summonAimed && _pets.Count > 0 ? _pets[_rng.Next(_pets.Count)] : null;
+            double entryY = aim?.Pos.Y
+                ?? tank.Top + 160 + _rng.NextDouble() * (tank.Height - 420);
             entryY = Math.Clamp(entryY, tank.Top + 120, tank.Bottom - 160);
+            if (aim != null) fromLeft = aim.Pos.X > tank.Left + tank.Width * 0.45;
             _summonAimed = false;
+
+            // It arrives out of the haze inside the frame now, rather than sliding
+            // in off the edge at full size. The entry point has to be a good way
+            // from everybody: a shape that materialises next to a cuttlefish is
+            // alarming in the wrong way, and the arrival is meant to be something
+            // you notice before the tank does. On a screen crowded enough that no
+            // such spot exists it still comes in from the side, which is also the
+            // reason that stayed the fallback rather than being deleted.
+            // Whichever candidate has the most room, not the first one that clears a
+            // bar: the first live run asked for 430px and a tank with six animals
+            // strung along the top strip failed all four candidates, so it fell
+            // back to the old entry off the edge of the screen and the whole
+            // feature quietly did not happen. 260px is the floor below which a
+            // shape appearing really is on top of somebody.
+            double entryX = fromLeft ? tank.Left - 120 : tank.Right + 120;
+            double bestRoom = 260;
+            // A quarter of the lead-in is spent out of lock range on purpose: see
+            // the comment on aim above. Clamped inside the frame so the arrival is
+            // visible even when the mark is near an edge.
+            if (aim != null)
+                entryX = Math.Clamp(aim.Pos.X + (fromLeft ? -780 : 780),
+                                    tank.Left + 90, tank.Right - 90);
+            else foreach (double frac in HunterInsets)
+            {
+                double x = fromLeft ? tank.Left + tank.Width * frac
+                                    : tank.Right - tank.Width * frac;
+                double nearest = double.MaxValue;
+                foreach (var pet in _pets)
+                    nearest = Math.Min(nearest, (pet.Pos - new Point(x, entryY)).Length);
+                if (nearest > bestRoom) { bestRoom = nearest; entryX = x; }
+            }
             hunter = new Predator
             {
                 Kind = kind,
-                Pos = new Point(fromLeft ? tank.Left - 120 : tank.Right + 120, entryY),
+                Pos = new Point(entryX, entryY),
                 Vel = new Vector(fromLeft ? Predator.Cruise : -Predator.Cruise, 0),
                 FacingRight = fromLeft,
                 Visual = _renderer.CreateProp(kind),
             };
             _world.Hunter = hunter;
             _sound.Play("squirt", 0.5);
-            Log($"{kind} komt langs bij {_pets.Count} zeekatten op ({hunter.Pos.X:F0},{hunter.Pos.Y:F0})");
+            Log($"{kind} komt uit de diepte bij {_pets.Count} zeekatten op " +
+                $"({hunter.Pos.X:F0},{hunter.Pos.Y:F0}) d={hunter.Deep.Depth:F2} " +
+                $"x{hunter.DrawScale:F2} z={Depths.ZFor(hunter.Deep.Depth)}");
             return;
         }
 
@@ -1829,7 +1910,7 @@ public sealed partial class PetManager
         // a pet flaring at a rival is advertising, and one sitting still wearing
         // the desktop is very nearly invisible.
         if (!hunter.Leaving && hunter.Decoy == null && hunter.LookIn <= 0
-            && Hunt.CanLock(hunter.Hunt))
+            && hunter.Age > Approach.LockAfter && Hunt.CanLock(hunter.Hunt))
         {
             hunter.LookIn = 0.5;
             Pet? best = hunter.Target is { Dying: false } held ? held : null;
@@ -1993,7 +2074,17 @@ public sealed partial class PetManager
                           * Math.Min(1, dt * 1.2);
         }
 
-        hunter.Pos += hunter.Vel * dt;
+        // Forward as it fixes on someone, back when it is done. Run before the
+        // move, because distance takes screen speed off a hunter exactly as it
+        // does off an animal (see SlowWithDistance): at the back it covers 62% of
+        // the pixels per second, so a deep crossing reads as far off rather than
+        // as a slow fish. Scaling the step rather than the velocity targets on
+        // purpose -- the easing in the phases above is tuned in real speed, and
+        // dividing that by depth as well made the burst arrive late from the back.
+        Approach.Tick(hunter.Deep, dt, hunter.Hunt.Phase,
+                      hunter.Target is { Dying: false }, hunter.Leaving,
+                      hunter.Target?.Depth ?? 1);
+        hunter.Pos += hunter.Vel * dt * Approach.SpeedAt(hunter.Deep.Depth);
         // A burst turns the animal round in one tick if it is allowed to: the
         // threshold was 12px/s, which any sideways drift clears, and a shark that
         // flips to face left for two frames mid-lunge is unwatchable. During a
@@ -2016,15 +2107,38 @@ public sealed partial class PetManager
                 // Hunt.In -- a phase change has just zeroed it, so it is always
                 // 0.00 on this line and says nothing.
                 $"gat={(hunter.Target == null ? -1 : (hunter.Target.Pos - hunter.Pos).Length):F0}px " +
-                $"sluiptijd={hunter.Lock:F2}s");
+                $"sluiptijd={hunter.Lock:F2}s diepte={hunter.Deep.Depth:F2}");
+        }
+
+        // The measuring instrument for the approach. An arrival takes a handful of
+        // seconds and happens once every eight to twenty minutes, and the thing
+        // being judged is a fade of 0.30 to 1.00 -- which my own eyes on a
+        // screenshot are no use for at all (see the 12 Nov entry in AQUARIUM.md).
+        if (_hunterTrace)
+        {
+            _traceIn -= dt;
+            if (_traceIn <= 0)
+            {
+                _traceIn = 0.35;
+                Log($"nadering {hunter.Age:F1}s fase={hunter.Hunt.Phase} " +
+                    $"op ({hunter.Pos.X:F0},{hunter.Pos.Y:F0}) " +
+                    $"d={hunter.Deep.Depth:F3} x{hunter.DrawScale:F3} " +
+                    $"dekking={Approach.Opacity(hunter.Deep):F3} " +
+                    $"z={Depths.ZFor(hunter.Deep.Depth)} " +
+                    $"px/s={hunter.Vel.Length * Approach.SpeedAt(hunter.Deep.Depth):F0}");
+            }
         }
 
         // Everything close by knows it is there, and each reacts in its own way.
         AlarmAt(hunter);
 
         bool offScreen = hunter.Pos.X < tankRect.Left - 240 || hunter.Pos.X > tankRect.Right + 240;
-        if (hunter.Expired || (offScreen && hunter.Age > 6))
+        if (hunter.Expired || Approach.Dissolved(hunter.Deep) || (offScreen && hunter.Age > 6))
         {
+            if (_hunterTrace)
+                Log($"nadering klaar na {hunter.Age:F1}s " +
+                    $"({(Approach.Dissolved(hunter.Deep) ? "opgelost in de waas" : offScreen ? "van het scherm" : "tijd op")})");
+            _hunterTrace = false;
             _renderer.RemoveProp(hunter.Visual);
             _world.Hunter = null;
             return;
@@ -2033,7 +2147,15 @@ public sealed partial class PetManager
         // rather than being sampled at whatever point the visit has reached.
         _renderer.UpdateProp(hunter.Visual, hunter.Anim, hunter.Pos,
                              hunter.Biting ? hunter.BiteT : hunter.Hunt.Beat,
-                             hunter.FacingRight, bank: hunter.Hunt.Bank);
+                             hunter.FacingRight, hunter.DrawScale, bank: hunter.Hunt.Bank);
+        // Size, cover and draw order all off the one number, the same three things
+        // the animals and the passing squid take from theirs. Any one alone reads
+        // as a bug -- a small shark, a faint shark, a shark behind the dust -- and
+        // the three together read as distance.
+        hunter.Visual.Opacity = Approach.Opacity(hunter.Deep);
+        int hz = Depths.ZFor(hunter.Deep.Depth);
+        if (System.Windows.Controls.Panel.GetZIndex(hunter.Visual) != hz)
+            System.Windows.Controls.Panel.SetZIndex(hunter.Visual, hz);
     }
 
     /// <summary>
