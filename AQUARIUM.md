@@ -24,12 +24,14 @@ je iets anders aan het doen bent.
 
 **Er is geen diepte.** Alles zit op één vlak, even groot en even scherp. Het is
 een vel stickers, geen volume. *(Grotendeels verholpen op 12 nov: dieren hebben
-een z-waarde waar formaat, waas, snelheid en tekenvolgorde uit volgen. Wat nog
-ontbreekt is het roofdier dat uit de diepte komt.)*
+een z-waarde waar formaat, waas, snelheid en tekenvolgorde uit volgen. Op 21 nov
+kwam het roofdier uit de diepte erbij, en zetten de dieren zich tegen de stroming;
+thema 2 is daarmee af.)*
 
-**Er is geen regie.** Elk gedrag vuurt op zijn eigen timer. Het resultaat is óf
-drie dingen tegelijk óf tien minuten niets. Een echte scène heeft iemand die
-bepaalt wanneer er iets gebeurt, en waar je op dat moment naar kijkt.
+**Er is geen regie.** *(Skelet staat sinds 21 nov: `Core/Director.cs` laat hooguit
+één groot ding tegelijk toe, legt er 75 seconden rust achter, hurry't de klokken als
+het te lang stil is, en ensceneert in de buurt van waar je cursor was. Wat er nog
+niet onder valt is alles wat twee dieren onderling doen — zie thema 3.)*
 
 ## De volgorde
 
@@ -83,9 +85,26 @@ waar je in zit te lezen. Subtiliteit ís de functie.
   diepte 35 tot 110 seconden vast en drijft er dan in een seconde of zeven naar
   een andere toe. Niet opgeslagen in de tank: diepte is waar een dier vanmiddag
   toevallig zwemt, geen eigenschap.
-- Het roofdier komt uit de diepte aanzetten in plaats van van opzij.
-- Dieren zetten zich schuin tegen de stroming in (`WorldState.Drift` ligt klaar;
-  dit verandert hoe ze sturen).
+- ~~Het roofdier komt uit de diepte aanzetten in plaats van van opzij.~~ **Af**
+  (21 nov). Een bezoek begint nu binnen beeld op diepte 0,02 — achter de
+  lichtbundels, op 0,57x formaat en 0,31 dekking — kruist diep terwijl het rondkijkt,
+  komt naar voren zodra het iemand uitkiest, en slaat toe in het vlak van dat dier.
+  `Core/Approach.cs`, debug-commando `rise`. Drie dingen geleerd: een rijzing op
+  een ease komt nooit aan (het venster tussen vastzetten en uitvallen is 1,44s op
+  zijn kortst, en een ease kruipt de laatste tiende), het roofdier moet binnen het
+  water dat de dieren gebruiken volgens hún regels getekend worden (anders staat er
+  een spook naast een massief dier in hetzelfde vlak), en de band áchter die
+  dierenbodem draagt bijna de hele verandering in dekking — op één snelheid was die
+  in 0,19s doorkruist, wat geen fade is maar een knip tussen twee frames.
+- ~~Dieren zetten zich schuin tegen de stroming in.~~ **Af** (21 nov).
+  `Core/Crabbing.cs`: de drift gaat in de positie (nooit in de snelheid — de drag
+  eet hem op, koersen pikken hem op en de helft van de gedragingen gooit hem weg),
+  toegepast ná het gedrag, zodat alle tachtig gedragingen hem erven en ieder gedrag
+  dat op een punt stuurt vanzelf corrigeert. Dat corrigeren ís het schuin zetten.
+  Zichtbaar is de houding: tot 9° neus-omhoog tegen het verticale deel van de
+  stroming, alleen zolang het dier zelf onder de 95px/s zit. Een zijwaartse stroming
+  wordt expres niet beantwoord: een zijaanzicht kan niet stroomopwaarts wijzen door
+  te kantelen, dat zou omdraaien vragen, en dat gevecht hoort het gedrag te winnen.
 
 #### De jacht zelf
 
@@ -125,14 +144,32 @@ waar je in zit te lezen. Subtiliteit ís de functie.
 
 ### 3. De regisseur
 
-Een laag boven de gedragsmachine die het ritme stuurt:
+**Het skelet staat** (21 nov, `Core/Director.cs`). De poortjes zijn met opzet
+eenregelig op de plek waar een gebeurtenis afgaat — een vermenigvuldiger op een
+aftelklok en een vraag vooraf — want het alternatief is tachtig gedragingen en vijf
+gebeurtenislussen onder een scheduler schuiven, en dat is een herschrijving.
 
-- hooguit één groot ding tegelijk (roofdier, ammoniet, hypnose, balts, gevecht,
-  kleurenshow);
-- verplichte rust na zo'n ding;
-- bij voorkeur ensceneren in de buurt van waar de cursor de laatste tijd was —
-  een gebeurtenis op je tweede monitor is weggegooid;
-- een trage hartslag, zodat het nooit tien minuten dood is.
+- ~~Hooguit één groot ding tegelijk.~~ **Af**: roofdier, ammoniet en ritueel
+  claimen het toneel. Zolang het bezet is stáán de andere klokken stil in plaats van
+  achter het gordijn af te lopen en samen af te gaan zodra het opgaat — die opstopping
+  is precies waar dit voor bestaat.
+- ~~Verplichte rust na zo'n ding.~~ **Af**: 75 seconden.
+- ~~Een trage hartslag.~~ **Af**: na zes minuten niks lopen de klokken 3x, en per
+  verdere zes minuten stilte nog eens 3x, tot maximaal 9x. Een vlakke 3x was niet
+  genoeg — in zes uur zat er dan nog een gat van twaalf minuten in. Nu: 43
+  gebeurtenissen in zes uur, langste gat tien minuten, nul overlappingen (gemeten in
+  DirectorTests).
+- ~~Ensceneren waar de cursor de laatste tijd was.~~ **Af**: 26 seconden ease op de
+  cursor, en alleen terwijl er iemand aan de machine zit. Naast de cursor, niet
+  erop — een roofdier dat altijd onder je muis opduikt is geen weer meer maar een
+  schrikmoment.
+- Nog **niet** onder de regie, met opzet: alles wat twee dieren onderling doen
+  (rivaliteit, balts, spiegelen, vechten om een garnaal). Dat is het weer van de
+  tank en niet zijn gebeurtenissen, en de helft ervan bepaalt wie zich voortplant en
+  wie doodgaat — dat verander je op een dag dat populatie het onderwerp is en
+  `uv run Tools/graveyard.py` ervoor en erna draait.
+- Nog niet gedaan: hypnose, balts, gevecht en kleurenshow onder dezelfde regie
+  brengen zodra het bovenstaande voorbehoud is opgelost.
 
 ### 4. Het dier zelf echter maken
 
@@ -170,9 +207,20 @@ werkt onder de twee dieren.
 
 ### 7. Snoeien
 
-Er zijn zo'n 85 gedragingen en een deel is eSheep-erfenis die de illusie breekt
-(spook, elektrische schok, meeliften, minimaliseren). Alles moet zijn plek
-verdienen. Weggooien telt als vooruitgang.
+Er zijn zo'n 85 gedragingen en een deel is eSheep-erfenis die de illusie breekt.
+Alles moet zijn plek verdienen. Weggooien telt als vooruitgang.
+
+- ~~Spook, elektrische schok, meeliften op de cursor, meeliften met een
+  geminimaliseerd venster.~~ **Weg** (21 nov, 211 regels eruit, 11 erin). Het spook
+  was de ergste: dat verwijderde stilletjes een dier met dagen geërfd gedrag en
+  opgebouwde banden — het enige hier dat niet opnieuw te maken is — en zette er een
+  vreemde voor in de plaats. De leidingen die alleen voor 'minimaliseren' bestonden
+  zijn mee weggegaan (`WorldState.MinimisedWindows`, `WindowTracker.TakeMinimised`).
+  De *ghost-animatie* blijft: doodgaan gebruikt hem nog.
+- Blijft staan om naar te kijken: `blot` (de inktvlek die eSheep als keutel bedoelde).
+  En de `shock`-frames worden nog steeds gegenereerd en staan nog in de sheets; dat
+  kost een beetje geheugen en verder niets, en eruit halen betekent elke sheet
+  opnieuw maken — werk voor een dag waarop sprites het onderwerp zijn.
 
 ## Huisregels
 
@@ -214,6 +262,26 @@ Deze zijn duur geleerd. Ze gelden elke dag.
 ## Logboek
 
 Nieuwste bovenaan. Eén regel per dag: wat er gebeurde, en wat het leerde.
+
+- **21 nov** — Vier dingen op jouw verzoek, tegen de huisregel van één per keer in,
+  elk met eigen tests en eigen commit: het roofdier komt uit de diepte (thema 2),
+  dieren zetten zich tegen de stroming (thema 2 af), het skelet van de regisseur
+  (thema 3) en vier stukken eSheep-erfenis eruit (thema 7). Geleerd, in volgorde van
+  pijn: (1) de dieren hebben een expres smal bereik voor formaat en dekking omdat ze
+  het onderwerp zijn, en toen het roofdier zijn eigen veel bredere bereik kreeg stond
+  er een spook naast een massief dier in hetzelfde vlak — binnen het water dat de
+  dieren gebruiken gelden hún regels, en de dramatiek hoort áchter hun bodem waar
+  niets anders kan komen. (2) Ik heb twee runs volledig verkeerd gelezen doordat de
+  logregel `_world.Drift` las, die TickWater één keer per tick schrijft: er stond
+  'stroming x0' naast '33px/s'. Een logregel die één tick achterloopt is erger dan
+  geen logregel. (3) De eerste getraceerde nadering kwam linksonder boven, kruiste de
+  hele tank achterlangs zonder dat er ooit iets binnen zijn 520px kwam, en vertrok —
+  acht seconden volkomen correct gedrag en niets om naar te kijken; een debug-summons
+  moet écht richten, niet alleen de hoogte lenen en voor de kant een munt opgooien.
+  (4) Het zichtbare bereik van een fade zit niet in het getal maar in de tíjd: 0,24
+  naar 0,90 in 0,19 seconde is geen fade maar een knip, en dat zie je alleen op een
+  opname terug. Tank: 13 zeekatten voor, 13 na (plus #4309 die er vanzelf bij kwam);
+  niemand is onderweg doodgegaan.
 
 - **14 nov** — Drie dingen op één dag: scherpere sprites op 2× met loops die
   niet meer haperen aan de naad, een voorbijtrekkende pijlinktvisschool (8-14
