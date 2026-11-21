@@ -917,6 +917,9 @@ ApproachTests.Run(Check);
 // ---------- animals in the current ----------
 CrabbingTests.Run(Check);
 
+// ---------- the stage ----------
+DirectorTests.Run(Check);
+
 Console.WriteLine(failed == 0 ? "\nALL PASS" : $"\n{failed} FAILED");
 return failed;
 

@@ -464,10 +464,36 @@ public sealed partial class PetManager
     /// somewhere in the tank with room for a ring; the long cooldown is what keeps
     /// it an event rather than a habit.
     /// </summary>
+    /// <summary>
+    /// The stage: one big thing at a time, a required quiet after it, and a
+    /// heartbeat that hurries the clocks when nothing has happened for a while.
+    /// See Core/Director.cs for what is and is not under it.
+    /// </summary>
+    private readonly StageState _stage = new();
+
+    /// <summary>Seconds left of the ritual's claim on the stage; see MaybeRitual.</summary>
+    private double _ritualEndsIn;
+
+    private void TickStage(double dt)
+    {
+        if (_ritualEndsIn > 0)
+        {
+            _ritualEndsIn -= dt;
+            if (_ritualEndsIn <= 0) Director.Ended(_stage, "ritueel");
+        }
+
+        // The cursor only counts while somebody is actually using the machine:
+        // a pointer parked in a corner for an hour is not where the attention is.
+        string? stuck = Director.Tick(_stage, dt, _world.Cursor, _world.IdleSeconds < 2.0);
+        if (stuck != null)
+            Log($"regie: '{stuck}' heeft zijn einde nooit gemeld en is na " +
+                $"{Director.MaxAct:F0}s van het toneel gehaald -- dat is een fout elders");
+    }
+
     private void MaybeRitual(double dt)
     {
-        _ritualIn -= dt;
-        if (_ritualIn > 0 || _pets.Count < 3) return;
+        _ritualIn -= dt * Director.Pace(_stage);
+        if (_ritualIn > 0 || _pets.Count < 3 || !Director.MayStart(_stage)) return;
 
         var willing = new List<Pet>();
         foreach (var pet in _pets)
@@ -483,9 +509,12 @@ public sealed partial class PetManager
 
         var tank = _world.VirtualScreen;
         double radius = 120 + willing.Count * 16;
+        // Staged near where the cursor has been, within the room a ring needs.
         var centre = new Point(
             tank.Left + radius + 90 + _rng.NextDouble() * Math.Max(1, tank.Width - 2 * radius - 180),
-            tank.Top + radius + 140 + _rng.NextDouble() * Math.Max(1, tank.Height - 2 * radius - 300));
+            Director.StageY(_stage, _rng,
+                            tank.Top + radius + 140,
+                            Math.Max(tank.Top + radius + 141, tank.Bottom - radius - 160)));
 
         // One colour for the whole ring: that is most of what makes it read as a
         // gathering rather than several cuttlefish that happen to be near each other.
@@ -500,6 +529,12 @@ public sealed partial class PetManager
         }
 
         _ritualIn = 1500 + _rng.NextDouble() * 1800;
+        // A ring is over in about a minute and nothing reports its end -- each
+        // animal finishes its own RitualBehavior in its own time. The stage is
+        // claimed for the length of the thing rather than until a curtain call
+        // that would have to be plumbed through eight behaviours to exist.
+        Director.Started(_stage, "ritueel");
+        _ritualEndsIn = 70;
         Log($"ritueel met {willing.Count} zeekatten op ({centre.X:F0},{centre.Y:F0})");
     }
     /// visible to anyone watching:
@@ -650,6 +685,7 @@ public sealed partial class PetManager
                 wantClicks = true;
         }
 
+        TickStage(dt);
         SpreadAlarm();
         RideMinimisedWindows();
         ChimeOnTheHour();
@@ -1655,9 +1691,10 @@ public sealed partial class PetManager
         var passing = _world.Ammonite;
         if (passing == null)
         {
-            _ammoniteIn -= dt;
-            if (_ammoniteIn > 0 || _pets.Count == 0) return;
+            _ammoniteIn -= dt * Director.Pace(_stage);
+            if (_ammoniteIn > 0 || _pets.Count == 0 || !Director.MayStart(_stage)) return;
             _ammoniteIn = AmmoniteGap();
+            Director.Started(_stage, "ammoniet");
             SpawnAmmonite();
             return;
         }
@@ -1679,6 +1716,7 @@ public sealed partial class PetManager
         {
             _renderer.RemoveProp(passing.Visual);
             _world.Ammonite = null;
+            Director.Ended(_stage, "ammoniet");
             Log("de ammoniet is weer weg");
             return;
         }
@@ -1691,7 +1729,9 @@ public sealed partial class PetManager
     /// <summary>Debug, and realistically the only way anyone sees this on purpose.</summary>
     public void SummonAmmonite()
     {
-        if (_world.Ammonite == null) _ammoniteIn = 0;
+        if (_world.Ammonite != null) return;
+        Director.Clear(_stage);
+        _ammoniteIn = 0;
     }
 
     private void SpawnAmmonite()
@@ -1783,6 +1823,7 @@ public sealed partial class PetManager
     {
         _squid = SquidSchool.Create(_world.VirtualScreen, _rng);
         foreach (var _ in _squid.Members) _squidImgs.Add(_renderer.CreateProp("squid"));
+        Director.Noted(_stage);
         Log($"een school van {_squid.Members.Count} squid komt langs" +
             (_squid.TailFirst ? " (staart eerst)" : ""));
     }
@@ -1799,6 +1840,7 @@ public sealed partial class PetManager
     public void SummonHunter(bool sure = false, bool miss = false, bool trace = false)
     {
         if (_world.Hunter != null) return;
+        Director.Clear(_stage);   // a summons does not wait for the stage
         _hunterIn = 0;
         _summonAimed = true;
         _summonSure = sure;
@@ -1870,8 +1912,8 @@ public sealed partial class PetManager
         var hunter = _world.Hunter;
         if (hunter == null)
         {
-            _hunterIn -= dt;
-            if (_hunterIn > 0 || _pets.Count < 3) return;
+            _hunterIn -= dt * Director.Pace(_stage);
+            if (_hunterIn > 0 || _pets.Count < 3 || !Director.MayStart(_stage)) return;
 
             // Eight to twenty minutes apart. Often enough to matter over a day,
             // rare enough that it is an event rather than weather.
@@ -1891,7 +1933,7 @@ public sealed partial class PetManager
             // back to show the deep crossing first.
             Pet? aim = _summonAimed && _pets.Count > 0 ? _pets[_rng.Next(_pets.Count)] : null;
             double entryY = aim?.Pos.Y
-                ?? tank.Top + 160 + _rng.NextDouble() * (tank.Height - 420);
+                ?? Director.StageY(_stage, _rng, tank.Top + 160, tank.Bottom - 260);
             entryY = Math.Clamp(entryY, tank.Top + 120, tank.Bottom - 160);
             if (aim != null) fromLeft = aim.Pos.X > tank.Left + tank.Width * 0.45;
             _summonAimed = false;
@@ -1935,6 +1977,7 @@ public sealed partial class PetManager
                 Visual = _renderer.CreateProp(kind),
             };
             _world.Hunter = hunter;
+            Director.Started(_stage, "roofdier");
             _sound.Play("squirt", 0.5);
             Log($"{kind} komt uit de diepte bij {_pets.Count} zeekatten op " +
                 $"({hunter.Pos.X:F0},{hunter.Pos.Y:F0}) d={hunter.Deep.Depth:F2} " +
@@ -2183,6 +2226,7 @@ public sealed partial class PetManager
                 Log($"nadering klaar na {hunter.Age:F1}s " +
                     $"({(Approach.Dissolved(hunter.Deep) ? "opgelost in de waas" : offScreen ? "van het scherm" : "tijd op")})");
             _hunterTrace = false;
+            Director.Ended(_stage, "roofdier");
             _renderer.RemoveProp(hunter.Visual);
             _world.Hunter = null;
             return;
@@ -2398,6 +2442,13 @@ public sealed partial class PetManager
                 $"age={p.Age:F0}/{p.Lifespan:F0}s scale={p.Scale:F2}");
             System.IO.File.AppendAllLines(
                 System.IO.Path.Combine(System.IO.Path.GetTempPath(), "cuttlefishpet-debug.log"), lines);
+            // The stage, every four seconds. Without it the director is invisible:
+            // its whole job is the things that do *not* happen, and you cannot see
+            // an event that was held back by looking at the screen.
+            Log($"regie: toneel={_stage.OnStage ?? "vrij"} " +
+                $"loopt={_stage.Running:F0}s rust={_stage.RestFor:F0}s stil={_stage.Quiet:F0}s " +
+                $"tempo=x{Director.Pace(_stage):F1} " +
+                $"oog={(_stage.Watching ? $"({_stage.Attention.X:F0},{_stage.Attention.Y:F0})" : "geen")}");
             if (_sampleCount > 0)
             {
                 Log($"camo-samples={_sampleCount} gemiddeld={_sampleMs / _sampleCount:F1}ms " +
