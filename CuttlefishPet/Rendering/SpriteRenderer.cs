@@ -343,7 +343,11 @@ public sealed class SpriteRenderer
         v.Flip.CenterY = anim.Anchor.Y / anim.FrameH * h;
 
         // Swing/tilt pivots on the contact point, and follows the mirrored body.
-        v.Swing.Angle = pet.FacingRight ? pet.Rotation : -pet.Rotation;
+        // Rotation is what the animal is doing; Lean is what the water is doing to
+        // it (Crabbing). They add: an animal can be diving and holding itself
+        // against the flow at the same time, and both are small angles.
+        double tilt = pet.Rotation + pet.Lean;
+        v.Swing.Angle = pet.FacingRight ? tilt : -tilt;
         v.Swing.CenterX = anim.Anchor.X / anim.FrameW * w;
         v.Swing.CenterY = anim.Anchor.Y / anim.FrameH * h;
 

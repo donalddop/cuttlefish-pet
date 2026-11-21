@@ -17,6 +17,7 @@ public sealed class IconMimicBehavior : BehaviorBase
 {
     public override string Name => "icon";
     public override bool OverridesPhysics => true;
+    public override bool Anchored => true;   // it is a desktop icon; icons do not drift
 
     private enum Phase { Approach, Posing, Bolting }
     private Phase _phase = Phase.Approach;

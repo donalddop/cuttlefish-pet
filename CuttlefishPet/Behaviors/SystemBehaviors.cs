@@ -11,6 +11,7 @@ namespace CuttlefishPet.Behaviors;
 public sealed class PushWindowBehavior : BehaviorBase
 {
     public override string Name => "push";
+    public override bool Anchored => true;   // braced against the window it is shoving
     public override bool OverridesPhysics => true;
 
     private readonly Surface _edge;

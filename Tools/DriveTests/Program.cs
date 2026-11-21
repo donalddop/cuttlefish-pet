@@ -914,6 +914,9 @@ ArmTests.Run(Check);
 // ---------- the hunter's approach out of the haze ----------
 ApproachTests.Run(Check);
 
+// ---------- animals in the current ----------
+CrabbingTests.Run(Check);
+
 Console.WriteLine(failed == 0 ? "\nALL PASS" : $"\n{failed} FAILED");
 return failed;
 

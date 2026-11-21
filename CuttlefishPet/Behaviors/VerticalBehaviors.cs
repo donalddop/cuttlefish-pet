@@ -53,6 +53,7 @@ public sealed class CeilingWalkBehavior : BehaviorBase
 public sealed class HangBehavior : BehaviorBase
 {
     public override string Name => "hang";
+    public override bool Anchored => true;   // holding the lip of a ledge by its arms
     public override bool OverridesPhysics => true;
 
     private readonly bool _launch;

@@ -37,6 +37,19 @@ public abstract class BehaviorBase
     public virtual bool OverridesPhysics => false;
     /// <summary>Can ambient events (flee, typing react) preempt this behavior?</summary>
     public virtual bool Interruptible => true;
+
+    /// <summary>
+    /// Is this animal holding onto something rather than floating in open water?
+    ///
+    /// The tank's shared current carries everything afloat and tips it against the
+    /// flow (<see cref="CuttlefishPet.Core.Crabbing"/>). An animal pretending to be
+    /// a desktop icon, braced against a window frame or hanging off a ledge is not
+    /// afloat: sliding it eight pixels a second takes it off the thing it is
+    /// holding, and tilting it breaks the one trick the behaviour is doing. A perch
+    /// is handled separately, by Pet.Surface; this is for the ones that hold a spot
+    /// without one.
+    /// </summary>
+    public virtual bool Anchored => false;
     /// <summary>
     /// Does this behaviour only make sense while attached to something? A pet whose
     /// perch is pulled out from under it drops back to swimming — but a flourish that

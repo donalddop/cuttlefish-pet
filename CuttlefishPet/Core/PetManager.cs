@@ -632,6 +632,7 @@ public sealed partial class PetManager
             PhysicsEngine.Tick(pet, _world, dt);
             // Environmental, so it applies even while a behaviour is steering.
             if (pet.Surface == null) PhysicsEngine.ApplyScrollCurrent(pet, _world, dt);
+            if (pet.Surface == null) DriftWithWater(pet, dt);
             AvoidRecycleBin(pet, dt);
             SlowWithDistance(pet, wasAt);
             pet.Anim.Tick(dt);
@@ -674,6 +675,27 @@ public sealed partial class PetManager
             _overlay.EnsureTopmost();
             LogDebug();
         }
+    }
+
+    /// <summary>
+    /// The water moves what is in it, and the animal sets itself against it.
+    /// Applied after the behaviour has steered, for the same reason
+    /// SlowWithDistance is: every behaviour then inherits it, and a behaviour that
+    /// steers toward a point corrects for the push by itself next tick -- which is
+    /// crabbing, got for free rather than written eighty times.
+    ///
+    /// Not applied to a perched animal: it is holding onto a window, not floating.
+    /// Nor to one being dragged, which must stay under the cursor.
+    /// </summary>
+    private void DriftWithWater(Pet pet, double dt)
+    {
+        // Under the cursor, or holding onto something. Neither is afloat.
+        if (pet.Machine.Current is DragBehavior || pet.Machine.Current.Anchored) return;
+
+        var flow = _world.Drift;
+        pet.Pos += Crabbing.Carry(flow, dt);
+        pet.Lean = Crabbing.Step(pet.Lean, Crabbing.WantLean(pet.Vel, flow, pet.FacingRight), dt);
+        PhysicsEngine.ClampToTank(pet, _world);
     }
 
     /// <summary>
@@ -813,9 +835,31 @@ public sealed partial class PetManager
             < 0.01 => 1,
             _ => 5,
         };
+        // The current peaks at 8.5px/s sideways and 2.8 down, which is a tenth of
+        // what a swimming animal does: at true strength neither the carry nor the
+        // lean can be judged inside a minute. The showcase strength is here for
+        // the same reason the dust and the shafts have one -- to see the shape of
+        // the thing, then turn it back down and trust the numbers.
+        _current.Strength = _current.Strength switch
+        {
+            > 2 => 0,
+            < 0.01 => 1,
+            _ => 6,
+        };
+        // After the strength, not before: the first version advanced the clock and
+        // then changed the multiplier, so every log line reported the flow the
+        // tank had a moment ago and I read one run completely backwards.
         _current.Advance(90);
         Log($"water: brightness {_snow.Brightness}, {_snow.Flakes.Count} flakes, " +
-            $"flow {_world.Drift.X:F2},{_world.Drift.Y:F2} px/s | {_snowLayer.Describe()}");
+            // _current.Flow and not _world.Drift: Drift is written once a tick by
+            // TickWater, so a line that read it printed the flow from before this
+            // command and said x0 next to 33px/s. Half an hour of reading runs
+            // backwards, twice, from a log that was one tick stale.
+            $"stroming x{_current.Strength}, flow {_current.Flow.X:F2},{_current.Flow.Y:F2} px/s | " +
+            $"{_snowLayer.Describe()}");
+        Log("water: schuinstand " + string.Join(", ", _pets.ConvertAll(p =>
+            $"#{p.Id} {p.Lean:F1}gr (wil {Crabbing.WantLean(p.Vel, _world.Drift, p.FacingRight):F1}, " +
+            $"{p.Vel.Length:F0}px/s)")));
     }
 
     /// <summary>

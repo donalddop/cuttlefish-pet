@@ -105,6 +105,16 @@ public sealed class Pet
     /// <summary>Visual tilt in degrees around the contact point (swinging, drifting).</summary>
     public double Rotation;
 
+    /// <summary>
+    /// Degrees the body is set against the current, on top of <see cref="Rotation"/>
+    /// and in the same convention. Kept apart from Rotation rather than folded into
+    /// it because nearly every behaviour writes Rotation outright each tick, so a
+    /// lean living there would be erased by whatever the animal happened to be
+    /// doing -- and the current is a property of the water, not of the activity.
+    /// See <see cref="Crabbing"/>.
+    /// </summary>
+    public double Lean;
+
     // Chromatophores: the body cross-fades from FromPalette to Palette.
     public int Palette;
     public int FromPalette;

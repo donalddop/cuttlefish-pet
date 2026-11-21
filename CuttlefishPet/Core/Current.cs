@@ -32,6 +32,13 @@ public sealed class Current
 
     private double _t;
 
+    /// <summary>
+    /// Debug multiplier on the whole flow. 1 in the tank, always. The `water`
+    /// command winds it up so the carry and the lean can be seen inside a minute
+    /// instead of over ten; see CycleWater.
+    /// </summary>
+    public double Strength { get; set; } = 1;
+
     /// <summary>Where the water is going, physical px/s.</summary>
     public Vector Flow { get; private set; }
 
@@ -63,6 +70,7 @@ public sealed class Current
                  + 0.12 * Math.Sin(_t / 43.0 + 0.4);
         double y = 0.74 * Math.Sin(_t / 143.0 + 0.6)
                  + 0.26 * Math.Sin(_t / 61.0 + 2.9);
-        Flow = new Vector(x * MaxSideways, y * MaxVertical);
+        double k = double.IsFinite(Strength) ? Math.Clamp(Strength, 0, 12) : 1;
+        Flow = new Vector(x * MaxSideways * k, y * MaxVertical * k);
     }
 }
