@@ -920,6 +920,9 @@ CrabbingTests.Run(Check);
 // ---------- the stage ----------
 DirectorTests.Run(Check);
 
+// ---------- the hunter and the edges of the screen ----------
+GlassTests.Run(Check);
+
 Console.WriteLine(failed == 0 ? "\nALL PASS" : $"\n{failed} FAILED");
 return failed;
 

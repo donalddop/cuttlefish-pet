@@ -137,12 +137,27 @@ waar je in zit te lezen. Subtiliteit ís de functie.
   wel zeker dat zo'n sprong geen jacht is maar een dier dat naar niets sprint.
   Voorbij tweemaal de wachtafstand breekt hij het sluipen nu af. Daarna zeven
   jachten achter elkaar met de uitval tussen 86 en 134px.
-- **Gevonden op 21 nov, niet opgelost:** een roofdier wordt nergens binnen het
-  glas gehouden. Na een misgelopen duik zwom hij op Y=1344 van een scherm van 1080
-  verder en kruiste daar nog vijftien seconden onzichtbaar het beeld uit. Dat kost
-  niets en is onzichtbaar, maar het is wel vijftien seconden waarin het toneel bezet
-  is en er niets te zien valt. `ClampToTank` is voor dieren; het roofdier heeft
-  alleen een controle op links en rechts.
+- ~~Een roofdier wordt nergens binnen het glas gehouden.~~ **Af** (22 nov).
+  `Core/Glass.cs`, twee delen die allebei nodig zijn. Het zichtbare deel is een
+  klim terug naar binnen (`Return`), opgeteld bij de kruiskoers: nul zolang het
+  hele lijf in beeld is, oplopend tot 240px/s aan de schermrand, en de neus-omhoog
+  komt er gratis uit omdat `Hunt.Animate` al naar de koers kantelt. Het tweede deel
+  is een harde lijn (`Hold`) die het ankerpunt nooit voorbij de rand laat: een
+  koers is geen rem, en 760px/s keer je niet in een tiende seconde. Marges van 112
+  boven en 78 onder, gemeten aan de alfa van frame 0 (de rugvin zit 87px boven het
+  anker, de buikvinnen 52 eronder) en afgerond voor de 38° kanteling. Live gemeten
+  met het nieuwe `dive`-commando: burst naar (1185,991), dan y=1078 van 1080 in
+  plaats van 1344, terug=-234px/s op het diepste punt, en 1,1s later volledig in
+  beeld. Het bezoek eindigde na 7,3s zijwaarts in plaats van vijftien seconden
+  onzichtbaar.
+- **Gevonden op 22 nov, niet opgelost:** een uitval vanaf 1324px. De dolfijn
+  sloop op #4888 tot `gat=31px`, ging coilen, en viel een halve seconde later uit
+  op 1324px — dus de prooi verplaatste zich ruim 1300px tussen het coilen en het
+  uitvallen, wat geen dier kan zwemmen. Dit is dezelfde soort als de onverklaarde
+  816px van 13 nov die `Hunt.GiveUpAt` opleverde. Vermoeden (niet nagekeken): die
+  wachtafstand wordt alleen tijdens het sluipen getoetst, en de coil van 0,34s
+  toetst niets, dus een prooi die daarbinnen verspringt glipt erdoor. Wat de prooi
+  laat verspringen weet ik niet.
 - De vangkans is met opzet niet aangeraakt. Een besloop dier is nu kansloos en
   hoort makkelijker te pakken te zijn, maar de vangkans bepaalt wie er voortplant
   — dat verander je op een dag dat je `uv run Tools/graveyard.py` voor en na
@@ -236,7 +251,7 @@ Deze zijn duur geleerd. Ze gelden elke dag.
   eigen ogen te zien binnen één sessie.
 - **Bouw een debug-commando voor alles wat zeldzaam is.** Wachten tot het
   toevallig gebeurt kost meer tijd dan het commando schrijven. Zie `strike`,
-  `reach`, `decoy`, `bones`, `lurk`, `shove`.
+  `reach`, `decoy`, `bones`, `lurk`, `shove`, `dive`.
 - **Kijk er echt naar.** Schermafdruk, uitsnede, eigen ogen. Niet aannemen.
 - **Geen enkele uitzondering mag de UI-thread bereiken.** Een tikfout in een
   animatienaam heeft de app ooit omgelegd, met verlies van het aquarium tot de
@@ -268,6 +283,25 @@ Deze zijn duur geleerd. Ze gelden elke dag.
 ## Logboek
 
 Nieuwste bovenaan. Eén regel per dag: wat er gebeurde, en wat het leerde.
+
+- **22 nov** — Het roofdier wordt binnen het glas gehouden (`Core/Glass.cs`), plus
+  een `dive`-commando dat de overschietende duik op afroep levert. Geleerd, in
+  volgorde van nut: (1) een debug-commando dat te goed mikt, mikt nergens meer op
+  — `dive` kwam eerst 430px bóven zijn doel binnen om de duik steil te maken, maar
+  vastlokken wordt op afstand gescoord en met 780px aanloop erbij haalde de prooi
+  de drempel nooit; de dolfijn kruiste het hele scherm vlak op y=572 met zijn doel
+  430px eronder en vertrok zonder ooit iemand aan te kijken. Op 220px werkt het.
+  (2) Twee tests faalden op hun eigen opzet en niet op de code: `deepest` begon op
+  de startwaarde, dus het beginpunt (de bug zelf) telde mee als meetresultaat, en
+  de twee scenario's deelden één klok, dus het tweede rapporteerde de tijd op de
+  wand in plaats van de tijd die het kostte. Een meetfout leest precies zoals een
+  echte fout. (3) De eerste live `dive` sloeg aan aan de bóvenrand, niet de onder-
+  — de jacht kiest zelf zijn prooi en trok het roofdier omhoog. Dat was geen
+  tegenvaller: beide randen zijn nu in het echt gezien. Tank: 17 zeekatten voor,
+  15 na; allebei `ouderdom`, om 20:26:29 en 20:26:31, en er gingen er om 20:20-21
+  al vier zo weg terwijl de geïnstalleerde app draaide en ik nog niets had
+  aangeraakt. Het is een lichting die uitsterft, niet het roofdier — `dive` kan
+  niet doden.
 
 - **21 nov** — Vier dingen op jouw verzoek, tegen de huisregel van één per keer in,
   elk met eigen tests en eigen commit: het roofdier komt uit de diepte (thema 2),

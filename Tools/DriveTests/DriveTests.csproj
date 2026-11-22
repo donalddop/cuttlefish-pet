@@ -23,6 +23,7 @@
     <Compile Include="ApproachTests.cs" />
     <Compile Include="CrabbingTests.cs" />
     <Compile Include="DirectorTests.cs" />
+    <Compile Include="GlassTests.cs" />
     <Compile Include="..\..\CuttlefishPet\Rendering\ArmPhysics.cs" />
     <Compile Include="..\..\CuttlefishPet\Core\Genome.cs" />
     <Compile Include="..\..\CuttlefishPet\Core\Breeding.cs" />
@@ -38,6 +39,7 @@
     <Compile Include="..\..\CuttlefishPet\Core\Hunt.cs" />
     <Compile Include="..\..\CuttlefishPet\Core\Approach.cs" />
     <Compile Include="..\..\CuttlefishPet\Core\Crabbing.cs" />
+    <Compile Include="..\..\CuttlefishPet\Core\Glass.cs" />
     <Compile Include="..\..\CuttlefishPet\Core\Director.cs" />
     <Compile Include="..\..\CuttlefishPet\Core\SquidSchool.cs" />
     <Compile Include="..\..\CuttlefishPet\Core\LightShafts.cs" />

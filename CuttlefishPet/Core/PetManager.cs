@@ -1818,7 +1818,15 @@ public sealed partial class PetManager
             Log($"tentakel uit bij #{pet.Id} op ({pet.Pos.X:F0},{pet.Pos.Y:F0}) schaal={pet.Scale:F2}");
     }
 
-    public void SummonHunter(bool sure = false, bool miss = false, bool trace = false)
+    /// <param name="low">
+    /// Aim at the animal nearest the bottom and come in well above it, so the
+    /// burst points down and runs out of water. The containment in Core/Glass.cs
+    /// is the thing being looked at and the overshoot is what triggers it; waiting
+    /// for one to happen by itself means a visit every eight to twenty minutes and
+    /// a dive in roughly the right direction in maybe one of those three.
+    /// </param>
+    public void SummonHunter(bool sure = false, bool miss = false, bool trace = false,
+                             bool low = false)
     {
         if (_world.Hunter != null) return;
         Director.Clear(_stage);   // a summons does not wait for the stage
@@ -1826,6 +1834,7 @@ public sealed partial class PetManager
         _summonAimed = true;
         _summonSure = sure;
         _summonMiss = miss;
+        _summonLow = low;
         _hunterTrace = trace;
         _traceIn = 0;
     }
@@ -1853,6 +1862,9 @@ public sealed partial class PetManager
     /// cuttlefish alive to do it to again.
     /// </summary>
     private bool _summonMiss;
+
+    /// <summary>Debug: dive at the lowest animal from above. See SummonHunter.</summary>
+    private bool _summonLow;
 
     /// <summary>Seconds to the next visit, and which of the two comes next.</summary>
     private double _hunterIn = 240 + 420 * 0.5;
@@ -1912,12 +1924,29 @@ public sealed partial class PetManager
             // 520px it locks on at, and left. Eight seconds of correct behaviour
             // and nothing to look at. Now it comes up behind its mark, far enough
             // back to show the deep crossing first.
-            Pet? aim = _summonAimed && _pets.Count > 0 ? _pets[_rng.Next(_pets.Count)] : null;
+            Pet? aim = _summonAimed && _pets.Count > 0
+                ? (_summonLow ? _pets.OrderByDescending(p => p.Pos.Y).First()
+                              : _pets[_rng.Next(_pets.Count)])
+                : null;
             double entryY = aim?.Pos.Y
                 ?? Director.StageY(_stage, _rng, tank.Top + 160, tank.Bottom - 260);
             entryY = Math.Clamp(entryY, tank.Top + 120, tank.Bottom - 160);
+            // `dive` wants the burst pointing down, and a hunter that arrives level
+            // with its mark bursts sideways: it comes in above it instead.
+            //
+            // 220px, and the first try at 430 is why there is a number here at all
+            // rather than "as high as it will go". Locking on is scored on distance
+            // (Conspicuousness * (1 - d/900)), and the lead-in is already 780px of
+            // it: at 430px of height the quarry never cleared the bar, so the
+            // dolphin crossed the whole tank level at y=572 with its mark 430px
+            // below it and left after six seconds without ever looking at anybody.
+            // At 220 the closest approach scores about the same as a level one, and
+            // a 170px hold with 220px of that vertical is still a dive.
+            if (_summonLow && aim != null)
+                entryY = Math.Clamp(aim.Pos.Y - 220, tank.Top + 120, tank.Bottom - 160);
             if (aim != null) fromLeft = aim.Pos.X > tank.Left + tank.Width * 0.45;
             _summonAimed = false;
+            _summonLow = false;
 
             // It arrives out of the haze inside the frame now, rather than sliding
             // in off the edge at full size. The entry point has to be a good way
@@ -2138,7 +2167,14 @@ public sealed partial class PetManager
             // anything left to look at.
             Hunt.Advance(hunter.Hunt, dt, false, 1e4);
             double straight = hunter.FacingRight ? Predator.Cruise : -Predator.Cruise;
-            hunter.Vel += (new Vector(straight, Math.Sin(hunter.Age * 0.7) * 26) - hunter.Vel)
+            // The sine is the idle wander; the second term is whatever it takes to
+            // get back inside the glass. This branch is where a hunter lands after
+            // a miss clears its target, and it used to level out wherever the burst
+            // had left it -- on 21 Nov that was 264px below the bottom of a 1080
+            // screen, and it crossed the rest of the visit down there. See
+            // Core/Glass.cs; the nose-up bank comes out of Hunt.Animate for free.
+            double level = Math.Sin(hunter.Age * 0.7) * 26 + Glass.Return(hunter.Pos.Y, tankRect);
+            hunter.Vel += (new Vector(straight, level) - hunter.Vel)
                           * Math.Min(1, dt * 1.2);
         }
 
@@ -2153,6 +2189,12 @@ public sealed partial class PetManager
                       hunter.Target is { Dying: false }, hunter.Leaving,
                       hunter.Target?.Depth ?? 1);
         hunter.Pos += hunter.Vel * dt * Approach.SpeedAt(hunter.Deep.Depth);
+        // And the backstop the climb above cannot be: a burst at 760px/s crosses
+        // its own overshoot faster than any heading can turn it round, so the
+        // anchor is held at the edge of the glass and the speed that took it there
+        // is turned round. Left and right are deliberately not touched -- crossing
+        // out of frame sideways is how a visit ends (see offScreen below).
+        Glass.Hold(ref hunter.Pos, ref hunter.Vel, tankRect);
         // A burst turns the animal round in one tick if it is allowed to: the
         // threshold was 12px/s, which any sideways drift clears, and a shark that
         // flips to face left for two frames mid-lunge is unwatchable. During a
@@ -2193,7 +2235,14 @@ public sealed partial class PetManager
                     $"d={hunter.Deep.Depth:F3} x{hunter.DrawScale:F3} " +
                     $"dekking={Approach.Opacity(hunter.Deep):F3} " +
                     $"z={Depths.ZFor(hunter.Deep.Depth)} " +
-                    $"px/s={hunter.Vel.Length * Approach.SpeedAt(hunter.Deep.Depth):F0}");
+                    $"px/s={hunter.Vel.Length * Approach.SpeedAt(hunter.Deep.Depth):F0}" +
+                    // Whether any of the body is off the frame, and the climb that
+                    // is answering it. The whole point of the containment is that
+                    // the first of these is briefly true and never stays true, and
+                    // 'briefly' is not something to judge by watching for it.
+                    (Glass.Clipped(hunter.Pos.Y, tankRect)
+                        ? $" BUITEN HET GLAS, terug={Glass.Return(hunter.Pos.Y, tankRect):F0}px/s"
+                        : ""));
             }
         }
 

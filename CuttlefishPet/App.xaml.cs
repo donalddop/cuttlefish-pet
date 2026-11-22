@@ -105,6 +105,11 @@ public partial class App : Application
             // line in the log a few times a second -- the fade is 0.30 to 1.00 and
             // that is not something to judge off a screenshot by eye.
             case "rise": _manager.SummonHunter(miss: true, trace: true); break;
+            // The containment one: it comes in high above the animal nearest the
+            // floor, misses, and so carries its burst down through the bottom of
+            // the frame -- which is the case Core/Glass.cs exists for. Traced, and
+            // the trace marks every tick where any of the body is off the frame.
+            case "dive": _manager.SummonHunter(miss: true, trace: true, low: true); break;
             case "reach": _manager.ReachOut(); break;
             case "decoy": _manager.DropDecoy(); break;
             case "ammonite": _manager.SummonAmmonite(); break;
