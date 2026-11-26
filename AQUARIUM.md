@@ -129,7 +129,11 @@ waar je in zit te lezen. Subtiliteit ís de functie.
   een passerend roofdier. Gemeten over zestien frames met een venster over 82%
   van het scherm: 0 dierpixels binnen, en het kolomprofiel op de rand loopt
   50, 52, 49, 48, 46, 43 | 0, 0, 0 -- de snede ligt op de vensterrand zelf.
-  Debug-commando `behind`, meetbeeld `preview/behind-edge.png`.
+  Debug-commando `behind`, meetbeeld `preview/behind-edge.png`. Kost niets, het
+  levert op: met een schermvullende browser en de hele tank achterin zakte de
+  processortijd van 23,0% van een kern naar 1,9%, en terug naar 23,1% toen de
+  dieren weer naar voren kwamen. Een weggeknipt dier hoeft niet getekend te
+  worden, en dat is precies het geval dat de hele dag duurt.
 - Nog **niet** achter je vensters: de props (prooivisjes, garnaal, botten,
   roofdier, pijlinktvisschool) en de waterlagen (stof, lichtbundels, waterlijn).
   De props zijn de opvallendste: terwijl een zeekat netjes achter je browser
@@ -328,7 +332,10 @@ Nieuwste bovenaan. Eén regel per dag: wat er gebeurde, en wat het leerde.
   roofdier). Pas toen ik de verdachte over drie frames volgde en hij 22px/s steeg,
   was het duidelijk een opdrijvende zeekatbot en geen dier dat door het masker
   glipte. Tank: 15 zeekatten voor, 14 na; die ene ging tussen twee runs door
-  (ouderdom), niet tijdens het meten -- `behind` kan niet doden.
+  (ouderdom), niet tijdens het meten -- `behind` kan niet doden. En een
+  meevaller: dit is de eerste toevoeging die processortijd *bespaart* in plaats
+  van kost -- 23,0% van een kern normaal, 1,9% met de hele tank achter een
+  schermvullende browser, 23,1% weer erna.
 
 - **22 nov** — Het roofdier wordt binnen het glas gehouden (`Core/Glass.cs`), plus
   een `dive`-commando dat de overschietende duik op afroep levert. Geleerd, in
