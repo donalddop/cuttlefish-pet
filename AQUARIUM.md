@@ -26,7 +26,8 @@ je iets anders aan het doen bent.
 een vel stickers, geen volume. *(Grotendeels verholpen op 12 nov: dieren hebben
 een z-waarde waar formaat, waas, snelheid en tekenvolgorde uit volgen. Op 21 nov
 kwam het roofdier uit de diepte erbij, en zetten de dieren zich tegen de stroming;
-thema 2 is daarmee af.)*
+op 26 nov verdwijnen de achterste dieren achter je vensters. Thema 2 is daarmee
+af.)*
 
 **Er is geen regie.** *(Skelet staat sinds 21 nov: `Core/Director.cs` laat hooguit
 één groot ding tegelijk toe, legt er 75 seconden rust achter, hurry't de klokken als
@@ -105,6 +106,35 @@ waar je in zit te lezen. Subtiliteit ís de functie.
   stroming, alleen zolang het dier zelf onder de 95px/s zit. Een zijwaartse stroming
   wordt expres niet beantwoord: een zijaanzicht kan niet stroomopwaarts wijzen door
   te kantelen, dat zou omdraaien vragen, en dat gevecht hoort het gedrag te winnen.
+
+- ~~Dieren zwemmen achter je vensters.~~ **Af** (26 nov, op jouw verzoek: meer
+  controle over waar ze rondzwemmen). `Core/Occlusion.cs`. Een dier onder diepte
+  0,40 (ongeveer een derde van de tank) wordt weggeknipt waar een venster staat:
+  het verdwijnt aan de rand van je browser en komt er aan de andere kant weer
+  uit. De overlay is een topmost venster, dus echt tussen twee van jouw vensters
+  in de z-orde kan niet -- niet tekenen waar een venster staat ziet er op het
+  scherm hetzelfde uit. Drie dingen geleerd, op volgorde van prijs: (1) de eerste
+  versie wisselde alleen van kant waar geen venster het lijf overlapte, het enige
+  moment waarop een wissel niet te zien is -- live gemeten dekten twee vensters
+  100% van dit scherm (gemaximaliseerde browser), dus geen enkel dier was ooit
+  vrij en niet een van de vijftien ging ooit ergens achter. Een poortje dat nooit
+  opengaat is geen veiligheid maar een uitknop; een gedwongen wissel gaat nu door
+  een fade van 0,34s heen en terug, met de omklap op het dieptepunt. (2) WPF past
+  een Clip toe in de eigen ruimte van het element en zet er daarna de
+  rendertransform overheen, dus een masker in schermcoordinaten komt er
+  gespiegeld, geschaald en tot 38 graden scheef uit; het gaat er nu doorheen met
+  precies de inverse van wat er mee gaat gebeuren. (3) Alles wat tijdens het
+  meten toch binnen een venster bleek te staan was een prop en geen dier:
+  prooivis, garnaal, een opdrijvende zeekatbot (22px/s, daaraan te herkennen) en
+  een passerend roofdier. Gemeten over zestien frames met een venster over 82%
+  van het scherm: 0 dierpixels binnen, en het kolomprofiel op de rand loopt
+  50, 52, 49, 48, 46, 43 | 0, 0, 0 -- de snede ligt op de vensterrand zelf.
+  Debug-commando `behind`, meetbeeld `preview/behind-edge.png`.
+- Nog **niet** achter je vensters: de props (prooivisjes, garnaal, botten,
+  roofdier, pijlinktvisschool) en de waterlagen (stof, lichtbundels, waterlijn).
+  De props zijn de opvallendste: terwijl een zeekat netjes achter je browser
+  verdwijnt, zwemt er een prooivisje overheen. Dat is geen nieuw probleem (zo
+  stond alles er altijd al bij), maar het is nu wel zichtbaar inconsequent.
 
 #### De jacht zelf
 
@@ -251,7 +281,7 @@ Deze zijn duur geleerd. Ze gelden elke dag.
   eigen ogen te zien binnen één sessie.
 - **Bouw een debug-commando voor alles wat zeldzaam is.** Wachten tot het
   toevallig gebeurt kost meer tijd dan het commando schrijven. Zie `strike`,
-  `reach`, `decoy`, `bones`, `lurk`, `shove`, `dive`.
+  `reach`, `decoy`, `bones`, `lurk`, `shove`, `dive`, `behind`.
 - **Kijk er echt naar.** Schermafdruk, uitsnede, eigen ogen. Niet aannemen.
 - **Geen enkele uitzondering mag de UI-thread bereiken.** Een tikfout in een
   animatienaam heeft de app ooit omgelegd, met verlies van het aquarium tot de
@@ -283,6 +313,22 @@ Deze zijn duur geleerd. Ze gelden elke dag.
 ## Logboek
 
 Nieuwste bovenaan. Eén regel per dag: wat er gebeurde, en wat het leerde.
+
+- **26 nov** — Dieren zwemmen achter je vensters (`Core/Occlusion.cs`, commando
+  `behind`), op jouw vraag om meer controle over waar ze rondzwemmen. Geleerd, op
+  volgorde van nut: (1) het poortje dat een wissel onzichtbaar moest houden stond
+  op jouw bureaublad nooit open -- twee vensters dekten 100% van het scherm, dus
+  nul van de vijftien dieren ging ooit ergens achter. Een voorzorg die in de
+  praktijk de functie uitzet is erger dan geen voorzorg, en dat zag ik alleen
+  doordat ik het live draaide; de tests waren allang groen. (2) Een Clip in WPF
+  leeft in de eigen ruimte van het element, dus hij kantelt en spiegelt mee met
+  het dier -- een masker in schermcoordinaten moet er met de inverse doorheen. (3)
+  Mijn eigen metingen wezen drie keer een "lek" aan dat geen lek was: alles wat
+  binnen het venster stond te bewegen was een prop (prooivis, garnaal, bot,
+  roofdier). Pas toen ik de verdachte over drie frames volgde en hij 22px/s steeg,
+  was het duidelijk een opdrijvende zeekatbot en geen dier dat door het masker
+  glipte. Tank: 15 zeekatten voor, 14 na; die ene ging tussen twee runs door
+  (ouderdom), niet tijdens het meten -- `behind` kan niet doden.
 
 - **22 nov** — Het roofdier wordt binnen het glas gehouden (`Core/Glass.cs`), plus
   een `dive`-commando dat de overschietende duik op afroep levert. Geleerd, in
