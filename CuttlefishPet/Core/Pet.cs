@@ -84,6 +84,19 @@ public sealed class Pet
     /// </summary>
     public double DrawScale => RenderScale * Scale * DepthScale;
 
+    /// <summary>
+    /// Which side of your application windows it is drawn on, and the fade it is
+    /// in the middle of if it is changing sides (see <see cref="Occlusion"/>).
+    /// Follows from depth, so it is no more saved with the tank than depth is.
+    /// </summary>
+    public readonly BehindState Behind = new();
+
+    /// <summary>Clipped away wherever one of your windows covers the desktop.</summary>
+    public bool BehindWindows => Behind.Behind;
+
+    /// <summary>Opacity multiplier while it is changing sides; 1 the rest of the time.</summary>
+    public double BehindFade => Behind.Opacity;
+
     /// <summary>Anchor (foot/contact) point.</summary>
     public Point Pos;
     public Vector Vel;

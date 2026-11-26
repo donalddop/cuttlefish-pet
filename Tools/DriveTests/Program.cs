@@ -923,6 +923,9 @@ DirectorTests.Run(Check);
 // ---------- the hunter and the edges of the screen ----------
 GlassTests.Run(Check);
 
+// ---------- animals behind your windows ----------
+OcclusionTests.Run(Check);
+
 Console.WriteLine(failed == 0 ? "\nALL PASS" : $"\n{failed} FAILED");
 return failed;
 

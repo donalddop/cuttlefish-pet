@@ -119,6 +119,10 @@ public partial class App : Application
             case "water": _manager.CycleWater(); break;
             case "light": _manager.CycleLight(); break;
             case "depth": _manager.CycleDepth(); break;
+            // The occlusion one: puts the whole tank at the back, where it
+            // belongs behind your windows, and traces every switch. Press again
+            // to let them drift on their own clocks.
+            case "behind": _manager.CycleBehind(); break;
             case "mute": if (_muteItem != null) _muteItem.Checked = !_muteItem.Checked; break;
             case "exit": Shutdown(); break;
         }

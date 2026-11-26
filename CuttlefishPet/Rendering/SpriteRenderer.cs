@@ -314,8 +314,10 @@ public sealed class SpriteRenderer
         v.Root.Height = h;
         // Glassy when idle, solid when displaying; Fade dissolves it away entirely,
         // and distance takes a little off the top of all of it.
+        // BehindFade is the dip it fades through when it changes sides of your
+        // windows somewhere a window would otherwise have shown the switch.
         v.Root.Opacity = Math.Clamp(
-            pet.BodyOpacity * pet.Fade * Depths.OpacityAt(pet.Depth), 0, 1);
+            pet.BodyOpacity * pet.Fade * pet.BehindFade * Depths.OpacityAt(pet.Depth), 0, 1);
 
         // Draw order from depth, so animals pass in front of and behind each other
         // and in among the dust. Only written when it actually changes: setting a
@@ -459,6 +461,102 @@ public sealed class SpriteRenderer
 
         UpdateArms(pet, v, anim, w, tl.X, tl.Y + pet.VisualBob * k);
         UpdateTentacles(pet, v);
+
+        // Behind your windows, or in front of them. All four children, because an
+        // animal half hidden by a browser whose arms carry on over it is worse
+        // than no occlusion at all.
+        bool behind = pet.BehindWindows;
+        ApplyMask(v.Root, behind);
+        ApplyMask(v.Arms, behind);
+        ApplyMask(v.Tentacle, behind);
+        ApplyMask(v.TentacleEdge, behind);
+    }
+
+    /// <summary>
+    /// The desktop an animal behind your windows may be drawn in, as one frozen
+    /// fill geometry in DIU. Null means nothing is hiding anything -- no windows
+    /// open, or the mask could not be built -- and then no animal is clipped at
+    /// all, which is how this looked before any of it existed.
+    /// </summary>
+    private Geometry? _mask;
+
+    /// <summary>
+    /// Hand the renderer this tick's exposed desktop, in physical px. Built once
+    /// per change rather than once per animal: the geometry is shared by every
+    /// clipped body, so this is one allocation for the whole tank.
+    /// </summary>
+    public void SetWindowMask(IReadOnlyList<Rect> exposedPhysical, bool anyWindows)
+    {
+        try
+        {
+            if (!anyWindows) { _mask = null; return; }
+
+            double k = _overlay.DeviceToDiu;
+            var g = new GeometryGroup { FillRule = FillRule.Nonzero };
+            foreach (var r in exposedPhysical)
+            {
+                var tl = _overlay.PhysToDiu(r.TopLeft);
+                g.Children.Add(new RectangleGeometry(
+                    new Rect(tl.X, tl.Y, r.Width * k, r.Height * k)));
+            }
+            // Frozen so the same geometry can hang off every clipped element at
+            // once; an empty group is a legitimate answer (a maximised window
+            // covers the lot) and clips those animals away entirely.
+            g.Freeze();
+            _mask = g;
+        }
+        catch
+        {
+            // A mask that cannot be built must not take the tank with it: without
+            // one, deep animals simply swim in front of your windows again.
+            _mask = null;
+        }
+    }
+
+    /// <summary>
+    /// Clip one element to the exposed desktop, or let it draw freely.
+    ///
+    /// The awkward part: WPF applies Clip in the element's *own* coordinate space
+    /// and then runs the render transform over it, so a screen-space mask handed
+    /// to a body that is mirrored, scaled by depth and tilted up to 38 degrees
+    /// would be mirrored, scaled and tilted with it -- the window edges would
+    /// lean. The fix is to hand it the mask transformed by the inverse of exactly
+    /// what will be done to it: layout offset after render transform, the order
+    /// WPF itself uses. The clip then lands back on the real window edges,
+    /// whatever the animal is doing.
+    ///
+    /// Considered and rejected: wrapping each animal in one untransformed
+    /// container and clipping that instead, which needs no matrix at all. The
+    /// four children carry three different z-indices (the tentacles sit one slot
+    /// under the body so they read as coming out from under the arms), and a
+    /// shared wrapper would collapse them into one -- it would have cost the
+    /// depth sorting to save this inverse.
+    /// </summary>
+    private void ApplyMask(UIElement e, bool behind)
+    {
+        if (!behind || _mask == null)
+        {
+            if (e.Clip != null) e.Clip = null;
+            return;
+        }
+
+        try
+        {
+            var m = e.RenderTransform?.Value ?? Matrix.Identity;
+            double left = Canvas.GetLeft(e), top = Canvas.GetTop(e);
+            m.Translate(double.IsNaN(left) ? 0 : left, double.IsNaN(top) ? 0 : top);
+            if (!m.HasInverse) { e.Clip = null; return; }
+            m.Invert();
+            e.Clip = new GeometryGroup
+            {
+                Children = { _mask },
+                Transform = new MatrixTransform(m),
+            };
+        }
+        catch
+        {
+            e.Clip = null;
+        }
     }
 
     // ---- live arms ----
@@ -657,8 +755,8 @@ public sealed class SpriteRenderer
         v.TentacleEdge.Data = group;
         v.Tentacle.StrokeThickness = 2.6 * pet.Scale * pet.DepthScale * k;
         v.TentacleEdge.StrokeThickness = 4.3 * pet.Scale * pet.DepthScale * k;
-        v.Tentacle.Opacity = 0.92 * pet.Fade;
-        v.TentacleEdge.Opacity = 0.55 * pet.Fade;
+        v.Tentacle.Opacity = 0.92 * pet.Fade * pet.BehindFade;
+        v.TentacleEdge.Opacity = 0.55 * pet.Fade * pet.BehindFade;
         v.Tentacle.Visibility = Visibility.Visible;
         v.TentacleEdge.Visibility = Visibility.Visible;
     }

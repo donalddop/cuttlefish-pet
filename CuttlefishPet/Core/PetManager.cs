@@ -680,6 +680,10 @@ public sealed partial class PetManager
             UpdateColour(pet, dt);
             UpdateEyes(pet, dt);
             MaybeBubble(pet, dt);
+            // After everything has moved it, never before: the switch is decided
+            // on whether the body is clear of your windows, and a tick-old
+            // position answers that question about the frame before this one.
+            UpdateOcclusion(pet, dt);
             _renderer.Update(pet);
             if (pet.Machine.Current is DragBehavior || pet.Bounds.Contains(_world.Cursor))
                 wantClicks = true;
@@ -2526,6 +2530,8 @@ public sealed partial class PetManager
         _world.WindowRects.Clear();
         foreach (var w in _tracker.Windows)
             _world.WindowRects.Add(new Rect(w.Rect.Left, w.Rect.Top, w.Rect.Width, w.Rect.Height));
+
+        UpdateWindowMask();
 
 
         // Scanning every window for the bin is not something to do 30 times a second.
